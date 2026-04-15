@@ -4,12 +4,18 @@ A small turn-based roguelike built with Vite + TypeScript + PixiJS + rot-js. Dep
 
 ## Gameplay
 
+Designed for both desktop and mobile web — tap or keyboard, same game.
+
+**Mobile / touch:**
+- Tap a tile on the map to take one step toward it (8-way). Tap an adjacent enemy to bump-attack.
+- **Wait** button — burn a turn in place. **Restart** button — new seed.
+
+**Desktop / keyboard:**
 - Move with arrow keys or `hjkl` (diagonals: `yubn`).
 - `.` waits a turn. `r` restarts with a new seed.
 - Walk into enemies to bump-attack them.
-- Reach the stairs `>` to escape the dungeon.
 
-Append `?seed=123` to the URL to play a reproducible run.
+Reach the stairs `>` to escape the dungeon. Append `?seed=123` to the URL to play a reproducible run.
 
 ## Structure
 

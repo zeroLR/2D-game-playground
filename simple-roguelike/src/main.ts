@@ -5,15 +5,18 @@ import { createRng, pickSeed } from "./game/rng";
 import { generateLevel } from "./game/map/generate";
 import { World } from "./game/world";
 import { spawnGoblin, spawnPlayer } from "./game/entities/factories";
-import { keyToAction } from "./game/systems/input";
+import { keyToAction, tapToAction, type Action } from "./game/systems/input";
 import { newVisibility, recomputeFov } from "./game/systems/fov";
 import { runTurn, type TurnOutcome } from "./game/turn";
 import { Hud, MessageLog } from "./ui/hud";
 import { buildTextures, TILE_SIZE } from "./render/textures";
 import { Stage } from "./render/stage";
 
-const MAP_W = 48;
-const MAP_H = 28;
+// Grid sized to fit portrait-phone viewports: 32×20 tiles at 16 px × ZOOM=2
+// is 1024×640 internal pixels, which CSS scales down to fit < 400 px wide
+// phones without losing the pixel-art look (see src/style.css).
+const MAP_W = 32;
+const MAP_H = 20;
 const FOV_RADIUS = 8;
 const ZOOM = 2;
 const GOBLIN_COUNT = 5;
@@ -58,11 +61,8 @@ async function main(): Promise<void> {
   let game = newGame(pickSeed(), stage);
   render(game, stage, hud);
 
-  window.addEventListener("keydown", (e) => {
-    const action = keyToAction(e);
-    if (!action) return;
-    e.preventDefault();
-
+  // One pathway for every input source: keyboard, tap, or on-screen button.
+  const apply = (action: Action): void => {
     if (action.type === "restart") {
       // New seed — show it in the HUD and console like the skill requests.
       const next = (game.seed + 1) >>> 0;
@@ -90,7 +90,44 @@ async function main(): Promise<void> {
     else if (outcome === "escaped") game.status = "escaped";
 
     render(game, stage, hud);
+  };
+
+  window.addEventListener("keydown", (e) => {
+    const action = keyToAction(e);
+    if (!action) return;
+    e.preventDefault();
+    apply(action);
   });
+
+  // Tap / click the canvas — translate the pixel offset into a tile, then
+  // take one 8-way step toward it. `pointerdown` covers mouse, pen, and touch
+  // with a single listener, and `touch-action: none` in style.css kills the
+  // browser's double-tap-zoom on phones.
+  app.canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    const rect = app.canvas.getBoundingClientRect();
+    // rect.width/height are the CSS-scaled size; app.canvas.width/height are
+    // the internal resolution. We map back into internal coords before dividing
+    // by the tile size × zoom so CSS scaling stays transparent.
+    const scaleX = app.canvas.width / rect.width;
+    const scaleY = app.canvas.height / rect.height;
+    const localX = (e.clientX - rect.left) * scaleX;
+    const localY = (e.clientY - rect.top) * scaleY;
+    const tileX = Math.floor(localX / (TILE_SIZE * ZOOM));
+    const tileY = Math.floor(localY / (TILE_SIZE * ZOOM));
+
+    const player = game.world.player();
+    const pos = player?.[1].position;
+    if (!pos) return;
+    const action = tapToAction(tileX, tileY, pos.x, pos.y);
+    if (action) apply(action);
+  });
+
+  // On-screen buttons — primary controls on mobile where there is no keyboard.
+  const waitBtn = document.getElementById("btn-wait");
+  const restartBtn = document.getElementById("btn-restart");
+  waitBtn?.addEventListener("click", () => apply({ type: "wait" }));
+  restartBtn?.addEventListener("click", () => apply({ type: "restart" }));
 }
 
 function newGame(seed: number, stage: Stage): Game {

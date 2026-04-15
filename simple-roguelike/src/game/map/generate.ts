@@ -21,9 +21,12 @@ export function generateLevel(rng: Rng, width: number, height: number): Generate
   // stays deterministic for a given game seed.
   for (let attempt = 0; attempt < 20; attempt++) {
     ROT.RNG.setSeed(Math.floor(rng() * 2 ** 31));
+    // Room sizes tuned for a 32×20 phone-friendly grid (see main.ts). Smaller
+    // rooms = more of them, which gives Digger room to place goblins far from
+    // the spawn even on a tight map.
     const digger = new ROT.Map.Digger(width, height, {
-      roomWidth: [4, 8],
-      roomHeight: [3, 6],
+      roomWidth: [3, 6],
+      roomHeight: [3, 5],
       dugPercentage: 0.25,
     });
     const map = new TileMap(width, height, Tile.Wall);

@@ -30,3 +30,23 @@ const bindings: Record<string, Action> = {
 export function keyToAction(e: KeyboardEvent): Action | null {
   return bindings[e.key] ?? null;
 }
+
+/**
+ * Translate a tap on some tile into a one-step move toward that tile.
+ *
+ * The game is turn-based and tile-snapped, so instead of path-finding we just
+ * take one 8-way step in the direction of the tap. Tapping the tile the player
+ * is already standing on returns `null` so the caller can decide whether to
+ * wait, open a menu, etc.
+ */
+export function tapToAction(
+  tileX: number,
+  tileY: number,
+  playerX: number,
+  playerY: number,
+): Action | null {
+  const dx = Math.sign(tileX - playerX) as -1 | 0 | 1;
+  const dy = Math.sign(tileY - playerY) as -1 | 0 | 1;
+  if (dx === 0 && dy === 0) return null;
+  return { type: "move", dx, dy };
+}
