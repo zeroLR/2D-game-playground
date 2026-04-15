@@ -4,6 +4,8 @@
   --fg: #d6d6e0;
   --accent: #f0b850;
   --muted: #7a7a8a;
+  --panel: #161621;
+  --panel-border: #2a2a3a;
 }
 
 * {
@@ -17,16 +19,23 @@ html, body {
   color: var(--fg);
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   min-height: 100vh;
+  /* Kill pull-to-refresh / bounce scroll while interacting with the game. */
+  overscroll-behavior: none;
 }
 
 #app {
   max-width: 900px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 12px;
+  /* Respect notches and home indicators on phones. */
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 h1 {
@@ -37,34 +46,78 @@ h1 {
 }
 
 #game {
-  border: 1px solid #2a2a3a;
+  border: 1px solid var(--panel-border);
   background: #000;
   line-height: 0;
+  /* Let the inner canvas expand to the container width on mobile. */
+  width: 100%;
+  max-width: min(100vw - 24px, 768px);
 }
 
 #game canvas {
   display: block;
+  /* CSS-scale the internal 1024×640 resolution down to fit the viewport. */
+  width: 100%;
+  height: auto;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* Block double-tap zoom and pinch-zoom inside the play area. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#controls {
+  width: 100%;
+  max-width: 768px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ctrl-btn {
+  flex: 1 1 0;
+  /* ≥ 44 px tap target per Apple HIG / WCAG. */
+  min-height: 48px;
+  padding: 10px 16px;
+  background: var(--panel);
+  color: var(--accent);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ctrl-btn:hover {
+  border-color: var(--accent);
+}
+
+.ctrl-btn:active {
+  background: #1f1f2c;
 }
 
 #hud {
   width: 100%;
-  max-width: 800px;
+  max-width: 768px;
 }
 
 #status {
   font-size: 14px;
   color: var(--accent);
-  padding: 4px 8px;
-  background: #161621;
-  border: 1px solid #2a2a3a;
+  padding: 6px 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
 }
 
 #log {
   list-style: none;
   margin: 4px 0 0 0;
-  padding: 4px 8px;
+  padding: 6px 8px;
   font-size: 13px;
   color: var(--fg);
   background: #12121b;
@@ -84,6 +137,8 @@ h1 {
   color: var(--muted);
   font-size: 12px;
   margin: 4px 0 0 0;
+  line-height: 1.5;
+  text-align: center;
 }
 
 kbd {
@@ -91,4 +146,26 @@ kbd {
   padding: 1px 5px;
   border-radius: 3px;
   font: inherit;
+}
+
+/* Narrow phones — tighten padding and shrink the header. */
+@media (max-width: 480px) {
+  #app {
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+    gap: 8px;
+  }
+  h1 {
+    font-size: 16px;
+  }
+  #game {
+    max-width: 100%;
+  }
+  .help {
+    font-size: 11px;
+  }
+  #log {
+    min-height: 72px;
+    font-size: 12px;
+  }
 }

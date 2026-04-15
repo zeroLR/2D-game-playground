@@ -5,8 +5,8 @@ import { Tile } from "../src/game/map/tiles";
 
 describe("generateLevel", () => {
   it("same seed produces the same map", () => {
-    const a = generateLevel(createRng(42), 48, 28);
-    const b = generateLevel(createRng(42), 48, 28);
+    const a = generateLevel(createRng(42), 32, 20);
+    const b = generateLevel(createRng(42), 32, 20);
     const dumpA: Tile[] = [];
     const dumpB: Tile[] = [];
     for (const [, , t] of a.map.cells()) dumpA.push(t);
@@ -18,7 +18,7 @@ describe("generateLevel", () => {
 
   it("100 seeds all produce connected dungeons with reachable stairs", () => {
     for (let seed = 1; seed <= 100; seed++) {
-      const { map, spawn, stairs } = generateLevel(createRng(seed), 48, 28);
+      const { map, spawn, stairs } = generateLevel(createRng(seed), 32, 20);
       // Spawn and stairs must be floor/stairs tiles.
       expect(map.info(spawn.x, spawn.y).blocksMove).toBe(false);
       expect(map.info(stairs.x, stairs.y).blocksMove).toBe(false);
@@ -29,7 +29,7 @@ describe("generateLevel", () => {
 
   it("places stairs away from spawn", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const { spawn, stairs } = generateLevel(createRng(seed), 48, 28);
+      const { spawn, stairs } = generateLevel(createRng(seed), 32, 20);
       const manhattan = Math.abs(spawn.x - stairs.x) + Math.abs(spawn.y - stairs.y);
       expect(manhattan).toBeGreaterThan(5);
     }
