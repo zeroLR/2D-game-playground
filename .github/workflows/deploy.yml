@@ -1,0 +1,74 @@
+name: Deploy games to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "simple-roguelike/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: simple-roguelike/package-lock.json
+
+      - name: Install deps (simple-roguelike)
+        working-directory: simple-roguelike
+        run: npm ci
+
+      - name: Run tests (simple-roguelike)
+        working-directory: simple-roguelike
+        run: npm test
+
+      - name: Build (simple-roguelike)
+        working-directory: simple-roguelike
+        run: npm run build
+
+      - name: Assemble Pages artifact
+        run: |
+          mkdir -p _site/simple-roguelike
+          cp -r simple-roguelike/dist/* _site/simple-roguelike/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>2D game playground</title>
+          <meta http-equiv="refresh" content="0; url=./simple-roguelike/">
+          <link rel="canonical" href="./simple-roguelike/">
+          <style>
+            body { font-family: ui-monospace, monospace; background: #0d0d14; color: #d6d6e0; padding: 24px; }
+            a { color: #f0b850; }
+          </style>
+          <h1>2D game playground</h1>
+          <p><a href="./simple-roguelike/">Play simple-roguelike</a></p>
+          HTML
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

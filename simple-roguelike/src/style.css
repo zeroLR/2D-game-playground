@@ -1,0 +1,94 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d0d14;
+  --fg: #d6d6e0;
+  --accent: #f0b850;
+  --muted: #7a7a8a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+#game {
+  border: 1px solid #2a2a3a;
+  background: #000;
+  line-height: 0;
+}
+
+#game canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#hud {
+  width: 100%;
+  max-width: 800px;
+}
+
+#status {
+  font-size: 14px;
+  color: var(--accent);
+  padding: 4px 8px;
+  background: #161621;
+  border: 1px solid #2a2a3a;
+}
+
+#log {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--fg);
+  background: #12121b;
+  border: 1px solid #1f1f2c;
+  min-height: 96px;
+}
+
+#log li {
+  padding: 1px 0;
+}
+
+#log li:last-child {
+  color: var(--accent);
+}
+
+.help {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 4px 0 0 0;
+}
+
+kbd {
+  background: #2a2a3a;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font: inherit;
+}
