@@ -27,6 +27,11 @@ export class MessageLog {
 export interface HudState {
   hp: number;
   maxHp: number;
+  str: number;
+  def: number;
+  level: number;
+  xp: number;
+  xpNext: number;
   seed: number;
   status: "alive" | "dead" | "escaped";
 }
@@ -45,7 +50,7 @@ export class Hud {
     if (state.status === "dead") trailer = " · YOU DIED — press r to restart";
     if (state.status === "escaped") trailer = " · YOU ESCAPED — press r for a new run";
     this.statusEl.textContent =
-      `HP: ${state.hp}/${state.maxHp} · Seed: ${state.seed}${trailer}`;
+      `HP: ${state.hp}/${state.maxHp} · STR: ${state.str} · DEF: ${state.def} · Lv ${state.level} (${state.xp}/${state.xpNext} xp) · Seed: ${state.seed}${trailer}`;
 
     // Rebuild the log as a simple <ul> of <li>s. Newest last.
     this.logEl.textContent = "";

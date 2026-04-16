@@ -16,6 +16,12 @@ export interface Components {
   health?: { hp: number; max: number };
   ai?: { kind: "hostile"; hasSeenPlayer: boolean };
   combat?: { damageDice: [number, number] }; // [n, sides] — e.g. [1, 6] for 1d6
+  /** Attack / defense attributes. Any entity that participates in combat should have this. */
+  stats?: { str: number; def: number };
+  /** Player-only progression data. */
+  experience?: { xp: number; level: number };
+  /** XP awarded to the killer when this entity dies. */
+  xpReward?: number;
   name?: string;
   /** Tag for the one player entity — systems read this to find "the player". */
   player?: true;
