@@ -9,6 +9,7 @@ import { keyToAction, tapToAction, type Action } from "./game/systems/input";
 import { newVisibility, recomputeFov } from "./game/systems/fov";
 import { runTurn, type TurnOutcome } from "./game/turn";
 import { Hud, MessageLog } from "./ui/hud";
+import { xpForNextLevel } from "./game/systems/combat";
 import { buildTextures, TILE_SIZE } from "./render/textures";
 import { Stage } from "./render/stage";
 
@@ -156,11 +157,20 @@ function newGame(seed: number, stage: Stage): Game {
 function render(game: Game, stage: Stage, hud: Hud): void {
   stage.redraw(game.world, game.vis);
   const player = game.world.player();
-  const health = player?.[1].health;
+  const pc = player?.[1];
+  const health = pc?.health;
+  const stats = pc?.stats;
+  const exp = pc?.experience;
+  const level = exp?.level ?? 1;
   hud.render(
     {
       hp: health?.hp ?? 0,
       maxHp: health?.max ?? 0,
+      str: stats?.str ?? 0,
+      def: stats?.def ?? 0,
+      level,
+      xp: exp?.xp ?? 0,
+      xpNext: xpForNextLevel(level),
       seed: game.seed,
       status: game.status,
     },
