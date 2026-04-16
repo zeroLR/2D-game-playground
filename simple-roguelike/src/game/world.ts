@@ -7,7 +7,7 @@
 export type EntityId = number;
 
 /** Identifies which sprite this entity uses in the render layer. */
-export type SpriteKey = "player" | "goblin";
+export type SpriteKey = "player" | "goblin" | "rat" | "orc" | "troll";
 
 export interface Components {
   position?: { x: number; y: number };

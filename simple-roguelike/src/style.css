@@ -72,12 +72,60 @@ h1 {
   width: 100%;
   max-width: 768px;
   display: flex;
-  gap: 10px;
-  justify-content: center;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* D-pad: 3×3 grid with arrows in a cross and Confirm at the center. */
+#dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.dpad-btn {
+  padding: 0;
+  min-height: 0;
+  background: var(--panel);
+  color: var(--accent);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.dpad-btn:hover {
+  border-color: var(--accent);
+}
+
+.dpad-btn:active {
+  background: #1f1f2c;
+}
+
+.dpad-up      { grid-column: 2; grid-row: 1; }
+.dpad-left    { grid-column: 1; grid-row: 2; }
+.dpad-confirm { grid-column: 2; grid-row: 2; font-size: 14px; letter-spacing: 0.08em; color: #f0e0a8; }
+.dpad-right   { grid-column: 3; grid-row: 2; }
+.dpad-down    { grid-column: 2; grid-row: 3; }
+
+#actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .ctrl-btn {
-  flex: 1 1 0;
   /* ≥ 44 px tap target per Apple HIG / WCAG. */
   min-height: 48px;
   padding: 10px 16px;
@@ -148,18 +196,31 @@ kbd {
   font: inherit;
 }
 
-/* Narrow phones — tighten padding and shrink the header. */
+/* Narrow phones — tighten padding, shrink the header, make the canvas edge-to-edge. */
 @media (max-width: 480px) {
   #app {
+    /* Zero horizontal padding so the canvas can span the full viewport width.
+     * Inner content blocks (HUD, controls, help) restore their own padding below. */
+    padding-left: 0;
+    padding-right: 0;
+    gap: 8px;
+  }
+  h1, #hud, #controls, .help {
     padding-left: max(8px, env(safe-area-inset-left));
     padding-right: max(8px, env(safe-area-inset-right));
-    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
   h1 {
     font-size: 16px;
+    text-align: center;
   }
   #game {
-    max-width: 100%;
+    /* Canvas fills the full phone width, flush with the screen edges. */
+    width: 100vw;
+    max-width: 100vw;
+    border-left: none;
+    border-right: none;
   }
   .help {
     font-size: 11px;
@@ -167,5 +228,13 @@ kbd {
   #log {
     min-height: 72px;
     font-size: 12px;
+  }
+  /* Slightly smaller D-pad so both the pad and Restart fit on narrow phones. */
+  #dpad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+  }
+  .dpad-confirm {
+    font-size: 13px;
   }
 }
