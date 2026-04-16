@@ -16,16 +16,24 @@
     <main id="app">
       <h1>simple-roguelike</h1>
       <div id="game"></div>
-      <div id="controls">
-        <button type="button" id="btn-wait" class="ctrl-btn">Wait</button>
-        <button type="button" id="btn-restart" class="ctrl-btn">Restart</button>
-      </div>
       <div id="hud">
         <div id="status">HP: - · Seed: -</div>
         <ul id="log"></ul>
       </div>
+      <div id="controls">
+        <div id="dpad" role="group" aria-label="Movement controls">
+          <button type="button" id="btn-up"      class="dpad-btn dpad-up"      aria-label="Move up">&uarr;</button>
+          <button type="button" id="btn-left"    class="dpad-btn dpad-left"    aria-label="Move left">&larr;</button>
+          <button type="button" id="btn-confirm" class="dpad-btn dpad-confirm" aria-label="Confirm / wait">OK</button>
+          <button type="button" id="btn-right"   class="dpad-btn dpad-right"   aria-label="Move right">&rarr;</button>
+          <button type="button" id="btn-down"    class="dpad-btn dpad-down"    aria-label="Move down">&darr;</button>
+        </div>
+        <div id="actions">
+          <button type="button" id="btn-restart" class="ctrl-btn">Restart</button>
+        </div>
+      </div>
       <p class="help">
-        Tap the map to step toward that tile · use <b>Wait</b> / <b>Restart</b> buttons on touch.
+        Tap the map to step toward that tile · use the D-pad and <b>OK</b> on touch.
         Desktop: Arrows / <kbd>hjkl</kbd> move · <kbd>.</kbd> wait · <kbd>r</kbd> restart · bump enemies to attack
       </p>
     </main>

@@ -26,6 +26,9 @@ export function buildTextures(app: Application): TextureBank {
     sprites: {
       player: makeTexture(app, drawPlayer),
       goblin: makeTexture(app, drawGoblin),
+      rat: makeTexture(app, drawRat),
+      orc: makeTexture(app, drawOrc),
+      troll: makeTexture(app, drawTroll),
     },
   };
 }
@@ -153,4 +156,99 @@ function drawGoblin(g: Graphics): void {
   // club
   g.rect(3, 5, 1, 5).fill(0x8a5a1a);
   g.rect(2, 5, 3, 1).fill(0x5a3a14);
+}
+
+function drawRat(g: Graphics): void {
+  // Small, low-slung rodent — sits in the bottom half of the tile.
+  // body
+  g.rect(4, 9, 7, 4).fill(0x7a6a58);
+  g.rect(3, 10, 1, 2).fill(0x7a6a58);
+  // back highlight
+  g.rect(4, 9, 7, 1).fill(0x9a8a70);
+  // head
+  g.rect(10, 8, 4, 4).fill(0x8a7a68);
+  // ears
+  g.rect(11, 7, 1, 1).fill(0x5a4a38);
+  g.rect(13, 7, 1, 1).fill(0x5a4a38);
+  // eye
+  g.rect(12, 9, 1, 1).fill(0xd62828);
+  // nose
+  g.rect(14, 10, 1, 1).fill(0xf0a0a0);
+  // legs
+  g.rect(5, 13, 1, 2).fill(0x5a4a38);
+  g.rect(9, 13, 1, 2).fill(0x5a4a38);
+  // tail — whip curving up-right
+  g.rect(1, 11, 3, 1).fill(0xa08878);
+  g.rect(0, 10, 1, 1).fill(0xa08878);
+}
+
+function drawOrc(g: Graphics): void {
+  // Bigger, broader, darker than a goblin. Brown tones + iron helm.
+  // helm
+  g.rect(5, 1, 6, 2).fill(0x5a5a6a);
+  g.rect(4, 2, 1, 1).fill(0x5a5a6a);
+  g.rect(11, 2, 1, 1).fill(0x5a5a6a);
+  // head
+  g.rect(5, 3, 6, 4).fill(0x6a7a3a);
+  g.rect(4, 4, 1, 2).fill(0x6a7a3a);
+  g.rect(11, 4, 1, 2).fill(0x6a7a3a);
+  // brow shadow
+  g.rect(5, 3, 6, 1).fill(0x4a5a22);
+  // eyes (yellow menace)
+  g.rect(6, 5, 1, 1).fill(0xe8c038);
+  g.rect(9, 5, 1, 1).fill(0xe8c038);
+  // tusks
+  g.rect(7, 6, 1, 1).fill(0xf0f0d6);
+  g.rect(8, 6, 1, 1).fill(0xf0f0d6);
+  // torso — bulkier than goblin
+  g.rect(4, 7, 8, 5).fill(0x5a6a2a);
+  // belt
+  g.rect(4, 11, 8, 1).fill(0x3a2414);
+  // arms
+  g.rect(3, 8, 1, 4).fill(0x6a7a3a);
+  g.rect(12, 8, 1, 4).fill(0x6a7a3a);
+  // legs
+  g.rect(5, 12, 2, 3).fill(0x3a4a1a);
+  g.rect(9, 12, 2, 3).fill(0x3a4a1a);
+  // feet
+  g.rect(4, 14, 3, 1).fill(0x1a1408);
+  g.rect(9, 14, 3, 1).fill(0x1a1408);
+  // axe (left hand)
+  g.rect(2, 4, 1, 6).fill(0x8a5a1a);
+  g.rect(0, 4, 3, 2).fill(0x8a8a98);
+  g.rect(0, 4, 1, 1).fill(0xc0c0d0);
+}
+
+function drawTroll(g: Graphics): void {
+  // BOSS unit — fills almost the whole tile, mossy and hulking.
+  // massive body
+  g.rect(3, 4, 10, 10).fill(0x3a6a3a);
+  // shoulder/back highlight
+  g.rect(3, 4, 10, 1).fill(0x5a8a4a);
+  // head / lumpy skull
+  g.rect(5, 1, 6, 4).fill(0x4a7a4a);
+  g.rect(4, 2, 1, 2).fill(0x4a7a4a);
+  g.rect(11, 2, 1, 2).fill(0x4a7a4a);
+  // single horn
+  g.rect(7, 0, 2, 1).fill(0xe8d8a8);
+  // glowing orange eyes
+  g.rect(6, 3, 1, 1).fill(0xf06020);
+  g.rect(9, 3, 1, 1).fill(0xf06020);
+  // gnarled jaw
+  g.rect(6, 4, 4, 1).fill(0x2a4a2a);
+  g.rect(7, 4, 1, 1).fill(0xf0f0d6);
+  g.rect(8, 4, 1, 1).fill(0xf0f0d6);
+  // arms — thick and long
+  g.rect(1, 6, 2, 6).fill(0x3a6a3a);
+  g.rect(13, 6, 2, 6).fill(0x3a6a3a);
+  // fists / claws
+  g.rect(1, 12, 2, 1).fill(0x1a1a08);
+  g.rect(13, 12, 2, 1).fill(0x1a1a08);
+  // moss/scars speckles
+  g.rect(5, 7, 1, 1).fill(0x7a9a4a);
+  g.rect(10, 8, 1, 1).fill(0x7a9a4a);
+  g.rect(7, 10, 1, 1).fill(0x2a4a1a);
+  // legs / feet
+  g.rect(4, 14, 3, 1).fill(0x1a2a08);
+  g.rect(9, 14, 3, 1).fill(0x1a2a08);
 }

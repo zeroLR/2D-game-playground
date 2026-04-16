@@ -4,7 +4,13 @@ import { Application } from "pixi.js";
 import { createRng, pickSeed } from "./game/rng";
 import { generateLevel } from "./game/map/generate";
 import { World } from "./game/world";
-import { spawnGoblin, spawnPlayer } from "./game/entities/factories";
+import {
+  spawnGoblin,
+  spawnOrc,
+  spawnPlayer,
+  spawnRat,
+  spawnTroll,
+} from "./game/entities/factories";
 import { keyToAction, tapToAction, type Action } from "./game/systems/input";
 import { newVisibility, recomputeFov } from "./game/systems/fov";
 import { runTurn, type TurnOutcome } from "./game/turn";
@@ -20,7 +26,7 @@ const MAP_W = 32;
 const MAP_H = 20;
 const FOV_RADIUS = 8;
 const ZOOM = 2;
-const GOBLIN_COUNT = 5;
+const ENEMY_COUNT = 6;
 
 interface Game {
   seed: number;
@@ -125,9 +131,29 @@ async function main(): Promise<void> {
   });
 
   // On-screen buttons — primary controls on mobile where there is no keyboard.
-  const waitBtn = document.getElementById("btn-wait");
+  // 4-directional D-pad: each arrow emits one cardinal move.
+  const dpadBindings: Array<[string, { dx: -1 | 0 | 1; dy: -1 | 0 | 1 }]> = [
+    ["btn-up",    { dx: 0,  dy: -1 }],
+    ["btn-down",  { dx: 0,  dy: 1 }],
+    ["btn-left",  { dx: -1, dy: 0 }],
+    ["btn-right", { dx: 1,  dy: 0 }],
+  ];
+  for (const [id, step] of dpadBindings) {
+    const btn = document.getElementById(id);
+    btn?.addEventListener("click", () => apply({ type: "move", ...step }));
+  }
+
+  // Confirm is context-aware:
+  //   • Game over (dead / escaped) → start a new run
+  //   • On stairs → wait (turn.ts then returns "escaped")
+  //   • Otherwise → wait in place
+  const confirmBtn = document.getElementById("btn-confirm");
+  confirmBtn?.addEventListener("click", () => {
+    if (game.status !== "alive") apply({ type: "restart" });
+    else apply({ type: "wait" });
+  });
+
   const restartBtn = document.getElementById("btn-restart");
-  waitBtn?.addEventListener("click", () => apply({ type: "wait" }));
   restartBtn?.addEventListener("click", () => apply({ type: "restart" }));
 }
 
@@ -139,9 +165,23 @@ function newGame(seed: number, stage: Stage): Game {
 
   spawnPlayer(world, spawn.x, spawn.y);
 
-  // Drop goblins in the rooms farthest from the player, up to GOBLIN_COUNT.
-  const enemyRooms = roomCenters.slice(1, GOBLIN_COUNT + 1);
-  for (const c of enemyRooms) spawnGoblin(world, c.x, c.y);
+  // Place enemies in all rooms except the player's (index 0). The room farthest
+  // from the spawn becomes the troll's lair; the rest get a weighted mix of
+  // rats / goblins / orcs so each run feels a bit different.
+  const enemyRooms = roomCenters.slice(1, ENEMY_COUNT + 1);
+  if (enemyRooms.length > 0) {
+    const ranked = enemyRooms
+      .map((c) => ({ c, d: Math.abs(c.x - spawn.x) + Math.abs(c.y - spawn.y) }))
+      .sort((a, b) => b.d - a.d);
+    spawnTroll(world, ranked[0].c.x, ranked[0].c.y);
+    for (let i = 1; i < ranked.length; i++) {
+      const { c } = ranked[i];
+      const r = rng();
+      if (r < 0.35) spawnRat(world, c.x, c.y);
+      else if (r < 0.75) spawnGoblin(world, c.x, c.y);
+      else spawnOrc(world, c.x, c.y);
+    }
+  }
 
   const vis = newVisibility();
   recomputeFov(map, spawn, FOV_RADIUS, vis);
