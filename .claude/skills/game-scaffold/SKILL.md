@@ -1,7 +1,7 @@
 ---
 name: game-scaffold
 description: |
-  Use this skill when starting a new 2D web game project, especially roguelikes, or when deciding on a tech stack and project structure for browser-based games. Covers tech stack selection (Phaser, PixiJS, Kaboom.js, rot.js, raw Canvas/WebGL), folder layout, Vite/TypeScript setup, asset pipeline, and initial hooks for lint/typecheck/test.
+  Use this skill when starting a new 2D web game project, especially roguelikes, or when deciding on a tech stack and project structure for browser-based games. Reads docs/concept.md to get the Chosen Genre and loads the matching genre skill. Covers tech stack selection (Phaser, PixiJS, Kaboom.js, rot.js, raw Canvas/WebGL), folder layout, Vite/TypeScript setup, asset pipeline, and initial hooks for lint/typecheck/test.
 
   TRIGGER when: user says "start/new/scaffold a game", "new roguelike", "which game engine/library", "setup a web game project", "browser game boilerplate", or opens an empty repo intending to build a 2D game; also trigger when package.json is absent but user discusses a 2D game idea.
 
@@ -10,70 +10,28 @@ description: |
 
 # game-scaffold
 
-Systematic kickoff for 2D web games (with a roguelike bias). The goal is to make the early decisions **explicit and reversible** instead of silently locking the project into a stack.
+Systematic kickoff for 2D web games. The goal is to make the early decisions **explicit and reversible** instead of silently locking the project into a stack.
 
-## Phase 0 — Clarify the concept before picking tech
+## Phase 0 — Read the concept
 
-Do not pick a library until these are answered (ask the user if unknown). **Ask #1 first** — platform cascades into every decision below it, and adding mobile support late is expensive.
-
-1. **Target platform** — desktop browser only, **mobile web (touch)**, or both? Also: portrait or landscape? Must work offline? PWA / installable?
-   - This is question #1 because it dictates input model (keyboard vs. touch), viewport math (fixed vs. responsive, safe-area insets), performance budget (a 2019 Android is ~5× slower than a MacBook), asset resolution (devicePixelRatio ≥ 2 on phones), and UI affordances (44×44 px minimum tap target). Retrofitting these after the fact usually means rewriting the input layer and the layout.
-   - **If mobile** is in scope, also jump to the "Mobile web games" callout in Phase 2 before scaffolding.
-2. **Turn-based or real-time?** (roguelikes are usually turn-based, but "coffee-break roguelites" like *Brogue*/*Slay the Spire* vs *Nuclear Throne* differ drastically)
-3. **Grid/tile-based or free movement?**
-4. **Render target**: ASCII, pixel-art sprites, or vector/shader?
-   - Warning: `ROT.Display` is not touch-aware — if the answer to #1 includes mobile, prefer PixiJS or raw Canvas so you can attach pointer events to the canvas yourself.
-5. **Scope**: 7-day jam, month-long prototype, or long-term project?
-6. **Procedural generation**: which layers? (map, items, enemies, narrative)
-
-Write the answers into `docs/concept.md` as a one-page mini-GDD before touching code. The first line should be `Platform: <desktop | mobile | both> (<orientation>)` — make the commitment visible.
+Before touching code, read `docs/concept.md`. If it does not exist, **stop and hand off to `game-concept`** — concept and worldview must be locked before tech. If it exists and names a **Chosen Genre**, load the matching `game-<genre>` skill: it will inject the recommended stack and override the matrix below. If the genre named has no matching skill, fall through to the matrix.
 
 ## Phase 1 — Tech stack decision matrix
 
+Use this only when no genre skill has injected a default. Otherwise the genre skill wins.
+
 | Need | Recommended | Notes |
 |---|---|---|
-| ASCII roguelike, turn-based | **rot.js** + Canvas | FOV, pathfinding, map gen built-in |
+| ASCII grid, turn-based | **rot.js** + Canvas | FOV, pathfinding, map gen built-in |
 | Pixel-art sprites, tile grid | **Phaser 3** or **PixiJS** + custom logic | Phaser = batteries-included; Pixi = just rendering |
 | Minimal, jam-friendly | **Kaboom.js / KAPLAY** | Fastest time-to-playable |
 | Custom engine, learning | **Raw Canvas 2D** | Best for understanding fundamentals |
 | Heavy particles / shaders | **PixiJS** (WebGL) | Phaser also works |
 | Lots of entities (>2k) | **PixiJS** or **Phaser** (WebGL) | Avoid Canvas 2D for this |
 
-**For a 2D roguelike, the default recommendation is: Vite + TypeScript + PixiJS + rot.js** (Pixi for rendering, rot.js for FOV/pathfinding/generation). Fall back to raw Canvas 2D if the user wants to learn internals, or Phaser if they want scene/physics/tweens out of the box.
+Genre skills inject the default. If none exists for the chosen genre, ask the user which row of this matrix fits the verbs from `docs/concept.md`.
 
 Record the choice and *why* in `docs/concept.md` — future-you will want to know.
-
-### Mobile web games — callout
-
-If Phase 0 #1 answered "mobile" or "both", bake these in from day one. Each of them is cheap to set up now and painful to bolt on later:
-
-- **Viewport meta** in `index.html`:
-  ```html
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d0d14" />
-  ```
-  `viewport-fit=cover` unlocks `env(safe-area-inset-*)` around the notch / home indicator.
-- **Touch-friendly canvas CSS**:
-  ```css
-  canvas {
-    display: block;
-    width: 100%;
-    max-width: min(100vw, 768px);
-    height: auto;
-    image-rendering: pixelated;
-    touch-action: none;      /* kill pinch-zoom + double-tap-zoom on the play area */
-    user-select: none;
-  }
-  body { overscroll-behavior: none; }  /* no pull-to-refresh mid-game */
-  #app { padding-bottom: env(safe-area-inset-bottom); }
-  ```
-- **Pointer events, not touch events** — `pointerdown` / `pointermove` / `pointerup` handle mouse, pen, and touch with one code path. Translate client coordinates to tile coordinates via `canvas.getBoundingClientRect()` so CSS scaling is handled transparently.
-- **Input duality** — keep keyboard bindings for desktop debugging, add on-screen buttons (Wait, Restart, maybe Inventory) so touch users can trigger actions that don't map to a tap-to-move. Button tap targets must be ≥ 44×44 CSS px.
-- **Map / viewport size** — phones run ~360–420 CSS px wide. A 16 px tile × 32 cols = 512 internal px that scales down cleanly. Grids bigger than ~40 cols force unreadable tiles at phone width unless you add camera scrolling. Decide the grid dimensions with the phone viewport in mind.
-- **Performance budget** — budget 8 ms/frame on a mid-tier Android, not 2 ms on your MacBook. Avoid allocations in the per-frame path from the start (see `game-perf` once you have numbers).
-- **PWA / offline** — optional for v1. If desired, add `vite-plugin-pwa` so the game works after first load without network.
-
-Test on a real phone (or at minimum Chrome DevTools device emulation with CPU throttling) **before** declaring the Phase 5 smoke test green. Emulation without throttling hides the performance cliff.
 
 ## Phase 2 — Scaffold
 
@@ -93,12 +51,12 @@ my-game/
 ├── src/
 │   ├── main.ts                 # entry; boot + loop
 │   ├── game/
-│   │   ├── loop.ts             # (see game-loop skill)
+│   │   ├── loop.ts             # see game-loop
 │   │   ├── scenes/             # MainMenu, Play, GameOver
-│   │   ├── systems/            # input, render, turn, fov...
+│   │   ├── systems/            # input, render, turn, ...
 │   │   ├── entities/           # factories
-│   │   ├── map/                # generation, tiles
-│   │   └── rng.ts              # seeded RNG (critical for roguelikes)
+│   │   ├── world/              # map / level / encounter data
+│   │   └── rng.ts              # seeded RNG (critical for procgen and replay)
 │   ├── assets/                 # imported assets (Vite-processed)
 │   └── ui/                     # HUD, menus
 └── tests/
@@ -109,11 +67,11 @@ Commands to bootstrap:
 ```bash
 npm create vite@latest my-game -- --template vanilla-ts
 cd my-game
-npm i pixi.js rot-js
+npm i pixi.js          # add rot-js, phaser, kaboom, howler, etc. per the chosen stack
 npm i -D vitest @types/node eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
 ```
 
-`tsconfig.json` must have `"strict": true` — roguelike bugs hide in `undefined`.
+`tsconfig.json` must have `"strict": true` — strict TS catches the silent bugs hiding in `undefined`.
 
 ## Phase 3 — Seeded RNG first
 
@@ -167,7 +125,7 @@ Set up hooks so Claude Code catches regressions immediately when editing game co
 }
 ```
 
-Rationale: typecheck on every edit is cheap and catches 80% of roguelike "silent bugs"; the full test run on Stop confirms nothing regressed before handing back.
+Rationale: typecheck on every edit is cheap and catches 80% of the "silent bugs" that quietly break sim or render; the full test run on Stop confirms nothing regressed before handing back.
 
 Adjust the `tail` values if output gets noisy. Add ESLint to the PostToolUse chain once the project has real rules.
 
@@ -176,16 +134,17 @@ Adjust the `tail` values if output gets noisy. Add ESLint to the PostToolUse cha
 Before adding content, prove the pipeline end-to-end:
 
 1. Black canvas fills viewport
-2. `@` renders at (10, 10)
-3. Arrow keys move `@` one tile per press
+2. A player marker (sprite or `@` glyph) renders at a known position
+3. Arrow keys / WASD move the marker one step per press (or apply velocity, if real-time)
 4. Seed printed to console
-5. Press `r` to restart with new seed
+5. Press `r` to restart with a new seed
 
 If any of these is broken, nothing downstream matters. This is your smoke test — keep it green.
 
 ## Hand-off
 
 Once the scaffold is alive, the next skills take over:
-- **game-loop** — formalize the update/render loop (turn-based action queue for roguelikes)
-- **game-systems** — FOV, dungeon gen, input mapping, save/load, ECS
-- **game-perf** — only when you measure a real problem
+- The loaded **`game-<genre>`** skill — drives which loop pattern, which systems, and which spec sections to fill in.
+- **game-loop** — formalize the update/render loop (the genre skill names the pattern).
+- **game-systems** — input mapping, scene stack, save/load, plus any genre-required systems (FOV, dungeon gen, event bus, ECS).
+- **game-perf** — only when you measure a real problem.

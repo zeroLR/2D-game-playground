@@ -1,7 +1,7 @@
 ---
 name: game-systems
 description: |
-  Use this skill when building the core gameplay systems of a 2D web game, especially a roguelike: input handling, scene/state stack, ECS vs OOP, grid-based collision, FOV and pathfinding, dungeon generation (BSP, cellular automata, drunkard's walk), turn/action resolution, event bus, save/load with localStorage or IndexedDB, and seeded RNG consumers. These are the systems that sit between the loop and the rendered frame.
+  Use this skill when building the core gameplay systems of a 2D web game: input handling, scene/state stack, ECS vs OOP, grid-based collision, FOV and pathfinding, dungeon generation (BSP, cellular automata, drunkard's walk), turn/action resolution, event bus, save/load with localStorage or IndexedDB, and seeded RNG consumers. A menu of building blocks that sit between the loop and the rendered frame; the loaded genre skill says which ones you actually need.
 
   TRIGGER when: user mentions "ECS", "entity component", "scene manager", "state machine", "input mapping", "collision", "FOV / field of view", "line of sight", "pathfinding / A*", "dungeon generation", "map generation", "procgen", "save load", "turn resolution", "action system", "inventory", or is adding the first gameplay mechanic beyond moving a sprite.
 
@@ -10,7 +10,7 @@ description: |
 
 # game-systems
 
-A 2D roguelike is mostly the *interaction* of many small systems. This skill is a menu of proven patterns — pick the ones the current task needs, wire them through a single `World` object.
+Most 2D games are mostly the *interaction* of small systems. This skill is a menu of proven patterns — pick the ones the loaded `game-<genre>` skill calls for (or the current task needs) and wire them through a single `World` object.
 
 ## Architecture: World + lightweight ECS
 
@@ -156,7 +156,7 @@ Render tiles in three states: **visible** (full color), **seen** (dim, grayscale
 
 ## Dungeon generation
 
-Three algorithms cover most roguelikes:
+Three algorithms cover most grid-based games that need procedural levels (roguelikes, dungeon crawlers, some tactics games):
 
 1. **BSP (binary space partition)** — classic rooms + corridors. `rot.js` has `ROT.Map.Digger`. Good for traditional dungeons.
 2. **Cellular automata** — organic caves. Start with random fill, smooth N passes (`live if neighbors in [4..8]`).
@@ -229,7 +229,7 @@ Combat logs, achievements, sound triggers, analytics all hook here without touch
 
 ## Determinism checklist
 
-For roguelikes, **same seed = same run** is a feature, not a nice-to-have. Audit:
+For any seeded or replay-capable game (roguelikes, deckbuilders, daily puzzles, replays, share-the-seed features), **same seed = same run** is a feature, not a nice-to-have. Audit:
 
 - [ ] All `Math.random()` calls replaced with injected RNG
 - [ ] `Set`/`Map` iteration order doesn't drive gameplay decisions (or sort first)
