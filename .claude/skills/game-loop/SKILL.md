@@ -22,7 +22,7 @@ Ask the user (or infer) which pattern fits:
 4. **Turn-based with speed system** — entities have speeds; a scheduler picks who acts next. Use for modern roguelikes (Brogue, ToME).
 5. **Hybrid** — real-time with turn-based pauses (Into the Breach style) or ATB (Final Fantasy).
 
-For a **2D roguelike**, default to **#4 (speed-based scheduler)** unless the user specifically wants simpler.
+The loaded `game-<genre>` skill names the pattern to use. If no genre skill is loaded, ask the user — the choice drives the rest of the file.
 
 ## Pattern A — Fixed timestep with accumulator (real-time)
 
@@ -67,7 +67,7 @@ export function startLoop(update: (dt: number) => void, render: (alpha: number) 
 
 Store `prevX, prevY` before each update tick; in render, draw at `lerp(prev, curr, alpha)`. This removes stutter at 144Hz without running the sim faster.
 
-## Pattern B — Turn-based speed scheduler (roguelike)
+## Pattern B — Turn-based speed scheduler
 
 Each entity has `energy` that accumulates by its `speed` each tick. When `energy >= 100`, the entity acts and pays its action's cost.
 
@@ -105,9 +105,9 @@ export class Scheduler {
 
 Main loop becomes: *wait for input → player acts → run scheduler until player is next → render*. Rendering happens between turns, not every frame, so you can still use `requestAnimationFrame` for smooth animations *between* logical turns (the "animation layer" is separate from the "sim layer").
 
-### Animation layer for turn-based games
+### Animation layer
 
-The sim is instant, but player feedback isn't. Maintain an animation queue:
+Whenever sim time and presentation time decouple (turn-based instant, scheduler-driven, or fixed-step with rich feedback), maintain a separate animation queue. The sim is instant or stepwise; the player's perception isn't.
 
 ```ts
 // src/game/animations.ts
