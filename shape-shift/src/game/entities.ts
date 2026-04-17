@@ -51,10 +51,15 @@ export interface EnemyStats {
 }
 
 const ENEMY_STATS: Record<EnemyKind, EnemyStats> = {
-  circle:  { hp: 2,  maxSpeed: 70,  contactDamage: 1, radius: 8 },
-  square:  { hp: 3,  maxSpeed: 95,  contactDamage: 1, radius: 9 },
-  star:    { hp: 6,  maxSpeed: 85,  contactDamage: 1, radius: 11 },
-  boss:    { hp: 60, maxSpeed: 50,  contactDamage: 1, radius: 22 },
+  circle:    { hp: 2,  maxSpeed: 70,  contactDamage: 1, radius: 8 },
+  square:    { hp: 3,  maxSpeed: 95,  contactDamage: 1, radius: 9 },
+  star:      { hp: 6,  maxSpeed: 85,  contactDamage: 1, radius: 11 },
+  boss:      { hp: 60, maxSpeed: 50,  contactDamage: 1, radius: 22 },
+  pentagon:  { hp: 4,  maxSpeed: 65,  contactDamage: 1, radius: 10 },
+  hexagon:   { hp: 5,  maxSpeed: 60,  contactDamage: 1, radius: 10 },
+  diamond:   { hp: 3,  maxSpeed: 110, contactDamage: 1, radius: 8 },
+  cross:     { hp: 5,  maxSpeed: 55,  contactDamage: 1, radius: 10 },
+  crescent:  { hp: 4,  maxSpeed: 75,  contactDamage: 1, radius: 9 },
 };
 
 export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
@@ -82,6 +87,11 @@ export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
       contactDamage: stats.contactDamage,
       maxSpeed: stats.maxSpeed,
       wobblePhase: rng() * Math.PI * 2,
+      // Kind-specific fields
+      shield: kind === "hexagon" ? 1 : undefined,
+      dashCooldown: kind === "diamond" ? 2 + rng() * 2 : undefined,
+      shootCooldown: kind === "cross" ? 1.5 + rng() : undefined,
+      orbitAngle: kind === "crescent" ? rng() * Math.PI * 2 : undefined,
     },
     hp: { value: stats.hp },
   });

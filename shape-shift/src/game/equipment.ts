@@ -1,0 +1,66 @@
+// ── Equipment system ────────────────────────────────────────────────────────
+// Manages the pre-run loadout. Players equip enhancement cards bought from the
+// shop; these are applied to the avatar at the start of every run.
+
+import type { EquipmentLoadout } from "./data/types";
+import { EQUIP_EFFECTS } from "./data/shop";
+import type { World, EntityId } from "./world";
+
+/** Maximum copies of the same card that can be equipped simultaneously. */
+export const MAX_SAME_CARD = 2;
+
+/** Check if a card can be added to the loadout. */
+export function canEquip(loadout: EquipmentLoadout, cardId: string): boolean {
+  if (loadout.equipped.length >= loadout.maxSlots) return false;
+  if (!loadout.ownedCards.includes(cardId)) return false;
+  const count = loadout.equipped.filter((id) => id === cardId).length;
+  return count < MAX_SAME_CARD;
+}
+
+/** Add a card to the equipped list (caller should check canEquip first). */
+export function equipCard(loadout: EquipmentLoadout, cardId: string): void {
+  if (!canEquip(loadout, cardId)) return;
+  loadout.equipped.push(cardId);
+}
+
+/** Remove the first occurrence of a card from the equipped list. */
+export function unequipCard(loadout: EquipmentLoadout, cardId: string): void {
+  const idx = loadout.equipped.indexOf(cardId);
+  if (idx >= 0) loadout.equipped.splice(idx, 1);
+}
+
+/** Apply all equipped cards to the avatar at run start. */
+export function applyEquipment(loadout: EquipmentLoadout, world: World, avatarId: EntityId): void {
+  const c = world.get(avatarId);
+  if (!c || !c.avatar || !c.weapon) return;
+
+  for (const cardId of loadout.equipped) {
+    const eff = EQUIP_EFFECTS[cardId];
+    if (!eff) continue;
+
+    switch (eff.effectKind) {
+      case "damageAdd":
+        c.weapon.damage += eff.effectValue;
+        break;
+      case "periodMul":
+        c.weapon.period = Math.max(0.05, c.weapon.period * eff.effectValue);
+        break;
+      case "projectileSpeedMul":
+        c.weapon.projectileSpeed *= eff.effectValue;
+        break;
+      case "pierceAdd":
+        c.weapon.pierce += eff.effectValue;
+        break;
+      case "critAdd":
+        c.weapon.crit = Math.min(1, c.weapon.crit + eff.effectValue);
+        break;
+      case "maxHpAdd":
+        c.avatar.maxHp += eff.effectValue;
+        c.avatar.hp = Math.min(c.avatar.maxHp, c.avatar.hp + eff.effectValue);
+        break;
+      case "speedMul":
+        c.avatar.speedMul *= eff.effectValue;
+        break;
+    }
+  }
+}
