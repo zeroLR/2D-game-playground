@@ -205,7 +205,7 @@ async function boot(): Promise<void> {
         onRunComplete: (result) => settleRun(result),
       },
       mapper,
-      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills },
+      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills, theme },
     );
 
     // Apply equipment loadout at run start.
@@ -318,6 +318,7 @@ async function boot(): Promise<void> {
           stack.pop();
           stack.push(new EquipmentScene({
             getLoadout: () => equipment,
+            getProfile: () => profile,
             onEquip: async (cardId) => {
               equipCard(equipment, cardId);
               await saveEquipment(equipment);
@@ -325,6 +326,10 @@ async function boot(): Promise<void> {
             onUnequip: async (cardId) => {
               unequipCard(equipment, cardId);
               await saveEquipment(equipment);
+            },
+            onActivateSkin: async (skinId) => {
+              profile.activeSkin = skinId;
+              await saveProfile(profile);
             },
             onBack: () => { stack.pop(); showMainMenu(); },
           }));

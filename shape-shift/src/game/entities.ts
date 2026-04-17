@@ -51,15 +51,15 @@ export interface EnemyStats {
 }
 
 const ENEMY_STATS: Record<EnemyKind, EnemyStats> = {
-  circle:    { hp: 2,  maxSpeed: 70,  contactDamage: 1, radius: 8 },
-  square:    { hp: 3,  maxSpeed: 95,  contactDamage: 1, radius: 9 },
-  star:      { hp: 6,  maxSpeed: 85,  contactDamage: 1, radius: 11 },
-  boss:      { hp: 60, maxSpeed: 50,  contactDamage: 1, radius: 22 },
-  pentagon:  { hp: 4,  maxSpeed: 65,  contactDamage: 1, radius: 10 },
-  hexagon:   { hp: 5,  maxSpeed: 60,  contactDamage: 1, radius: 10 },
-  diamond:   { hp: 3,  maxSpeed: 110, contactDamage: 1, radius: 8 },
-  cross:     { hp: 5,  maxSpeed: 55,  contactDamage: 1, radius: 10 },
-  crescent:  { hp: 4,  maxSpeed: 75,  contactDamage: 1, radius: 9 },
+  circle:    { hp: 3,  maxSpeed: 72,  contactDamage: 1, radius: 8 },
+  square:    { hp: 5,  maxSpeed: 98,  contactDamage: 1, radius: 9 },
+  star:      { hp: 8,  maxSpeed: 88,  contactDamage: 1, radius: 11 },
+  boss:      { hp: 80, maxSpeed: 52,  contactDamage: 1, radius: 22 },
+  pentagon:  { hp: 6,  maxSpeed: 68,  contactDamage: 1, radius: 10 },
+  hexagon:   { hp: 7,  maxSpeed: 62,  contactDamage: 1, radius: 10 },
+  diamond:   { hp: 4,  maxSpeed: 112, contactDamage: 1, radius: 8 },
+  cross:     { hp: 7,  maxSpeed: 58,  contactDamage: 1, radius: 10 },
+  crescent:  { hp: 5,  maxSpeed: 78,  contactDamage: 1, radius: 9 },
 };
 
 export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
