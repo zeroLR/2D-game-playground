@@ -117,7 +117,8 @@ const STAGE_2: readonly WaveSpec[] = [
     { t: 12,  kind: "pentagon", count: 3 },
     { t: 20,  kind: "pentagon", count: 3 },
     { t: 20,  kind: "diamond", count: 2 },
-    { t: 28,  kind: "circle",  count: 8 },
+    { t: 28,  kind: "circle",  count: 5 },
+    { t: 28,  kind: "square",  count: 3 },
   ] },
   { index: 8, durationHint: 60, groups: [
     { t: 0.5, kind: "boss", count: 1 },
