@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "simple-roguelike/**"
+      - "shape-shift/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -27,7 +28,9 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: simple-roguelike/package-lock.json
+          cache-dependency-path: |
+            simple-roguelike/package-lock.json
+            shape-shift/package-lock.json
 
       - name: Install deps (simple-roguelike)
         working-directory: simple-roguelike
@@ -41,22 +44,49 @@ jobs:
         working-directory: simple-roguelike
         run: npm run build
 
+      - name: Install deps (shape-shift)
+        working-directory: shape-shift
+        run: npm ci
+
+      - name: Run tests (shape-shift)
+        working-directory: shape-shift
+        run: npm test
+
+      - name: Build (shape-shift)
+        working-directory: shape-shift
+        run: npm run build
+
       - name: Assemble Pages artifact
         run: |
-          mkdir -p _site/simple-roguelike
+          mkdir -p _site/simple-roguelike _site/shape-shift
           cp -r simple-roguelike/dist/* _site/simple-roguelike/
+          cp -r shape-shift/dist/* _site/shape-shift/
           cat > _site/index.html <<'HTML'
           <!doctype html>
+          <html lang="en">
           <meta charset="utf-8">
           <title>2D game playground</title>
-          <meta http-equiv="refresh" content="0; url=./simple-roguelike/">
-          <link rel="canonical" href="./simple-roguelike/">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: ui-monospace, monospace; background: #0d0d14; color: #d6d6e0; padding: 24px; }
-            a { color: #f0b850; }
+            body { font-family: ui-monospace, monospace; background: #0d0d14; color: #d6d6e0; padding: 24px; max-width: 560px; margin: 0 auto; }
+            h1 { color: #f0b850; }
+            ul { list-style: none; padding: 0; }
+            li { margin: 12px 0; }
+            a { color: #f0b850; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            .desc { color: #8a8aa0; font-size: 14px; }
           </style>
           <h1>2D game playground</h1>
-          <p><a href="./simple-roguelike/">Play simple-roguelike</a></p>
+          <ul>
+            <li>
+              <a href="./simple-roguelike/">simple-roguelike</a>
+              <div class="desc">Turn-based roguelike with FOV, combat, and mobile D-pad.</div>
+            </li>
+            <li>
+              <a href="./shape-shift/">shape-shift</a>
+              <div class="desc">Mobile-portrait reverse bullet-hell deckbuilder (WIP).</div>
+            </li>
+          </ul>
           HTML
 
       - uses: actions/upload-pages-artifact@v3
