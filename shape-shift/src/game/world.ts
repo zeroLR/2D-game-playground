@@ -2,7 +2,9 @@ export type EntityId = number;
 
 export type Team = "player" | "enemy" | "projectile" | "enemy-shot";
 
-export type EnemyKind = "circle" | "square" | "star" | "boss";
+export type EnemyKind =
+  | "circle" | "square" | "star" | "boss"
+  | "pentagon" | "hexagon" | "diamond" | "cross" | "crescent";
 
 export interface Pos { x: number; y: number }
 export interface Vel { x: number; y: number }
@@ -31,6 +33,16 @@ export interface Enemy {
   contactDamage: number;
   maxSpeed: number;
   wobblePhase: number;
+  /** Shield HP (hexagon only). Absorbs one hit when > 0 before real HP takes damage. */
+  shield?: number;
+  /** Diamond dash state: cooldown timer, dash speed multiplier. */
+  dashCooldown?: number;
+  /** Cross shooting timer. */
+  shootCooldown?: number;
+  /** Crescent orbit angle (radians). */
+  orbitAngle?: number;
+  /** Whether survival scaling has been applied (prevents double-scaling). */
+  scaled?: boolean;
 }
 
 export interface Avatar {

@@ -1,7 +1,9 @@
-import { ENEMY_SEEK_ACCEL } from "../config";
+import { ENEMY_SEEK_ACCEL, PLAY_H, PLAY_W } from "../config";
+import { spawnEnemyShot } from "../entities";
+import type { Rng } from "../rng";
 import type { EntityId, World } from "../world";
 
-export function updateEnemyAi(world: World, avatarId: EntityId, dt: number): void {
+export function updateEnemyAi(world: World, avatarId: EntityId, dt: number, rng?: Rng): void {
   const avatar = world.get(avatarId);
   if (!avatar || !avatar.pos) return;
   const ax = avatar.pos.x;
@@ -29,6 +31,45 @@ export function updateEnemyAi(world: World, avatarId: EntityId, dt: number): voi
       nx /= len; ny /= len;
     }
 
+    // ── Diamond: periodic dash toward player ──────────────────────────────
+    if (e.kind === "diamond" && e.dashCooldown !== undefined) {
+      e.dashCooldown -= dt;
+      if (e.dashCooldown <= 0) {
+        // Dash: high-speed lunge
+        v.x = nx * e.maxSpeed * 3;
+        v.y = ny * e.maxSpeed * 3;
+        p.x += v.x * dt;
+        p.y += v.y * dt;
+        e.dashCooldown = 2.5 + (rng ? rng() * 1.5 : 1);
+        continue;
+      }
+    }
+
+    // ── Crescent: orbit / arc movement ────────────────────────────────────
+    if (e.kind === "crescent" && e.orbitAngle !== undefined) {
+      e.orbitAngle += dt * 1.8;
+      // Move toward player but with a strong tangential component.
+      const tangX = -ny;
+      const tangY = nx;
+      const blend = 0.4; // how much tangent vs seek
+      nx = nx * (1 - blend) + tangX * blend * Math.sin(e.orbitAngle);
+      ny = ny * (1 - blend) + tangY * blend * Math.sin(e.orbitAngle);
+      const len = Math.hypot(nx, ny) || 1;
+      nx /= len; ny /= len;
+    }
+
+    // ── Cross: shoot at player periodically ───────────────────────────────
+    if (e.kind === "cross" && e.shootCooldown !== undefined && rng) {
+      e.shootCooldown -= dt;
+      if (e.shootCooldown <= 0 && (c.hp?.value ?? 0) > 0) {
+        const spd = 160;
+        const vx = nx * spd;
+        const vy = ny * spd;
+        spawnEnemyShot(world, p.x, p.y, vx, vy, 1, false);
+        e.shootCooldown = 2.0 + rng() * 1.0;
+      }
+    }
+
     const targetVx = nx * e.maxSpeed;
     const targetVy = ny * e.maxSpeed;
     const dvx = targetVx - v.x;
@@ -44,5 +85,9 @@ export function updateEnemyAi(world: World, avatarId: EntityId, dt: number): voi
     }
     p.x += v.x * dt;
     p.y += v.y * dt;
+
+    // Keep enemies inside the playfield (+margin).
+    p.x = Math.max(-30, Math.min(PLAY_W + 30, p.x));
+    p.y = Math.max(-30, Math.min(PLAY_H + 30, p.y));
   }
 }

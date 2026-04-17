@@ -2,11 +2,11 @@ import { Graphics } from "pixi.js";
 import { PLAY_H, PLAY_W } from "./game/config";
 import type { EnemyKind, World } from "./game/world";
 
-export function drawGrid(g: Graphics): void {
+export function drawGrid(g: Graphics, gridColor: number = 0xf0f0f0): void {
   const STEP = 40;
   for (let x = 0; x <= PLAY_W; x += STEP) { g.moveTo(x, 0); g.lineTo(x, PLAY_H); }
   for (let y = 0; y <= PLAY_H; y += STEP) { g.moveTo(0, y); g.lineTo(PLAY_W, y); }
-  g.stroke({ color: 0xf0f0f0, width: 1 });
+  g.stroke({ color: gridColor, width: 1 });
 }
 
 export function drawWorld(g: Graphics, world: World): void {
@@ -33,6 +33,12 @@ export function drawWorld(g: Graphics, world: World): void {
     const fillColor = flash ? 0xffffff : enemyColor(kind);
     drawEnemyShape(g, kind, x, y, r);
     g.fill({ color: fillColor }).stroke({ color: 0x111111, width: 2 });
+
+    // Shield indicator (hexagon)
+    if (c.enemy!.shield && c.enemy!.shield > 0) {
+      g.circle(x, y, r + 3);
+      g.stroke({ color: 0x00e5ff, width: 1.5 });
+    }
   }
 
   for (const [, c] of world.with("avatar", "pos", "radius")) {
@@ -55,19 +61,29 @@ export function drawWorld(g: Graphics, world: World): void {
 
 function enemyColor(kind: EnemyKind): number {
   switch (kind) {
-    case "circle":  return 0xfafafa;
-    case "square":  return 0xffe6a0;
-    case "star":    return 0xc9e7ff;
-    case "boss":    return 0xffd1e1;
+    case "circle":    return 0xfafafa;
+    case "square":    return 0xffe6a0;
+    case "star":      return 0xc9e7ff;
+    case "boss":      return 0xffd1e1;
+    case "pentagon":  return 0xd4f5d4;  // light green
+    case "hexagon":   return 0xd0f0ff;  // icy blue
+    case "diamond":   return 0xffe0cc;  // warm peach
+    case "cross":     return 0xf5d0f5;  // light purple
+    case "crescent":  return 0xfff4cc;  // pale gold
   }
 }
 
 function drawEnemyShape(g: Graphics, kind: EnemyKind, x: number, y: number, r: number): void {
   switch (kind) {
-    case "circle": g.circle(x, y, r); break;
-    case "square": g.rect(x - r, y - r, r * 2, r * 2); break;
-    case "star":   drawStar(g, x, y, r, 5); break;
-    case "boss":   drawPolygon(g, x, y, r, 6); break;
+    case "circle":   g.circle(x, y, r); break;
+    case "square":   g.rect(x - r, y - r, r * 2, r * 2); break;
+    case "star":     drawStar(g, x, y, r, 5); break;
+    case "boss":     drawPolygon(g, x, y, r, 6); break;
+    case "pentagon": drawPolygon(g, x, y, r, 5); break;
+    case "hexagon":  drawPolygon(g, x, y, r, 6); break;
+    case "diamond":  drawDiamond(g, x, y, r); break;
+    case "cross":    drawCross(g, x, y, r); break;
+    case "crescent": drawCrescent(g, x, y, r); break;
   }
 }
 
@@ -89,6 +105,58 @@ function drawStar(g: Graphics, cx: number, cy: number, r: number, points: number
     const x = cx + Math.cos(a) * rad;
     const y = cy + Math.sin(a) * rad;
     if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.closePath();
+}
+
+function drawDiamond(g: Graphics, cx: number, cy: number, r: number): void {
+  g.moveTo(cx, cy - r);       // top
+  g.lineTo(cx + r * 0.6, cy); // right
+  g.lineTo(cx, cy + r);       // bottom
+  g.lineTo(cx - r * 0.6, cy); // left
+  g.closePath();
+}
+
+function drawCross(g: Graphics, cx: number, cy: number, r: number): void {
+  const w = r * 0.35;
+  g.moveTo(cx - w, cy - r);
+  g.lineTo(cx + w, cy - r);
+  g.lineTo(cx + w, cy - w);
+  g.lineTo(cx + r, cy - w);
+  g.lineTo(cx + r, cy + w);
+  g.lineTo(cx + w, cy + w);
+  g.lineTo(cx + w, cy + r);
+  g.lineTo(cx - w, cy + r);
+  g.lineTo(cx - w, cy + w);
+  g.lineTo(cx - r, cy + w);
+  g.lineTo(cx - r, cy - w);
+  g.lineTo(cx - w, cy - w);
+  g.closePath();
+}
+
+function drawCrescent(g: Graphics, cx: number, cy: number, r: number): void {
+  // Outer arc (full circle)
+  g.arc(cx, cy, r, 0, Math.PI * 2);
+  g.fill({ color: 0x000000 }); // placeholder — overridden by caller
+  // Inner cutout (shifted circle to create crescent shape)
+  // We draw crescent as a custom shape instead:
+  const steps = 20;
+  const outerR = r;
+  const innerR = r * 0.7;
+  const offset = r * 0.4;
+  // outer arc (full circle CW)
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const x = cx + Math.cos(a) * outerR;
+    const y = cy + Math.sin(a) * outerR;
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  // inner arc (offset circle CCW) — create crescent by "cutting"
+  for (let i = steps; i >= 0; i--) {
+    const a = (i / steps) * Math.PI * 2;
+    const x = cx + offset + Math.cos(a) * innerR;
+    const y = cy + Math.sin(a) * innerR;
+    g.lineTo(x, y);
   }
   g.closePath();
 }

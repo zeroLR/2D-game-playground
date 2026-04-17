@@ -8,18 +8,62 @@ import { createRng, pickSeed } from "./game/rng";
 import { applyCard, drawOffer, type Card } from "./game/cards";
 import { DraftScene } from "./scenes/draft";
 import { EndgameScene } from "./scenes/endgame";
-import { PlayScene, type PointerMapper } from "./scenes/play";
+import { PlayScene, type PointerMapper, type GameMode } from "./scenes/play";
 import { SceneStack } from "./scenes/scene";
+import { MainMenuScene, type MenuAction } from "./scenes/mainMenu";
+import { StageSelectScene } from "./scenes/stageSelect";
+import { ShopScene } from "./scenes/shop";
+import { EquipmentScene } from "./scenes/equipment";
+import { SkillTreeScene } from "./scenes/skillTree";
+import { AchievementsScene } from "./scenes/achievements";
+import { STAGE_THEMES, DEFAULT_THEME, type StageTheme } from "./game/stageThemes";
+import { STAGE_WAVES } from "./game/stageWaves";
+import { WAVES } from "./game/waves";
+import { survivalWaveSpec } from "./game/survivalWaves";
+import { applyEquipment } from "./game/equipment";
+import { equipCard, unequipCard } from "./game/equipment";
+import { createActiveSkillStates } from "./game/skills";
+import { unlockAchievement } from "./game/achievements";
+import type { RunResult } from "./game/rewards";
+import {
+  loadProfile, saveProfile,
+  loadEquipment, saveEquipment,
+  loadSkillTree, saveSkillTree,
+  loadAchievements, saveAchievements,
+  loadShopUnlocks, saveShopUnlocks,
+  loadSettings, saveSettings,
+  exportSaveData, downloadSaveData,
+  parseSaveData, importSaveData,
+} from "./game/storage";
+import type {
+  PlayerProfile,
+  EquipmentLoadout,
+  SkillTreeState,
+  AchievementState,
+  ShopUnlocks,
+} from "./game/data/types";
 
 async function boot(): Promise<void> {
   const gameEl = document.getElementById("game");
   const hudHp = document.getElementById("hud-hp");
   const hudWave = document.getElementById("hud-wave");
+  const hudPts = document.getElementById("hud-pts");
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
   const btnMute = document.getElementById("btn-mute");
+  const btnMenu = document.getElementById("btn-menu");
+  const hudSkills = document.getElementById("hud-skills");
   if (!gameEl) throw new Error("#game element missing");
 
+  // ── Load persistent state ───────────────────────────────────────────────
+  let profile: PlayerProfile = await loadProfile();
+  let equipment: EquipmentLoadout = await loadEquipment();
+  let skillTree: SkillTreeState = await loadSkillTree();
+  let achievements: AchievementState = await loadAchievements();
+  let shopUnlocks: ShopUnlocks = await loadShopUnlocks();
+  const settings = await loadSettings();
+
+  // ── Pixi init ───────────────────────────────────────────────────────────
   const app = new Application();
   await app.init({
     width: PLAY_W,
@@ -33,8 +77,6 @@ async function boot(): Promise<void> {
 
   const stack = new SceneStack();
 
-  // Cache the canvas rect — pointermove fires at display refresh rate and we
-  // don't want a layout read per event. fitCanvas refreshes the cache.
   let cachedRect: DOMRect = app.canvas.getBoundingClientRect();
   const mapper: PointerMapper = {
     target: app.canvas,
@@ -49,8 +91,6 @@ async function boot(): Promise<void> {
     },
   };
 
-  // Canvas letterboxing: internal resolution is fixed at PLAY_W×PLAY_H; the
-  // CSS size scales to the largest 9:16 rectangle that fits in #game.
   function fitCanvas(): void {
     const { clientWidth: cw, clientHeight: ch } = gameEl!;
     if (cw === 0 || ch === 0) return;
@@ -66,22 +106,80 @@ async function boot(): Promise<void> {
 
   let play: PlayScene;
   let seed = 0;
+  let menuRng = createRng(42);
 
-  function updateHud(hp: number, maxHp: number, waveIdx: number, totalWaves: number): void {
-    if (hudHp) hudHp.textContent = `HP: ${hp}/${maxHp}`;
-    if (hudWave) hudWave.textContent = `W: ${waveIdx}/${totalWaves}`;
+  function setTheme(theme: StageTheme): void {
+    app.renderer.background.color = theme.background;
+    const overlay = document.getElementById("overlay");
+    if (overlay) overlay.style.background = theme.overlayBg;
   }
 
-  function startNewRun(): void {
-    // Drain the stack first so each scene's exit() runs before its root is
-    // detached; otherwise DOM overlay cleanup can trail the Pixi teardown.
+  // ── HUD ─────────────────────────────────────────────────────────────────
+
+  function updateHud(hp: number, maxHp: number, waveIdx: number, totalWaves: number, points: number): void {
+    if (hudHp) hudHp.textContent = `HP: ${hp}/${maxHp}`;
+    if (hudWave) hudWave.textContent = `W: ${waveIdx}/${totalWaves}`;
+    if (hudPts) hudPts.textContent = `${points}pts`;
+  }
+
+  const skillButtonUpdaters = new WeakMap<HTMLButtonElement, () => void>();
+
+  function showSkillButtons(): void {
+    if (!hudSkills) return;
+    hudSkills.innerHTML = "";
+    for (let i = 0; i < play.activeSkills.length; i++) {
+      const sk = play.activeSkills[i]!;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "skill-btn";
+      btn.addEventListener("click", () => play.activateSkill(i));
+
+      const updateLabel = (): void => {
+        if (sk.active > 0) {
+          btn.textContent = `${sk.id === "timeStop" ? "⏱" : "👤"} ${sk.active.toFixed(1)}s`;
+          btn.disabled = true;
+        } else if (sk.cooldown > 0) {
+          btn.textContent = `${sk.id === "timeStop" ? "⏱" : "👤"} ${Math.ceil(sk.cooldown)}s`;
+          btn.disabled = true;
+        } else {
+          btn.textContent = sk.id === "timeStop" ? "⏱ Time Stop" : "👤 Clone";
+          btn.disabled = false;
+        }
+      };
+      updateLabel();
+      skillButtonUpdaters.set(btn, updateLabel);
+      hudSkills.appendChild(btn);
+    }
+  }
+
+  function refreshSkillButtons(): void {
+    if (!hudSkills) return;
+    for (const btn of hudSkills.querySelectorAll<HTMLButtonElement>(".skill-btn")) {
+      skillButtonUpdaters.get(btn)?.();
+    }
+  }
+
+  // ── Run lifecycle ───────────────────────────────────────────────────────
+
+  function startRun(mode: GameMode, stageIndex: number): void {
     while (stack.top()) stack.pop();
     app.stage.removeChildren();
+
+    const theme = mode === "normal" ? (STAGE_THEMES[stageIndex] ?? DEFAULT_THEME) : DEFAULT_THEME;
+    setTheme(theme);
+
     seed = pickSeed();
     const rng = createRng(seed);
     // eslint-disable-next-line no-console
-    console.log(`[shape-shift] run seed = ${seed}`);
+    console.log(`[shape-shift] run seed = ${seed}, mode = ${mode}, stage = ${stageIndex}`);
     if (hudSeed) hudSeed.textContent = `seed: ${seed}`;
+
+    // Build waves
+    const waves = mode === "normal"
+      ? (STAGE_WAVES[stageIndex] ?? WAVES)
+      : [survivalWaveSpec(1, rng)]; // survival starts with wave 1
+
+    const activeSkills = createActiveSkillStates(skillTree);
 
     play = new PlayScene(
       rng,
@@ -90,21 +188,32 @@ async function boot(): Promise<void> {
         onWaveCleared: (cleared) => {
           playSfx("draft");
           const offer = drawOffer(rng, 3);
-          const label = `${cleared} of ${play.totalWaves()}`;
+          const label = mode === "survival"
+            ? `${cleared}`
+            : `${cleared} of ${play.totalWaves()}`;
           stack.push(new DraftScene(offer, label, (pick) => onPickCard(pick)));
         },
         onPlayerDied: () => {
           playSfx("death");
-          stack.push(new EndgameScene("dead", play.currentWave1(), play.totalWaves(), startNewRun));
+          const total = mode === "survival" ? play.currentWave1() : play.totalWaves();
+          stack.push(new EndgameScene("dead", play.currentWave1(), total, () => showMainMenu()));
         },
         onRunWon: () => {
-          stack.push(new EndgameScene("won", play.totalWaves(), play.totalWaves(), startNewRun));
+          const total = play.totalWaves();
+          stack.push(new EndgameScene("won", total, total, () => showMainMenu()));
         },
+        onRunComplete: (result) => settleRun(result),
       },
       mapper,
+      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills },
     );
+
+    // Apply equipment loadout at run start.
+    applyEquipment(equipment, play.world, play.avatarId);
+
     app.stage.addChild(play.root);
     stack.push(play);
+    showSkillButtons();
   }
 
   function onPickCard(card: Card): void {
@@ -114,10 +223,190 @@ async function boot(): Promise<void> {
     play.advanceToNextWave();
   }
 
-  btnRestart?.addEventListener("click", () => startNewRun());
+  async function settleRun(result: RunResult): Promise<void> {
+    // Update profile
+    profile.points += result.pointsEarned;
+    profile.stats.totalRuns += 1;
+    profile.stats.totalKills += result.totalKills;
+    profile.stats.totalBossKills += result.bossKills;
 
-  // Browsers block audio until the first user gesture. Prime Howl on the first
-  // pointerdown anywhere in the document; the listener self-removes.
+    // Apply loot
+    for (const drop of result.loot) {
+      if (drop.kind === "core") skillTree.cores += drop.value;
+      if (drop.kind === "skillPoints") skillTree.skillPoints += drop.value;
+    }
+
+    // Survival best
+    if (result.mode === "survival") {
+      profile.stats.bestSurvivalWave = Math.max(profile.stats.bestSurvivalWave, result.wavesCleared);
+    }
+
+    // Normal mode clear tracking
+    if (result.mode === "normal" && result.wavesCleared >= 8) {
+      profile.stats.normalCleared[result.stageIndex] = true;
+    }
+
+    // Check achievements
+    if (result.bossKills > 0) {
+      if (unlockAchievement(achievements, "firstBossKill")) {
+        // eslint-disable-next-line no-console
+        console.log("[shape-shift] Achievement unlocked: firstBossKill");
+      }
+    }
+    if (result.noPowerRun && result.mode === "normal" && result.wavesCleared >= 8) {
+      unlockAchievement(achievements, "noPowerNormalClear");
+    }
+    if (result.noPowerRun && result.mode === "survival" && result.wavesCleared >= 16) {
+      unlockAchievement(achievements, "noPowerSurvival16");
+    }
+
+    // Persist
+    await Promise.all([
+      saveProfile(profile),
+      saveSkillTree(skillTree),
+      saveAchievements(achievements),
+    ]);
+  }
+
+  // ── Main menu ─────────────────────────────────────────────────────────
+
+  function showMainMenu(): void {
+    while (stack.top()) stack.pop();
+    app.stage.removeChildren();
+    setTheme(DEFAULT_THEME);
+    if (hudSkills) hudSkills.innerHTML = "";
+
+    const menu = new MainMenuScene(async (action: MenuAction) => {
+      switch (action.kind) {
+        case "normalMode":
+          stack.pop(); // remove menu
+          stack.push(new StageSelectScene(
+            (idx) => { stack.pop(); startRun("normal", idx); },
+            () => { stack.pop(); showMainMenu(); },
+          ));
+          break;
+
+        case "survivalMode":
+          stack.pop();
+          startRun("survival", 0);
+          break;
+
+        case "shop":
+          stack.pop();
+          stack.push(new ShopScene({
+            getProfile: () => profile,
+            getEquipment: () => equipment,
+            getShopUnlocks: () => shopUnlocks,
+            onPurchase: async (item) => {
+              if (profile.points < item.price) return;
+              profile.points -= item.price;
+              if (item.category === "skin") {
+                if (!profile.ownedSkins.includes(item.id)) profile.ownedSkins.push(item.id);
+              } else if (item.category === "equipCard") {
+                if (!equipment.ownedCards.includes(item.id)) equipment.ownedCards.push(item.id);
+              } else if (item.category === "slotExpand") {
+                equipment.maxSlots += 1;
+              }
+              if (!shopUnlocks.purchased.includes(item.id)) shopUnlocks.purchased.push(item.id);
+              await Promise.all([saveProfile(profile), saveEquipment(equipment), saveShopUnlocks(shopUnlocks)]);
+            },
+            onBack: () => { stack.pop(); showMainMenu(); },
+          }));
+          break;
+
+        case "equipment":
+          stack.pop();
+          stack.push(new EquipmentScene({
+            getLoadout: () => equipment,
+            onEquip: async (cardId) => {
+              equipCard(equipment, cardId);
+              await saveEquipment(equipment);
+            },
+            onUnequip: async (cardId) => {
+              unequipCard(equipment, cardId);
+              await saveEquipment(equipment);
+            },
+            onBack: () => { stack.pop(); showMainMenu(); },
+          }));
+          break;
+
+        case "skillTree":
+          stack.pop();
+          stack.push(new SkillTreeScene({
+            getState: () => skillTree,
+            getRng: () => menuRng,
+            onStateChanged: async (state) => {
+              skillTree = state;
+              // Check achievement
+              const anyUnlocked = Object.values(skillTree.skills).some((s) => s.unlocked);
+              if (anyUnlocked) {
+                if (unlockAchievement(achievements, "firstPrimalSkill")) {
+                  await saveAchievements(achievements);
+                }
+              }
+              await saveSkillTree(skillTree);
+            },
+            onBack: () => { stack.pop(); showMainMenu(); },
+          }));
+          break;
+
+        case "achievements":
+          stack.pop();
+          stack.push(new AchievementsScene(
+            () => achievements,
+            () => { stack.pop(); showMainMenu(); },
+          ));
+          break;
+
+        case "settings":
+          // Simple toggle for now
+          setMuted(!isMuted());
+          syncMuteLabel();
+          break;
+
+        case "exportData": {
+          const data = await exportSaveData();
+          downloadSaveData(data);
+          break;
+        }
+
+        case "importData": {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = ".json";
+          input.addEventListener("change", async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            const data = parseSaveData(text);
+            if (!data) {
+              alert("Invalid save file.");
+              return;
+            }
+            await importSaveData(data);
+            // Reload state
+            profile = await loadProfile();
+            equipment = await loadEquipment();
+            skillTree = await loadSkillTree();
+            achievements = await loadAchievements();
+            shopUnlocks = await loadShopUnlocks();
+            alert("Data imported successfully!");
+            showMainMenu();
+          });
+          input.click();
+          break;
+        }
+      }
+    });
+    app.stage.addChild(menu.root);
+    stack.push(menu);
+  }
+
+  // ── Controls ──────────────────────────────────────────────────────────
+
+  btnRestart?.addEventListener("click", () => showMainMenu());
+  btnMenu?.addEventListener("click", () => showMainMenu());
+
   function onFirstGesture(): void {
     primeSfx();
     document.removeEventListener("pointerdown", onFirstGesture);
@@ -130,13 +419,20 @@ async function boot(): Promise<void> {
   btnMute?.addEventListener("click", () => {
     setMuted(!isMuted());
     syncMuteLabel();
+    saveSettings({ muted: isMuted() });
   });
+  if (settings.muted) setMuted(true);
   syncMuteLabel();
 
-  startNewRun();
+  // ── Start ─────────────────────────────────────────────────────────────
+
+  showMainMenu();
 
   startLoop(
-    (dt) => stack.update(dt),
+    (dt) => {
+      stack.update(dt);
+      refreshSkillButtons();
+    },
     (alpha) => stack.render(alpha),
   );
 }
@@ -145,3 +441,4 @@ boot().catch((err) => {
   // eslint-disable-next-line no-console
   console.error("[shape-shift] boot failed:", err);
 });
+

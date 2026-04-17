@@ -233,3 +233,65 @@ body {
   border-top: 1px solid var(--chrome);
   background: var(--bg);
 }
+
+/* ── Menu buttons ──────────────────────────────────────────────────────── */
+
+.menu-btn {
+  appearance: none;
+  padding: 10px 12px;
+  min-height: 44px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-align: center;
+}
+
+.menu-btn:active {
+  background: var(--chrome);
+}
+
+.menu-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Skill buttons ─────────────────────────────────────────────────────── */
+
+#hud-skills {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 4px 12px;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.skill-btn {
+  appearance: none;
+  padding: 6px 14px;
+  min-height: 36px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.skill-btn:active {
+  background: var(--chrome);
+}
+
+.skill-btn:disabled {
+  border-color: #ccc;
+  color: var(--muted);
+  cursor: not-allowed;
+}
