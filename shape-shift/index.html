@@ -14,11 +14,18 @@
   </head>
   <body>
     <main id="app">
-      <div id="game"></div>
-      <div id="hud">
-        <span id="seed-label">seed: -</span>
-        <button type="button" id="btn-restart" aria-label="Restart run">restart</button>
+      <header id="topbar">
+        <span id="hud-hp" class="hud-chip">HP: -</span>
+        <span id="hud-wave" class="hud-chip">W: -/-</span>
+        <span id="hud-seed" class="hud-chip" aria-label="run seed">seed: -</span>
+        <button type="button" id="btn-restart" class="ctrl-btn" aria-label="Restart run">↻</button>
+      </header>
+      <div id="game">
+        <div id="overlay" hidden>
+          <div id="overlay-inner"></div>
+        </div>
       </div>
+      <footer id="footer-hint">drag anywhere to move · shots are automatic</footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
