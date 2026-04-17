@@ -101,7 +101,8 @@ body {
   position: absolute;
   inset: 0;
   background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -294,4 +295,44 @@ body {
   border-color: #ccc;
   color: var(--muted);
   cursor: not-allowed;
+}
+
+/* ── Category tabs ─────────────────────────────────────────────────────── */
+
+.tab-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tab-btn {
+  appearance: none;
+  flex: 1 1 0;
+  padding: 8px 4px;
+  min-height: 36px;
+  border: none;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab-btn + .tab-btn {
+  border-left: 1px solid #ccc;
+}
+
+.tab-btn.tab-active {
+  background: var(--fg);
+  color: #fff;
+}
+
+.tab-btn:not(.tab-active):active {
+  background: var(--chrome);
 }

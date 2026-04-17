@@ -13,9 +13,12 @@ export interface ShopCallbacks {
   onBack: () => void;
 }
 
+type ShopTab = "skin" | "enhance";
+
 export class ShopScene implements Scene {
   readonly root: Container;
   private readonly cb: ShopCallbacks;
+  private activeTab: ShopTab = "skin";
 
   constructor(cb: ShopCallbacks) {
     this.root = new Container();
@@ -39,12 +42,27 @@ export class ShopScene implements Scene {
     this.refreshPoints(pointsEl);
     inner.appendChild(pointsEl);
 
+    // Tab row
+    const tabRow = document.createElement("div");
+    tabRow.className = "tab-row";
+    const skinTab = this.createTab("🎨 Skins", "skin", tabRow);
+    const enhTab = this.createTab("⚡ Enhance", "enhance", tabRow);
+    if (this.activeTab === "skin") skinTab.classList.add("tab-active");
+    else enhTab.classList.add("tab-active");
+    inner.appendChild(tabRow);
+
+    // Item list (filtered by tab)
     const list = document.createElement("div");
     list.className = "card-list";
     list.style.maxHeight = "340px";
     list.style.overflowY = "auto";
 
-    for (const item of SHOP_ITEMS) {
+    const filteredItems = SHOP_ITEMS.filter((item) => {
+      if (this.activeTab === "skin") return item.category === "skin";
+      return item.category === "equipCard" || item.category === "slotExpand";
+    });
+
+    for (const item of filteredItems) {
       const profile = this.cb.getProfile();
       const purchased = this.isPurchased(item);
       const canAfford = profile.points >= item.price;
@@ -105,6 +123,19 @@ export class ShopScene implements Scene {
 
   update(_dt: number): void {}
   render(_alpha: number): void {}
+
+  private createTab(label: string, tab: ShopTab, parent: HTMLElement): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tab-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      this.activeTab = tab;
+      this.enter();
+    });
+    parent.appendChild(btn);
+    return btn;
+  }
 
   private refreshPoints(el: HTMLElement): void {
     el.textContent = `points: ${this.cb.getProfile().points}`;

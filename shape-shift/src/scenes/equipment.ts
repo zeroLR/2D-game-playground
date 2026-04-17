@@ -1,6 +1,6 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
-import type { EquipmentLoadout } from "../game/data/types";
+import type { EquipmentLoadout, PlayerProfile } from "../game/data/types";
 import { SHOP_ITEMS, EQUIP_EFFECTS } from "../game/data/shop";
 import { canEquip, MAX_SAME_CARD } from "../game/equipment";
 
@@ -8,14 +8,19 @@ import { canEquip, MAX_SAME_CARD } from "../game/equipment";
 
 export interface EquipmentCallbacks {
   getLoadout: () => EquipmentLoadout;
+  getProfile: () => PlayerProfile;
   onEquip: (cardId: string) => void;
   onUnequip: (cardId: string) => void;
+  onActivateSkin: (skinId: string) => void;
   onBack: () => void;
 }
+
+type EquipTab = "skin" | "enhance";
 
 export class EquipmentScene implements Scene {
   readonly root: Container;
   private readonly cb: EquipmentCallbacks;
+  private activeTab: EquipTab = "enhance";
 
   constructor(cb: EquipmentCallbacks) {
     this.root = new Container();
@@ -33,6 +38,143 @@ export class EquipmentScene implements Scene {
     title.textContent = "equipment";
     inner.appendChild(title);
 
+    // Tab row
+    const tabRow = document.createElement("div");
+    tabRow.className = "tab-row";
+    const skinTab = this.createTab("🎨 Skins", "skin", tabRow);
+    const enhTab = this.createTab("⚡ Enhance", "enhance", tabRow);
+    if (this.activeTab === "skin") skinTab.classList.add("tab-active");
+    else enhTab.classList.add("tab-active");
+    inner.appendChild(tabRow);
+
+    if (this.activeTab === "skin") {
+      this.renderSkinTab(inner);
+    } else {
+      this.renderEnhanceTab(inner);
+    }
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "big-btn";
+    back.textContent = "← back";
+    back.style.marginTop = "8px";
+    back.addEventListener("click", () => this.cb.onBack());
+    inner.appendChild(back);
+
+    overlay.hidden = false;
+  }
+
+  exit(): void {
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (inner) inner.innerHTML = "";
+    if (overlay) overlay.hidden = true;
+  }
+
+  update(_dt: number): void {}
+  render(_alpha: number): void {}
+
+  private createTab(label: string, tab: EquipTab, parent: HTMLElement): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tab-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      this.activeTab = tab;
+      this.enter();
+    });
+    parent.appendChild(btn);
+    return btn;
+  }
+
+  // ── Skin tab ──────────────────────────────────────────────────────────────
+
+  private renderSkinTab(inner: HTMLElement): void {
+    const profile = this.cb.getProfile();
+
+    const activeSkinLabel = document.createElement("div");
+    activeSkinLabel.className = "overlay-sub";
+    const activeItem = SHOP_ITEMS.find((i) => i.id === profile.activeSkin);
+    const activeName = profile.activeSkin === "triangle"
+      ? "Triangle (default)"
+      : (activeItem?.name ?? profile.activeSkin);
+    activeSkinLabel.textContent = `active: ${activeName}`;
+    inner.appendChild(activeSkinLabel);
+
+    const skinList = document.createElement("div");
+    skinList.className = "card-list";
+    skinList.style.maxHeight = "280px";
+    skinList.style.overflowY = "auto";
+
+    // Default skin
+    this.addSkinButton(skinList, "triangle", "△", "Triangle (default)", profile.activeSkin === "triangle");
+
+    // Owned skins
+    for (const skinId of profile.ownedSkins) {
+      if (skinId === "triangle") continue; // already added
+      const shopItem = SHOP_ITEMS.find((i) => i.id === skinId);
+      this.addSkinButton(
+        skinList,
+        skinId,
+        shopItem?.glyph ?? "?",
+        shopItem?.name ?? skinId,
+        profile.activeSkin === skinId,
+      );
+    }
+
+    if (profile.ownedSkins.length <= 1) {
+      const hint = document.createElement("div");
+      hint.className = "card-text";
+      hint.textContent = "buy skins from the shop to unlock more";
+      hint.style.textAlign = "center";
+      hint.style.padding = "12px";
+      skinList.appendChild(hint);
+    }
+
+    inner.appendChild(skinList);
+  }
+
+  private addSkinButton(
+    parent: HTMLElement,
+    skinId: string,
+    glyph: string,
+    label: string,
+    isActive: boolean,
+  ): void {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = isActive ? "card-btn selected" : "card-btn";
+
+    const glyphEl = document.createElement("span");
+    glyphEl.className = "card-glyph";
+    glyphEl.textContent = glyph;
+    btn.appendChild(glyphEl);
+
+    const body = document.createElement("span");
+    body.className = "card-body";
+    const nameEl = document.createElement("span");
+    nameEl.className = "card-name";
+    nameEl.textContent = label;
+    const desc = document.createElement("span");
+    desc.className = "card-text";
+    desc.textContent = isActive ? "equipped" : "tap to equip";
+    body.appendChild(nameEl);
+    body.appendChild(desc);
+    btn.appendChild(body);
+
+    if (!isActive) {
+      btn.addEventListener("click", () => {
+        this.cb.onActivateSkin(skinId);
+        this.enter();
+      });
+    }
+
+    parent.appendChild(btn);
+  }
+
+  // ── Enhance tab ───────────────────────────────────────────────────────────
+
+  private renderEnhanceTab(inner: HTMLElement): void {
     const loadout = this.cb.getLoadout();
 
     // Current slots
@@ -145,25 +287,5 @@ export class EquipmentScene implements Scene {
       ownedDiv.appendChild(btn);
     }
     inner.appendChild(ownedDiv);
-
-    const back = document.createElement("button");
-    back.type = "button";
-    back.className = "big-btn";
-    back.textContent = "← back";
-    back.style.marginTop = "8px";
-    back.addEventListener("click", () => this.cb.onBack());
-    inner.appendChild(back);
-
-    overlay.hidden = false;
   }
-
-  exit(): void {
-    const overlay = document.getElementById("overlay");
-    const inner = document.getElementById("overlay-inner");
-    if (inner) inner.innerHTML = "";
-    if (overlay) overlay.hidden = true;
-  }
-
-  update(_dt: number): void {}
-  render(_alpha: number): void {}
 }

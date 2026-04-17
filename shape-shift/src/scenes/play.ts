@@ -24,6 +24,7 @@ import {
   cloneInheritRatio,
 } from "../game/skills";
 import { survivalWaveSpec, isMirrorBossWave, survivalHpScale, survivalSpeedScale } from "../game/survivalWaves";
+import type { StageTheme } from "../game/stageThemes";
 
 export type GameMode = "normal" | "survival";
 
@@ -63,6 +64,7 @@ export class PlayScene implements Scene {
   private ended = false;
   private mirrorApplied = false;
   private readonly gridColor: number;
+  private readonly theme: StageTheme | undefined;
 
   // Points & stats
   private runPoints = 0;
@@ -85,6 +87,7 @@ export class PlayScene implements Scene {
       gridColor?: number;
       stageIndex?: number;
       activeSkills?: ActiveSkillState[];
+      theme?: StageTheme;
     },
   ) {
     this.root = new Container();
@@ -102,6 +105,7 @@ export class PlayScene implements Scene {
     this.waves = opts.waves;
     this.stageIndex = opts.stageIndex ?? 0;
     this.activeSkills = opts.activeSkills ?? [];
+    this.theme = opts.theme;
     this.avatarId = spawnAvatar(this.world);
     this.waveIdx = 0;
     this.wave = newWaveState(this.waves[this.waveIdx]!);
@@ -272,7 +276,7 @@ export class PlayScene implements Scene {
   }
 
   render(_alpha: number): void {
-    drawWorld(this.g, this.world);
+    drawWorld(this.g, this.world, this.theme);
   }
 
   // ── Private ─────────────────────────────────────────────────────────────

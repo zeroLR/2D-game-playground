@@ -1,6 +1,7 @@
 import { Graphics } from "pixi.js";
 import { PLAY_H, PLAY_W } from "./game/config";
 import type { EnemyKind, World } from "./game/world";
+import type { StageTheme } from "./game/stageThemes";
 
 export function drawGrid(g: Graphics, gridColor: number = 0xf0f0f0): void {
   const STEP = 40;
@@ -9,8 +10,11 @@ export function drawGrid(g: Graphics, gridColor: number = 0xf0f0f0): void {
   g.stroke({ color: gridColor, width: 1 });
 }
 
-export function drawWorld(g: Graphics, world: World): void {
+export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
   g.clear();
+  const dark = theme?.dark ?? false;
+  const strokeColor = theme?.enemyStroke ?? 0x111111;
+  const playerBodyColor = theme?.playerColor ?? 0x111111;
 
   for (const [, c] of world.with("projectile", "pos", "radius")) {
     const enemyShot = c.team === "enemy-shot";
@@ -21,7 +25,7 @@ export function drawWorld(g: Graphics, world: World): void {
     g.fill({ color });
     if (enemyShot) {
       g.circle(c.pos!.x, c.pos!.y, c.radius! + 1.5);
-      g.stroke({ color: 0x111111, width: 1 });
+      g.stroke({ color: strokeColor, width: 1 });
     }
   }
 
@@ -30,9 +34,9 @@ export function drawWorld(g: Graphics, world: World): void {
     const r = c.radius!;
     const kind = c.enemy!.kind;
     const flash = (c.flash ?? 0) > 0;
-    const fillColor = flash ? 0xffffff : enemyColor(kind);
+    const fillColor = flash ? 0xffffff : enemyColor(kind, dark);
     drawEnemyShape(g, kind, x, y, r);
-    g.fill({ color: fillColor }).stroke({ color: 0x111111, width: 2 });
+    g.fill({ color: fillColor }).stroke({ color: strokeColor, width: 2 });
 
     // Shield indicator (hexagon)
     if (c.enemy!.shield && c.enemy!.shield > 0) {
@@ -45,13 +49,13 @@ export function drawWorld(g: Graphics, world: World): void {
     const { x, y } = c.pos!;
     const r = c.radius!;
     const a = c.avatar!;
-    const bodyFill = (c.flash ?? 0) > 0 ? 0xffffff : 0x111111;
+    const bodyFill = (c.flash ?? 0) > 0 ? 0xffffff : playerBodyColor;
     const h = r * Math.sqrt(3) / 2;
     g.moveTo(x, y - h * 0.9);
     g.lineTo(x + r * 0.9, y + h * 0.6);
     g.lineTo(x - r * 0.9, y + h * 0.6);
     g.closePath();
-    g.fill({ color: bodyFill }).stroke({ color: 0x111111, width: 2 });
+    g.fill({ color: bodyFill }).stroke({ color: playerBodyColor, width: 2 });
     if (a.iframes > 0) {
       g.circle(x, y, r + 4);
       g.stroke({ color: 0x00bcd4, width: 1.5 });
@@ -59,17 +63,31 @@ export function drawWorld(g: Graphics, world: World): void {
   }
 }
 
-function enemyColor(kind: EnemyKind): number {
+function enemyColor(kind: EnemyKind, dark: boolean): number {
+  if (dark) {
+    // Brighter, more saturated palette for dark backgrounds
+    switch (kind) {
+      case "circle":    return 0xffffff;
+      case "square":    return 0xffd740;
+      case "star":      return 0x64b5f6;
+      case "boss":      return 0xff80ab;
+      case "pentagon":  return 0x69f0ae;
+      case "hexagon":   return 0x40c4ff;
+      case "diamond":   return 0xffab40;
+      case "cross":     return 0xea80fc;
+      case "crescent":  return 0xffe57f;
+    }
+  }
   switch (kind) {
     case "circle":    return 0xfafafa;
     case "square":    return 0xffe6a0;
     case "star":      return 0xc9e7ff;
     case "boss":      return 0xffd1e1;
-    case "pentagon":  return 0xd4f5d4;  // light green
-    case "hexagon":   return 0xd0f0ff;  // icy blue
-    case "diamond":   return 0xffe0cc;  // warm peach
-    case "cross":     return 0xf5d0f5;  // light purple
-    case "crescent":  return 0xfff4cc;  // pale gold
+    case "pentagon":  return 0xd4f5d4;
+    case "hexagon":   return 0xd0f0ff;
+    case "diamond":   return 0xffe0cc;
+    case "cross":     return 0xf5d0f5;
+    case "crescent":  return 0xfff4cc;
   }
 }
 
