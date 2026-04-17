@@ -171,7 +171,7 @@ async function boot(): Promise<void> {
     seed = pickSeed();
     const rng = createRng(seed);
     // eslint-disable-next-line no-console
-    console.log(`[shape-shift] run seed = ${seed}, mode = ${mode}, stage = ${stageIndex}`);
+    console.log(`[axiom] run seed = ${seed}, mode = ${mode}, stage = ${stageIndex}`);
     if (hudSeed) hudSeed.textContent = `seed: ${seed}`;
 
     // Build waves
@@ -250,7 +250,7 @@ async function boot(): Promise<void> {
     if (result.bossKills > 0) {
       if (unlockAchievement(achievements, "firstBossKill")) {
         // eslint-disable-next-line no-console
-        console.log("[shape-shift] Achievement unlocked: firstBossKill");
+        console.log("[axiom] Achievement unlocked: firstBossKill");
       }
     }
     if (result.noPowerRun && result.mode === "normal" && result.wavesCleared >= 8) {
@@ -444,6 +444,6 @@ async function boot(): Promise<void> {
 
 boot().catch((err) => {
   // eslint-disable-next-line no-console
-  console.error("[shape-shift] boot failed:", err);
+  console.error("[axiom] boot failed:", err);
 });
 

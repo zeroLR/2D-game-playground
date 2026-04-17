@@ -1,4 +1,4 @@
-# Shape Shift (working title)
+# Axiom
 
 ## Pitch
 A 3–5 minute reverse bullet-hell where a geometric avatar auto-fires at converging hostile shapes, drafting rune-cards between waves to mutate its own form and build lethal synergies.
@@ -42,9 +42,9 @@ deckbuilder
 
 ### 與經典 deckbuilder 的偏離（重要）
 
-Shape Shift 是 **draft-based real-time deckbuilder**，非 STS 式回合制。以下為對 `game-deckbuilder` 預設範本的偏離：
+Axiom 是 **draft-based real-time deckbuilder**，非 STS 式回合制。以下為對 `game-deckbuilder` 預設範本的偏離：
 
-| 經典項目 | Shape Shift | 說明 |
+| 經典項目 | Axiom | 說明 |
 |---|---|---|
 | Draw / Hand / Discard zones | **無** | 卡牌抽到後即「永久裝備」，不進手牌/棄牌堆 |
 | Per-turn energy | **無** | 沒有回合概念；改用 *draft tokens*（重抽次數）作為限資源 |

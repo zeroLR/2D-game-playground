@@ -20,7 +20,7 @@ import {
   type SaveData,
 } from "./data/types";
 
-const DB_NAME = "shape-shift";
+const DB_NAME = "axiom";
 const DB_VERSION = 1; // IndexedDB schema version (bump to trigger onupgradeneeded)
 const STORES = [
   "profile",
@@ -143,7 +143,7 @@ export function downloadSaveData(data: SaveData): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `shape-shift-save-${Date.now()}.json`;
+  a.download = `axiom-save-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

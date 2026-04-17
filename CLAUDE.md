@@ -6,5 +6,5 @@
 
 ## Subprojects
 - `simple-roguelike/` — existing roguelike; do not modify unless asked.
-- `shape-shift/` — reverse bullet-hell + card drafter; concept in `shape-shift/docs/concept.md`.
+- `axiom/` — reverse bullet-hell + card drafter; concept in `axiom/docs/concept.md`.
 - CI (`.github/workflows/deploy.yml`) builds both subprojects and publishes to GitHub Pages.
