@@ -1,6 +1,7 @@
 import "./style.css";
 import { Application } from "pixi.js";
 
+import { isMuted, playSfx, primeSfx, setMuted } from "./game/audio";
 import { PLAY_H, PLAY_W } from "./game/config";
 import { startLoop } from "./game/loop";
 import { createRng, pickSeed } from "./game/rng";
@@ -16,6 +17,7 @@ async function boot(): Promise<void> {
   const hudWave = document.getElementById("hud-wave");
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
+  const btnMute = document.getElementById("btn-mute");
   if (!gameEl) throw new Error("#game element missing");
 
   const app = new Application();
@@ -86,11 +88,13 @@ async function boot(): Promise<void> {
       {
         updateHud,
         onWaveCleared: (cleared) => {
+          playSfx("draft");
           const offer = drawOffer(rng, 3);
           const label = `${cleared} of ${play.totalWaves()}`;
           stack.push(new DraftScene(offer, label, (pick) => onPickCard(pick)));
         },
         onPlayerDied: () => {
+          playSfx("death");
           stack.push(new EndgameScene("dead", play.currentWave1(), play.totalWaves(), startNewRun));
         },
         onRunWon: () => {
@@ -105,11 +109,29 @@ async function boot(): Promise<void> {
 
   function onPickCard(card: Card): void {
     applyCard(play.world, play.avatarId, card);
+    play.recordPick(card);
     stack.pop();
     play.advanceToNextWave();
   }
 
   btnRestart?.addEventListener("click", () => startNewRun());
+
+  // Browsers block audio until the first user gesture. Prime Howl on the first
+  // pointerdown anywhere in the document; the listener self-removes.
+  function onFirstGesture(): void {
+    primeSfx();
+    document.removeEventListener("pointerdown", onFirstGesture);
+  }
+  document.addEventListener("pointerdown", onFirstGesture);
+
+  function syncMuteLabel(): void {
+    if (btnMute) btnMute.textContent = isMuted() ? "sfx off" : "sfx on";
+  }
+  btnMute?.addEventListener("click", () => {
+    setMuted(!isMuted());
+    syncMuteLabel();
+  });
+  syncMuteLabel();
 
   startNewRun();
 

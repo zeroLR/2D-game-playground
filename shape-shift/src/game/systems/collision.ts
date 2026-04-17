@@ -13,6 +13,7 @@ export function updateCollisions(
   events: CombatEvents,
 ): void {
   for (const [pid, pc] of world.with("projectile", "pos", "radius")) {
+    if (pc.team === "enemy-shot") continue;
     const proj = pc.projectile!;
     const pr = pc.radius!;
     const px = pc.pos!.x;
@@ -58,6 +59,27 @@ export function updateCollisions(
     a.iframes = AVATAR_IFRAMES;
     avatar.flash = HIT_FLASH_TIME;
     events.onPlayerHit?.(dmg);
+    if (a.hp <= 0) {
+      a.hp = 0;
+      events.onPlayerDied?.();
+    }
+    break;
+  }
+
+  for (const [sid, sc] of world.with("projectile", "pos", "radius")) {
+    if (sc.team !== "enemy-shot") continue;
+    if (a.iframes > 0) break;
+    if (a.hp <= 0) break;
+    const dx = sc.pos!.x - ax;
+    const dy = sc.pos!.y - ay;
+    const rr = ar + sc.radius!;
+    if (dx * dx + dy * dy > rr * rr) continue;
+    const dmg = sc.projectile!.damage;
+    a.hp -= dmg;
+    a.iframes = AVATAR_IFRAMES;
+    avatar.flash = HIT_FLASH_TIME;
+    events.onPlayerHit?.(dmg);
+    world.remove(sid);
     if (a.hp <= 0) {
       a.hp = 0;
       events.onPlayerDied?.();

@@ -1,6 +1,6 @@
 export type EntityId = number;
 
-export type Team = "player" | "enemy" | "projectile";
+export type Team = "player" | "enemy" | "projectile" | "enemy-shot";
 
 export type EnemyKind = "circle" | "square" | "star" | "boss";
 

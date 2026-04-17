@@ -13,9 +13,16 @@ export function drawWorld(g: Graphics, world: World): void {
   g.clear();
 
   for (const [, c] of world.with("projectile", "pos", "radius")) {
-    const color = c.projectile!.crit ? 0xff3030 : 0xd81b60;
+    const enemyShot = c.team === "enemy-shot";
+    const color = enemyShot
+      ? (c.projectile!.crit ? 0xff2020 : 0xff7043)
+      : (c.projectile!.crit ? 0xff3030 : 0xd81b60);
     g.circle(c.pos!.x, c.pos!.y, c.radius!);
     g.fill({ color });
+    if (enemyShot) {
+      g.circle(c.pos!.x, c.pos!.y, c.radius! + 1.5);
+      g.stroke({ color: 0x111111, width: 1 });
+    }
   }
 
   for (const [, c] of world.with("enemy", "pos", "radius")) {

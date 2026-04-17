@@ -56,7 +56,6 @@ body {
 }
 
 #topbar .ctrl-btn {
-  margin-left: auto;
   appearance: none;
   border: 1px solid #ccc;
   background: #fff;
@@ -67,6 +66,12 @@ body {
   border-radius: 6px;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+#topbar .ctrl-btn--mute {
+  margin-left: auto;
+  font-size: 11px;
+  min-width: 56px;
 }
 
 #topbar .ctrl-btn:active {

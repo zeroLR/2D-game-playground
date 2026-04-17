@@ -110,3 +110,27 @@ export function spawnProjectile(
     },
   });
 }
+
+export function spawnEnemyShot(
+  world: World,
+  x: number,
+  y: number,
+  vx: number,
+  vy: number,
+  damage: number,
+  crit: boolean,
+): EntityId {
+  return world.create({
+    pos: { x, y },
+    vel: { x: vx, y: vy },
+    radius: PROJECTILE_RADIUS + 1,
+    team: "enemy-shot",
+    projectile: {
+      damage: crit ? damage * 2 : damage,
+      crit,
+      pierceRemaining: 0,
+      hitIds: new Set<EntityId>(),
+      ttl: 2.4,
+    },
+  });
+}

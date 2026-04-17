@@ -1,8 +1,12 @@
 import { Container, Graphics } from "pixi.js";
 
+import { playSfx } from "../game/audio";
+import type { Card } from "../game/cards";
 import { spawnAvatar } from "../game/entities";
+import { applyMirrorSpec, mirrorBossSpec } from "../game/mirrorBoss";
 import type { Rng } from "../game/rng";
 import { updateEnemyAi } from "../game/systems/ai";
+import { updateBossWeapon } from "../game/systems/bossWeapon";
 import { removeDeadEnemies, updateCollisions } from "../game/systems/collision";
 import { decayHitFlash, updateAvatarMotion, updateProjectileMotion } from "../game/systems/motion";
 import { newWaveState, updateWave, type WaveState } from "../game/systems/wave";
@@ -30,6 +34,7 @@ export class PlayScene implements Scene {
   readonly root: Container;
   readonly world: World;
   avatarId: EntityId;
+  readonly picks: Card[] = [];
 
   private readonly rng: Rng;
   private readonly g: Graphics;
@@ -42,6 +47,7 @@ export class PlayScene implements Scene {
   private readonly boundOnMove: (ev: PointerEvent) => void;
   private readonly boundOnUp: (ev: PointerEvent) => void;
   private ended = false;
+  private mirrorApplied = false;
 
   constructor(rng: Rng, cb: PlayCallbacks, mapper: PointerMapper) {
     this.root = new Container();
@@ -89,6 +95,10 @@ export class PlayScene implements Scene {
     this.updateHud();
   }
 
+  recordPick(card: Card): void {
+    this.picks.push(card);
+  }
+
   currentWave1(): number {
     return this.waveIdx + 1;
   }
@@ -101,13 +111,18 @@ export class PlayScene implements Scene {
     if (this.ended) return;
 
     updateWave(this.wave, this.world, this.rng, dt);
+    if (this.waveIdx + 1 === TOTAL_WAVES && !this.mirrorApplied) {
+      this.applyMirrorBuildOnce();
+    }
     updateAvatarMotion(this.world, dt);
     updateEnemyAi(this.world, this.avatarId, dt);
     updateProjectileMotion(this.world, dt);
     updateWeapon(this.world, this.avatarId, this.rng, dt);
+    updateBossWeapon(this.world, this.avatarId, this.rng, dt);
 
     let died = false;
     updateCollisions(this.world, this.avatarId, {
+      onEnemyKilled: () => playSfx("hit"),
       onPlayerDied: () => { died = true; },
     });
     removeDeadEnemies(this.world);
@@ -134,6 +149,15 @@ export class PlayScene implements Scene {
 
   render(_alpha: number): void {
     drawWorld(this.g, this.world);
+  }
+
+  private applyMirrorBuildOnce(): void {
+    for (const [, c] of this.world.with("enemy", "hp")) {
+      if (c.enemy!.kind !== "boss") continue;
+      applyMirrorSpec(c, mirrorBossSpec(this.picks));
+      this.mirrorApplied = true;
+      return;
+    }
   }
 
   private updateHud(): void {
