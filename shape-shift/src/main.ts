@@ -1,6 +1,7 @@
 import "./style.css";
 import { Application } from "pixi.js";
 
+import { isMuted, playSfx, primeSfx, setMuted } from "./game/audio";
 import { PLAY_H, PLAY_W } from "./game/config";
 import { startLoop } from "./game/loop";
 import { createRng, pickSeed } from "./game/rng";
@@ -16,6 +17,7 @@ async function boot(): Promise<void> {
   const hudWave = document.getElementById("hud-wave");
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
+  const btnMute = document.getElementById("btn-mute");
   if (!gameEl) throw new Error("#game element missing");
 
   const app = new Application();
@@ -30,19 +32,16 @@ async function boot(): Promise<void> {
   gameEl.insertBefore(app.canvas, gameEl.firstChild);
 
   const stack = new SceneStack();
-  // We swap the top-level Pixi stage to match whichever scene is on top. For
-  // overlay scenes (Draft/Endgame) the Play scene's root stays on stage so the
-  // frozen play-field remains visible.
-  // Implementation detail: each scene owns a Container; main merges them into
-  // app.stage as the stack changes.
-  const sceneLayer = app.stage;
 
+  // Cache the canvas rect — pointermove fires at display refresh rate and we
+  // don't want a layout read per event. fitCanvas refreshes the cache.
+  let cachedRect: DOMRect = app.canvas.getBoundingClientRect();
   const mapper: PointerMapper = {
     target: app.canvas,
     clientToPlay: (clientX, clientY) => {
-      const rect = app.canvas.getBoundingClientRect();
-      const px = ((clientX - rect.left) / rect.width) * PLAY_W;
-      const py = ((clientY - rect.top) / rect.height) * PLAY_H;
+      const r = cachedRect;
+      const px = ((clientX - r.left) / r.width) * PLAY_W;
+      const py = ((clientY - r.top) / r.height) * PLAY_H;
       return {
         x: Math.max(0, Math.min(PLAY_W, px)),
         y: Math.max(0, Math.min(PLAY_H, py)),
@@ -50,8 +49,8 @@ async function boot(): Promise<void> {
     },
   };
 
-  // Canvas letterboxing: internal resolution is fixed at PLAY_W×PLAY_H. The
-  // CSS size is scaled to the largest 9:16 rectangle that fits in #game.
+  // Canvas letterboxing: internal resolution is fixed at PLAY_W×PLAY_H; the
+  // CSS size scales to the largest 9:16 rectangle that fits in #game.
   function fitCanvas(): void {
     const { clientWidth: cw, clientHeight: ch } = gameEl!;
     if (cw === 0 || ch === 0) return;
@@ -60,6 +59,7 @@ async function boot(): Promise<void> {
     const h = Math.floor(PLAY_H * scale);
     app.canvas.style.width = `${w}px`;
     app.canvas.style.height = `${h}px`;
+    cachedRect = app.canvas.getBoundingClientRect();
   }
   fitCanvas();
   window.addEventListener("resize", fitCanvas);
@@ -73,7 +73,10 @@ async function boot(): Promise<void> {
   }
 
   function startNewRun(): void {
-    sceneLayer.removeChildren();
+    // Drain the stack first so each scene's exit() runs before its root is
+    // detached; otherwise DOM overlay cleanup can trail the Pixi teardown.
+    while (stack.top()) stack.pop();
+    app.stage.removeChildren();
     seed = pickSeed();
     const rng = createRng(seed);
     // eslint-disable-next-line no-console
@@ -85,11 +88,13 @@ async function boot(): Promise<void> {
       {
         updateHud,
         onWaveCleared: (cleared) => {
+          playSfx("draft");
           const offer = drawOffer(rng, 3);
           const label = `${cleared} of ${play.totalWaves()}`;
           stack.push(new DraftScene(offer, label, (pick) => onPickCard(pick)));
         },
         onPlayerDied: () => {
+          playSfx("death");
           stack.push(new EndgameScene("dead", play.currentWave1(), play.totalWaves(), startNewRun));
         },
         onRunWon: () => {
@@ -98,19 +103,35 @@ async function boot(): Promise<void> {
       },
       mapper,
     );
-    sceneLayer.addChild(play.root);
-    // Clear existing stack (exit all current top scenes) before pushing play.
-    while (stack.top()) stack.pop();
+    app.stage.addChild(play.root);
     stack.push(play);
   }
 
   function onPickCard(card: Card): void {
     applyCard(play.world, play.avatarId, card);
-    stack.pop(); // DraftScene
+    play.recordPick(card);
+    stack.pop();
     play.advanceToNextWave();
   }
 
   btnRestart?.addEventListener("click", () => startNewRun());
+
+  // Browsers block audio until the first user gesture. Prime Howl on the first
+  // pointerdown anywhere in the document; the listener self-removes.
+  function onFirstGesture(): void {
+    primeSfx();
+    document.removeEventListener("pointerdown", onFirstGesture);
+  }
+  document.addEventListener("pointerdown", onFirstGesture);
+
+  function syncMuteLabel(): void {
+    if (btnMute) btnMute.textContent = isMuted() ? "sfx off" : "sfx on";
+  }
+  btnMute?.addEventListener("click", () => {
+    setMuted(!isMuted());
+    syncMuteLabel();
+  });
+  syncMuteLabel();
 
   startNewRun();
 

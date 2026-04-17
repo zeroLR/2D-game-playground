@@ -1,0 +1,84 @@
+import type { Card } from "./cards";
+import type { Components, WeaponState } from "./world";
+
+// Mirror Boss: the wave-8 boss's combat stats are derived from whatever cards
+// the player drafted during the run. Offensive picks make it shoot harder;
+// movement picks make it faster. Pure mirror — no separate boss tuning pass.
+
+// Baseline boss combat profile before any mirror scaling.
+const BASE: {
+  weapon: WeaponState;
+  contactDamage: number;
+  maxSpeed: number;
+  hp: number;
+} = {
+  weapon: {
+    period: 1.1,
+    damage: 1,
+    projectileSpeed: 200,
+    projectiles: 1,
+    pierce: 0,
+    crit: 0,
+    cooldown: 1.0,
+  },
+  contactDamage: 1,
+  maxSpeed: 50,
+  hp: 60,
+};
+
+export interface MirrorBossSpec {
+  weapon: WeaponState;
+  contactDamage: number;
+  maxSpeed: number;
+  hp: number;
+}
+
+export function mirrorBossSpec(picks: readonly Card[]): MirrorBossSpec {
+  const w: WeaponState = { ...BASE.weapon };
+  let contactDamage = BASE.contactDamage;
+  let maxSpeed = BASE.maxSpeed;
+  let hp = BASE.hp;
+
+  for (const card of picks) {
+    const e = card.effect;
+    switch (e.kind) {
+      case "damageAdd":
+        w.damage += e.value;
+        contactDamage += e.value;
+        break;
+      case "periodMul":
+        w.period = Math.max(0.2, w.period * e.value);
+        break;
+      case "projectileSpeedMul":
+        w.projectileSpeed *= e.value;
+        break;
+      case "projectilesAdd":
+        w.projectiles += e.value;
+        break;
+      case "pierceAdd":
+        // Boss shots one-shot on contact (avatar iframes handle the rest), so
+        // pierce has no use; mirror it as +HP so the stat still "counts".
+        hp += e.value * 8;
+        break;
+      case "critAdd":
+        w.crit = Math.min(1, w.crit + e.value);
+        break;
+      case "maxHpAdd":
+        hp += e.value * 10;
+        break;
+      case "speedMul":
+        maxSpeed *= e.value;
+        break;
+    }
+  }
+
+  return { weapon: w, contactDamage, maxSpeed, hp };
+}
+
+export function applyMirrorSpec(boss: Components, spec: MirrorBossSpec): void {
+  if (!boss.enemy || !boss.hp) return;
+  boss.enemy.contactDamage = spec.contactDamage;
+  boss.enemy.maxSpeed = spec.maxSpeed;
+  boss.hp.value = spec.hp;
+  boss.weapon = { ...spec.weapon };
+}

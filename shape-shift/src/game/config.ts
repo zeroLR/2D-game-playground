@@ -8,7 +8,7 @@ export const AVATAR_START_X = PLAY_W / 2;
 export const AVATAR_START_Y = PLAY_H * 0.75;
 export const AVATAR_BASE_SPEED = 260; // play-field px / s
 export const AVATAR_RADIUS = 10;
-export const AVATAR_BASE_HP = 3;
+export const AVATAR_BASE_HP = 4;
 export const AVATAR_IFRAMES = 0.6; // seconds of invulnerability after a hit
 
 // Weapon (Vertex Shot — starting weapon)

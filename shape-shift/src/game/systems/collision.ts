@@ -1,9 +1,6 @@
 import { AVATAR_IFRAMES, HIT_FLASH_TIME } from "../config";
 import type { EntityId, World } from "../world";
 
-// Circle-circle collision. Enough for the visual language of the game.
-// Scope: ~40 enemies × ~100 projectiles = 4000 checks/frame — negligible.
-
 export interface CombatEvents {
   onEnemyKilled?: (id: EntityId) => void;
   onPlayerHit?: (amount: number) => void;
@@ -15,10 +12,9 @@ export function updateCollisions(
   avatarId: EntityId,
   events: CombatEvents,
 ): void {
-  // Projectile vs enemy.
   for (const [pid, pc] of world.with("projectile", "pos", "radius")) {
+    if (pc.team === "enemy-shot") continue;
     const proj = pc.projectile!;
-    if (proj.pierceRemaining < -1) { world.remove(pid); continue; }
     const pr = pc.radius!;
     const px = pc.pos!.x;
     const py = pc.pos!.y;
@@ -38,15 +34,11 @@ export function updateCollisions(
       } else {
         world.remove(pid);
       }
-      if (ec.hp!.value <= 0) {
-        ec.dead = true;
-        events.onEnemyKilled?.(eid);
-      }
-      break; // one hit per projectile step
+      if (ec.hp!.value <= 0) events.onEnemyKilled?.(eid);
+      break;
     }
   }
 
-  // Enemy vs avatar (contact damage).
   const avatar = world.get(avatarId);
   if (!avatar || !avatar.avatar || !avatar.pos) return;
   const a = avatar.avatar;
@@ -73,11 +65,31 @@ export function updateCollisions(
     }
     break;
   }
+
+  for (const [sid, sc] of world.with("projectile", "pos", "radius")) {
+    if (sc.team !== "enemy-shot") continue;
+    if (a.iframes > 0) break;
+    if (a.hp <= 0) break;
+    const dx = sc.pos!.x - ax;
+    const dy = sc.pos!.y - ay;
+    const rr = ar + sc.radius!;
+    if (dx * dx + dy * dy > rr * rr) continue;
+    const dmg = sc.projectile!.damage;
+    a.hp -= dmg;
+    a.iframes = AVATAR_IFRAMES;
+    avatar.flash = HIT_FLASH_TIME;
+    events.onPlayerHit?.(dmg);
+    world.remove(sid);
+    if (a.hp <= 0) {
+      a.hp = 0;
+      events.onPlayerDied?.();
+    }
+    break;
+  }
 }
 
-// Sweep dead enemies once per step.
 export function removeDeadEnemies(world: World): void {
-  for (const [id, c] of world.with("enemy")) {
-    if (c.dead || (c.hp?.value ?? 1) <= 0) world.remove(id);
+  for (const [id, c] of world.with("enemy", "hp")) {
+    if (c.hp!.value <= 0) world.remove(id);
   }
 }

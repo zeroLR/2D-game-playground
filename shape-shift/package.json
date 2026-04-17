@@ -11,9 +11,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "howler": "^2.2.4",
     "pixi.js": "^8.6.6"
   },
   "devDependencies": {
+    "@types/howler": "^2.2.12",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",

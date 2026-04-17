@@ -1,10 +1,6 @@
-// Plain bag-of-components World. Scope: ~250 simultaneous entities, so an
-// unindexed Map + linear iteration is more than enough. Keep all component
-// values as plain data so save/load is trivial later.
-
 export type EntityId = number;
 
-export type Team = "player" | "enemy" | "projectile";
+export type Team = "player" | "enemy" | "projectile" | "enemy-shot";
 
 export type EnemyKind = "circle" | "square" | "star" | "boss";
 
@@ -22,11 +18,11 @@ export interface WeaponState {
 }
 
 export interface Projectile {
-  ownerId: EntityId;
   damage: number;
   crit: boolean;
   pierceRemaining: number;
-  hitIds: Set<EntityId>; // enemies already hit (so pierce doesn't re-hit)
+  // Enemies already hit, so pierce doesn't re-hit the same target mid-flight.
+  hitIds: Set<EntityId>;
   ttl: number;
 }
 
@@ -57,7 +53,6 @@ export interface Components {
   projectile?: Projectile;
   hp?: { value: number }; // enemies only; avatar hp lives on Avatar
   flash?: number;         // seconds of hit flash remaining
-  dead?: true;
 }
 
 export class World {

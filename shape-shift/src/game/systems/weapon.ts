@@ -2,11 +2,7 @@ import { spawnProjectile } from "../entities";
 import type { Rng } from "../rng";
 import type { EntityId, World } from "../world";
 
-// Auto-fire system: avatar's weapon cooldown ticks down; when ≤ 0, fire at
-// the closest living enemy. If `weapon.projectiles > 1`, fan the shots with
-// a small spread angle.
-
-const FAN_SPREAD = 0.25; // radians between adjacent projectiles in a fan
+const FAN_SPREAD = 0.25;
 
 function closestEnemy(world: World, x: number, y: number): EntityId | null {
   let bestId: EntityId | null = null;
@@ -53,7 +49,7 @@ export function updateWeapon(
     const vx = Math.cos(a) * w.projectileSpeed;
     const vy = Math.sin(a) * w.projectileSpeed;
     const crit = rng() < w.crit;
-    spawnProjectile(world, avatarId, c.pos.x, c.pos.y, vx, vy, w, crit);
+    spawnProjectile(world, c.pos.x, c.pos.y, vx, vy, w, crit);
   }
   w.cooldown = w.period;
 }

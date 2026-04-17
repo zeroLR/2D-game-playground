@@ -55,7 +55,7 @@ export const WAVES: readonly WaveSpec[] = [
     durationHint: 28,
     groups: [
       { t: 0.5, kind: "circle", count: 6 },
-      { t: 6,   kind: "star",   count: 2 },
+      { t: 6,   kind: "star",   count: 1 },
       { t: 14,  kind: "square", count: 5 },
       { t: 22,  kind: "star",   count: 2 },
     ],

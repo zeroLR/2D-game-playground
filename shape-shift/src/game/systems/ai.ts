@@ -1,10 +1,6 @@
 import { ENEMY_SEEK_ACCEL } from "../config";
 import type { EntityId, World } from "../world";
 
-// Enemies seek the avatar. Circle/square go straight; star adds lateral wobble;
-// boss moves slowly with the same seek. All use accel-capped steering so they
-// don't teleport and feel bouncy when knocked off path.
-
 export function updateEnemyAi(world: World, avatarId: EntityId, dt: number): void {
   const avatar = world.get(avatarId);
   if (!avatar || !avatar.pos) return;

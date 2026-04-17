@@ -3,9 +3,6 @@ import type { Rng } from "../rng";
 import { type WaveSpec } from "../waves";
 import type { World } from "../world";
 
-// Wave runner: advances a timer, fires scheduled spawn groups, and reports
-// when the wave is "cleared" (all groups fired AND no live enemies remain).
-
 export interface WaveState {
   spec: WaveSpec;
   elapsed: number;
