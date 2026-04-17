@@ -9,7 +9,7 @@ import { newWaveState, updateWave, type WaveState } from "../game/systems/wave";
 import { updateWeapon } from "../game/systems/weapon";
 import { TOTAL_WAVES, WAVES } from "../game/waves";
 import { type EntityId, World } from "../game/world";
-import { drawWorld } from "../render";
+import { drawGrid, drawWorld } from "../render";
 import type { Scene } from "./scene";
 
 export interface PlayCallbacks {
@@ -19,11 +19,11 @@ export interface PlayCallbacks {
   updateHud: (hp: number, maxHp: number, waveIdx: number, totalWaves: number) => void;
 }
 
-// Bridges play-field coords ↔ client coords. The canvas CSS size varies per
-// viewport; we map pointer events back to the fixed 360×640 play-field.
+// The canvas CSS size varies per viewport; map pointer events back to the
+// fixed 360×640 play-field so gameplay math stays resolution-independent.
 export interface PointerMapper {
   clientToPlay: (clientX: number, clientY: number) => { x: number; y: number };
-  target: HTMLElement; // where to attach pointer listeners
+  target: HTMLElement;
 }
 
 export class PlayScene implements Scene {
@@ -35,17 +35,19 @@ export class PlayScene implements Scene {
   private readonly g: Graphics;
   private readonly cb: PlayCallbacks;
   private readonly mapper: PointerMapper;
-  private waveIdx: number; // 0-based
+  private waveIdx: number;
   private wave: WaveState;
   private tracking = false;
-  private boundOnDown: (ev: PointerEvent) => void;
-  private boundOnMove: (ev: PointerEvent) => void;
-  private boundOnUp: (ev: PointerEvent) => void;
-  private paused = false;
+  private readonly boundOnDown: (ev: PointerEvent) => void;
+  private readonly boundOnMove: (ev: PointerEvent) => void;
+  private readonly boundOnUp: (ev: PointerEvent) => void;
   private ended = false;
 
   constructor(rng: Rng, cb: PlayCallbacks, mapper: PointerMapper) {
     this.root = new Container();
+    const gridG = new Graphics();
+    drawGrid(gridG);
+    this.root.addChild(gridG);
     this.g = new Graphics();
     this.root.addChild(this.g);
     this.world = new World();
@@ -63,7 +65,6 @@ export class PlayScene implements Scene {
   }
 
   enter(): void {
-    this.paused = false;
     const t = this.mapper.target;
     t.addEventListener("pointerdown", this.boundOnDown);
     t.addEventListener("pointermove", this.boundOnMove);
@@ -72,7 +73,6 @@ export class PlayScene implements Scene {
   }
 
   exit(): void {
-    this.paused = true;
     this.tracking = false;
     const t = this.mapper.target;
     t.removeEventListener("pointerdown", this.boundOnDown);
@@ -98,7 +98,7 @@ export class PlayScene implements Scene {
   }
 
   update(dt: number): void {
-    if (this.paused || this.ended) return;
+    if (this.ended) return;
 
     updateWave(this.wave, this.world, this.rng, dt);
     updateAvatarMotion(this.world, dt);
@@ -122,7 +122,7 @@ export class PlayScene implements Scene {
     }
 
     if (this.wave.cleared) {
-      const cleared = this.waveIdx + 1; // 1-based for display
+      const cleared = this.waveIdx + 1;
       if (cleared >= TOTAL_WAVES) {
         this.ended = true;
         this.cb.onRunWon();
@@ -145,8 +145,7 @@ export class PlayScene implements Scene {
 
   private onPointerDown(ev: PointerEvent): void {
     this.tracking = true;
-    (this.mapper.target as HTMLElement & { setPointerCapture?: (id: number) => void })
-      .setPointerCapture?.(ev.pointerId);
+    this.mapper.target.setPointerCapture?.(ev.pointerId);
     this.setAvatarTarget(ev.clientX, ev.clientY);
   }
 
@@ -157,8 +156,7 @@ export class PlayScene implements Scene {
 
   private onPointerUp(ev: PointerEvent): void {
     this.tracking = false;
-    (this.mapper.target as HTMLElement & { releasePointerCapture?: (id: number) => void })
-      .releasePointerCapture?.(ev.pointerId);
+    this.mapper.target.releasePointerCapture?.(ev.pointerId);
   }
 
   private setAvatarTarget(clientX: number, clientY: number): void {

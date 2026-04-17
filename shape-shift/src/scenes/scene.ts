@@ -1,9 +1,5 @@
 import type { Container } from "pixi.js";
 
-// Minimal scene stack. `enter/exit` toggle the scene's Pixi container visibility
-// and let the scene wire/unwire its DOM overlay. `update` runs only on the top
-// scene; `render` draws every active scene so overlays can sit on frozen play.
-
 export interface Scene {
   readonly root: Container;
   enter?(): void;
@@ -29,11 +25,6 @@ export class SceneStack {
     this.stack[this.stack.length - 1]?.enter?.();
   }
 
-  replace(s: Scene): void {
-    this.pop();
-    this.push(s);
-  }
-
   top(): Scene | undefined {
     return this.stack[this.stack.length - 1];
   }
@@ -42,6 +33,8 @@ export class SceneStack {
     this.top()?.update(dt);
   }
 
+  // Render every scene bottom-up so overlay scenes (draft/endgame) compose on
+  // top of the frozen play-field instead of replacing it.
   render(alpha: number): void {
     for (const s of this.stack) s.render(alpha);
   }

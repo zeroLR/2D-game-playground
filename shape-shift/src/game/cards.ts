@@ -1,9 +1,6 @@
 import { type Rng, shuffle } from "./rng";
 import type { World, EntityId } from "./world";
 
-// MVP card pool: 10 cards that affect avatar stats or the single starting
-// weapon. Effects are data; apply() interprets them. No per-card logic.
-
 export type Rarity = "common" | "uncommon" | "rare";
 
 export type CardEffect =

@@ -89,7 +89,6 @@ export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
 
 export function spawnProjectile(
   world: World,
-  ownerId: EntityId,
   x: number,
   y: number,
   vx: number,
@@ -103,12 +102,11 @@ export function spawnProjectile(
     radius: PROJECTILE_RADIUS,
     team: "projectile",
     projectile: {
-      ownerId,
       damage: weapon.damage * (crit ? 2 : 1),
       crit,
       pierceRemaining: weapon.pierce,
       hitIds: new Set<EntityId>(),
-      ttl: 1.6, // seconds
+      ttl: 1.6,
     },
   });
 }
