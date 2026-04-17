@@ -1,4 +1,4 @@
-# shape-shift
+# Axiom
 
 A 3–5 minute mobile-portrait reverse bullet-hell deckbuilder. A geometric avatar
 auto-fires at converging hostile shapes; between waves you draft rune-cards
@@ -37,7 +37,7 @@ Open the URL Vite prints. On mobile, add `?seed=<number>` to reproduce a run.
 ## Structure
 
 ```
-shape-shift/
+axiom/
 ├── docs/concept.md          # contract for downstream skills
 ├── index.html               # portrait viewport, safe-area aware
 ├── src/

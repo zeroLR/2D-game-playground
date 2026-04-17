@@ -3,7 +3,7 @@ import { Howl, Howler } from "howler";
 export type SfxName = "hit" | "draft" | "death";
 
 // Relative paths resolve under Vite's configured `base`, so this works for both
-// dev (/2D-game-playground/shape-shift/) and prod GH Pages builds.
+// dev (/2D-game-playground/axiom/) and prod GH Pages builds.
 const SOURCES: Record<SfxName, string> = {
   hit: `${import.meta.env.BASE_URL}sfx/hit.wav`,
   draft: `${import.meta.env.BASE_URL}sfx/draft.wav`,

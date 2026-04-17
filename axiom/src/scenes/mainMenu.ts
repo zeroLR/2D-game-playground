@@ -33,7 +33,7 @@ export class MainMenuScene implements Scene {
     // Title
     const title = document.createElement("div");
     title.className = "overlay-title";
-    title.textContent = "shape-shift";
+    title.textContent = "Axiom";
     title.style.fontSize = "22px";
     title.style.marginBottom = "8px";
     inner.appendChild(title);

@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "simple-roguelike/**"
-      - "shape-shift/**"
+      - "axiom/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -30,7 +30,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: |
             simple-roguelike/package-lock.json
-            shape-shift/package-lock.json
+            axiom/package-lock.json
 
       - name: Install deps (simple-roguelike)
         working-directory: simple-roguelike
@@ -44,23 +44,23 @@ jobs:
         working-directory: simple-roguelike
         run: npm run build
 
-      - name: Install deps (shape-shift)
-        working-directory: shape-shift
+      - name: Install deps (axiom)
+        working-directory: axiom
         run: npm ci
 
-      - name: Run tests (shape-shift)
-        working-directory: shape-shift
+      - name: Run tests (axiom)
+        working-directory: axiom
         run: npm test
 
-      - name: Build (shape-shift)
-        working-directory: shape-shift
+      - name: Build (axiom)
+        working-directory: axiom
         run: npm run build
 
       - name: Assemble Pages artifact
         run: |
-          mkdir -p _site/simple-roguelike _site/shape-shift
+          mkdir -p _site/simple-roguelike _site/axiom
           cp -r simple-roguelike/dist/* _site/simple-roguelike/
-          cp -r shape-shift/dist/* _site/shape-shift/
+          cp -r axiom/dist/* _site/axiom/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">
@@ -83,7 +83,7 @@ jobs:
               <div class="desc">Turn-based roguelike with FOV, combat, and mobile D-pad.</div>
             </li>
             <li>
-              <a href="./shape-shift/">shape-shift</a>
+              <a href="./axiom/">axiom</a>
               <div class="desc">Mobile-portrait reverse bullet-hell deckbuilder (WIP).</div>
             </li>
           </ul>
