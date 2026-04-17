@@ -41,6 +41,8 @@ export interface Enemy {
   shootCooldown?: number;
   /** Crescent orbit angle (radians). */
   orbitAngle?: number;
+  /** Whether survival scaling has been applied (prevents double-scaling). */
+  scaled?: boolean;
 }
 
 export interface Avatar {

@@ -1,12 +1,14 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import { SHOP_ITEMS, type ShopItem } from "../game/data/shop";
-import type { PlayerProfile } from "../game/data/types";
+import type { PlayerProfile, EquipmentLoadout, ShopUnlocks } from "../game/data/types";
 
 // ── Shop scene (DOM overlay) ────────────────────────────────────────────────
 
 export interface ShopCallbacks {
   getProfile: () => PlayerProfile;
+  getEquipment: () => EquipmentLoadout;
+  getShopUnlocks: () => ShopUnlocks;
   onPurchase: (item: ShopItem) => void;
   onBack: () => void;
 }
@@ -111,8 +113,7 @@ export class ShopScene implements Scene {
   private isPurchased(item: ShopItem): boolean {
     const profile = this.cb.getProfile();
     if (item.category === "skin") return profile.ownedSkins.includes(item.id);
-    // For equipCards and slotExpand, check shop unlocks via purchased list stored in profile
-    // We use the shop's own tracking
-    return false; // Managed by the onPurchase callback at a higher level
+    const shopUnlocks = this.cb.getShopUnlocks();
+    return shopUnlocks.purchased.includes(item.id);
   }
 }

@@ -1,5 +1,5 @@
 import { AVATAR_IFRAMES, HIT_FLASH_TIME } from "../config";
-import { spawnEnemy } from "../entities";
+import { spawnEnemyAt } from "../entities";
 import type { Rng } from "../rng";
 import type { EntityId, World } from "../world";
 
@@ -52,11 +52,11 @@ export function updateCollisions(
         world.remove(pid);
       }
       if (ec.hp!.value <= 0) {
-        // Pentagon splits into small circles on death.
+        // Pentagon splits into small circles on death near its position.
         if (ec.enemy!.kind === "pentagon" && rng) {
           const count = 2 + Math.floor(rng() * 2); // 2-3
           for (let i = 0; i < count; i++) {
-            spawnEnemy(world, "circle", rng);
+            spawnEnemyAt(world, "circle", rng, ec.pos!.x, ec.pos!.y);
           }
         }
         events.onEnemyKilled?.(eid);

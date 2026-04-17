@@ -122,6 +122,8 @@ async function boot(): Promise<void> {
     if (hudPts) hudPts.textContent = `${points}pts`;
   }
 
+  const skillButtonUpdaters = new WeakMap<HTMLButtonElement, () => void>();
+
   function showSkillButtons(): void {
     if (!hudSkills) return;
     hudSkills.innerHTML = "";
@@ -145,17 +147,15 @@ async function boot(): Promise<void> {
         }
       };
       updateLabel();
-      // Store update fn for periodic refresh
-      (btn as HTMLButtonElement & { _update: () => void })._update = updateLabel;
+      skillButtonUpdaters.set(btn, updateLabel);
       hudSkills.appendChild(btn);
     }
   }
 
   function refreshSkillButtons(): void {
     if (!hudSkills) return;
-    for (const btn of hudSkills.querySelectorAll(".skill-btn")) {
-      const fn = (btn as HTMLButtonElement & { _update?: () => void })._update;
-      fn?.();
+    for (const btn of hudSkills.querySelectorAll<HTMLButtonElement>(".skill-btn")) {
+      skillButtonUpdaters.get(btn)?.();
     }
   }
 
@@ -295,6 +295,8 @@ async function boot(): Promise<void> {
           stack.pop();
           stack.push(new ShopScene({
             getProfile: () => profile,
+            getEquipment: () => equipment,
+            getShopUnlocks: () => shopUnlocks,
             onPurchase: async (item) => {
               if (profile.points < item.price) return;
               profile.points -= item.price;

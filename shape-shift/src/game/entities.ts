@@ -97,6 +97,31 @@ export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
   });
 }
 
+/** Spawn an enemy at a specific position (for pentagon splits etc.). */
+export function spawnEnemyAt(world: World, kind: EnemyKind, rng: Rng, atX: number, atY: number): EntityId {
+  const stats = ENEMY_STATS[kind];
+  const spread = 12;
+  const x = atX + (rng() - 0.5) * spread;
+  const y = atY + (rng() - 0.5) * spread;
+  return world.create({
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    radius: stats.radius,
+    team: "enemy",
+    enemy: {
+      kind,
+      contactDamage: stats.contactDamage,
+      maxSpeed: stats.maxSpeed,
+      wobblePhase: rng() * Math.PI * 2,
+      shield: kind === "hexagon" ? 1 : undefined,
+      dashCooldown: kind === "diamond" ? 2 + rng() * 2 : undefined,
+      shootCooldown: kind === "cross" ? 1.5 + rng() : undefined,
+      orbitAngle: kind === "crescent" ? rng() * Math.PI * 2 : undefined,
+    },
+    hp: { value: stats.hp },
+  });
+}
+
 export function spawnProjectile(
   world: World,
   x: number,

@@ -311,11 +311,10 @@ export class PlayScene implements Scene {
     const spdMul = survivalSpeedScale(wave1);
     for (const [, c] of this.world.with("enemy", "hp")) {
       if (c.enemy!.kind === "boss") continue;
-      // Only scale if not already scaled (check a tag).
-      if ((c as Record<string, unknown>)._scaled) continue;
+      if (c.enemy!.scaled) continue;
       c.hp!.value = Math.ceil(c.hp!.value * hpMul);
       c.enemy!.maxSpeed *= spdMul;
-      (c as Record<string, unknown>)._scaled = true;
+      c.enemy!.scaled = true;
     }
   }
 
