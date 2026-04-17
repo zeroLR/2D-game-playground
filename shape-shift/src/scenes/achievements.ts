@@ -1,0 +1,96 @@
+import { Container } from "pixi.js";
+import type { Scene } from "./scene";
+import type { AchievementState } from "../game/data/types";
+import { ACHIEVEMENTS } from "../game/achievements";
+
+// ── Achievements browse scene ───────────────────────────────────────────────
+
+export class AchievementsScene implements Scene {
+  readonly root: Container;
+  private readonly getState: () => AchievementState;
+  private readonly onBack: () => void;
+
+  constructor(getState: () => AchievementState, onBack: () => void) {
+    this.root = new Container();
+    this.getState = getState;
+    this.onBack = onBack;
+  }
+
+  enter(): void {
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (!overlay || !inner) return;
+    inner.innerHTML = "";
+
+    const state = this.getState();
+
+    const title = document.createElement("div");
+    title.className = "overlay-title";
+    title.textContent = "achievements";
+    inner.appendChild(title);
+
+    const unlocked = Object.values(state).filter((e) => e.unlocked).length;
+    const total = ACHIEVEMENTS.length;
+    const sub = document.createElement("div");
+    sub.className = "overlay-sub";
+    sub.textContent = `${unlocked}/${total} unlocked`;
+    inner.appendChild(sub);
+
+    const list = document.createElement("div");
+    list.className = "card-list";
+
+    for (const def of ACHIEVEMENTS) {
+      const entry = state[def.id];
+      const btn = document.createElement("div");
+      btn.className = "card-btn";
+      if (!entry.unlocked) btn.style.opacity = "0.4";
+
+      const glyph = document.createElement("span");
+      glyph.className = "card-glyph";
+      glyph.textContent = entry.unlocked ? def.glyph : "?";
+      btn.appendChild(glyph);
+
+      const body = document.createElement("span");
+      body.className = "card-body";
+      const name = document.createElement("span");
+      name.className = "card-name";
+      name.textContent = def.name;
+      const desc = document.createElement("span");
+      desc.className = "card-text";
+      desc.textContent = entry.unlocked ? def.description : "???";
+      body.appendChild(name);
+      body.appendChild(desc);
+
+      if (entry.unlocked && entry.unlockedAt) {
+        const date = document.createElement("span");
+        date.className = "card-rarity";
+        date.textContent = new Date(entry.unlockedAt).toLocaleDateString();
+        body.appendChild(date);
+      }
+
+      btn.appendChild(body);
+      list.appendChild(btn);
+    }
+    inner.appendChild(list);
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "big-btn";
+    back.textContent = "← back";
+    back.style.marginTop = "8px";
+    back.addEventListener("click", () => this.onBack());
+    inner.appendChild(back);
+
+    overlay.hidden = false;
+  }
+
+  exit(): void {
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (inner) inner.innerHTML = "";
+    if (overlay) overlay.hidden = true;
+  }
+
+  update(_dt: number): void {}
+  render(_alpha: number): void {}
+}
