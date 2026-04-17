@@ -66,6 +66,7 @@ body {
   min-height: 32px;
   border-radius: 6px;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 #topbar .ctrl-btn:active {
@@ -81,12 +82,14 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  touch-action: none;
 }
 
 #game canvas {
   display: block;
   background: var(--bg);
   image-rendering: auto;
+  touch-action: none;
 }
 
 #overlay {
@@ -146,9 +149,17 @@ body {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .card-btn:active {
+  background: var(--chrome);
+}
+
+.card-btn.selected {
+  border-color: var(--fg);
+  border-width: 2px;
+  padding: 11px 13px;
   background: var(--chrome);
 }
 
@@ -194,10 +205,18 @@ body {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .big-btn:active {
   background: #000;
+}
+
+.big-btn:disabled {
+  background: #ccc;
+  border-color: #ccc;
+  color: #fff;
+  cursor: not-allowed;
 }
 
 #footer-hint {
