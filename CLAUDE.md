@@ -12,4 +12,3 @@
 
 ## Axiom adjustment log
 - For Axiom, record every game-related change under this section in `CLAUDE.md` as one adjustment entry per change (new features, new enemies, balance/value tuning, UI changes, bug fixes, etc.).
-- Added `axiom/AGENTS.md` with `@STYLE.md` and `@CLAUDE.md`, and created `axiom/CLAUDE.md` scaffold.
