@@ -97,6 +97,19 @@ export interface Avatar {
   synergies?: SynergyRuntime[];
   /** Cosmetic avatar skin ID chosen from equipment screen. */
   skinId?: string;
+  // --- Evolution cards (each undefined unless drafted) ---
+  /** Aegis: regenerating shield. Each point absorbs one hit. */
+  shield?: number;
+  shieldMax?: number;
+  shieldRegenPeriod?: number; // seconds per +1 shield while not at max
+  shieldRegenTimer?: number;  // accumulator; resets to 0 on hit
+  /** Revenant: one-shot revive flag. true while available, false after consumed. */
+  secondChance?: boolean;
+  /** Phase Shift: auto-dodge charges that regen on a cooldown. */
+  dodgeMax?: number;
+  dodgeCharges?: number;
+  dodgePeriod?: number;
+  dodgeCooldown?: number;
 }
 
 export interface Components {

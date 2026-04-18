@@ -100,6 +100,22 @@ export function mirrorBossSpec(picks: readonly Card[]): MirrorBossSpec {
           case "stillness":  w.period = Math.max(0.2, w.period * 0.85); break;
         }
         break;
+      case "shieldRegen":
+        // Aegis on the boss → meaningful chunk of bonus HP per shield point.
+        hp += e.max * 8;
+        break;
+      case "secondChance":
+        // Revenant → boss soaks one extra phase worth of HP.
+        hp += 20;
+        break;
+      case "hitboxMul":
+        // Compact shrinks the player; mirror as a faster, harder-to-pin boss.
+        maxSpeed *= 1 + (1 - e.value) * 0.5;
+        break;
+      case "dodgeCD":
+        // Phase Shift adds an extra HP cushion roughly equal to a half-life.
+        hp += 12;
+        break;
     }
   }
 

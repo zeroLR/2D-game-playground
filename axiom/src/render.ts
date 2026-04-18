@@ -91,6 +91,16 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
       g.circle(x, y, r + 4);
       g.stroke({ color: 0x00bcd4, width: 1.5 });
     }
+    // Aegis ring — thicker stroke when more shield charges remain.
+    if (a.shield !== undefined && a.shield > 0) {
+      g.circle(x, y, r + 7);
+      g.stroke({ color: 0x80d8ff, width: a.shield > 1 ? 2.5 : 1.5 });
+    }
+    // Phase Shift chip — small dot when a dodge charge is loaded.
+    if ((a.dodgeCharges ?? 0) > 0) {
+      g.circle(x + r + 6, y - r - 6, 2.5);
+      g.fill({ color: 0xb388ff });
+    }
   }
 }
 
