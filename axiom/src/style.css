@@ -334,6 +334,45 @@ body {
   cursor: not-allowed;
 }
 
+/* ── Discussions ─────────────────────────────────────────────────────────── */
+
+#comments-dialog {
+  width: min(960px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 0;
+  background: #fff;
+  color: var(--fg);
+}
+
+#comments-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+#comments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+#comments-body {
+  max-height: calc(100dvh - 120px);
+  overflow: auto;
+  padding: 12px;
+  touch-action: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#comments-body .giscus {
+  width: 100%;
+}
+
 /* ── Skill buttons ─────────────────────────────────────────────────────── */
 
 #hud-skills {
