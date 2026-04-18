@@ -1,6 +1,7 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import { STAGE_THEMES } from "../game/stageThemes";
+import { iconBack, iconSpan } from "../icons";
 
 // ── Stage select (Normal mode) ──────────────────────────────────────────────
 
@@ -68,7 +69,8 @@ export class StageSelectScene implements Scene {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "big-btn";
-    back.textContent = "← back";
+    back.appendChild(iconSpan(iconBack));
+    back.append(" back");
     back.style.marginTop = "8px";
     back.addEventListener("click", () => this.onBack());
     inner.appendChild(back);

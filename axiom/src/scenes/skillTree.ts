@@ -10,6 +10,7 @@ import {
   type PrimalSkillDef,
 } from "../game/skills";
 import type { Rng } from "../game/rng";
+import { iconBack, iconSpan, glyphStar4, SKILL_GLYPHS, setIconHtml } from "../icons";
 
 // ── Skill Tree scene (DOM overlay) ──────────────────────────────────────────
 
@@ -53,7 +54,8 @@ export class SkillTreeScene implements Scene {
       const drawBtn = document.createElement("button");
       drawBtn.type = "button";
       drawBtn.className = "big-btn";
-      drawBtn.textContent = `✧ Draw skill (1 core)`;
+      drawBtn.appendChild(iconSpan(glyphStar4));
+      drawBtn.append(" Draw skill (1 core)");
       drawBtn.addEventListener("click", () => {
         const rng = this.cb.getRng();
         const result = drawPrimalSkill(state, rng);
@@ -90,7 +92,9 @@ export class SkillTreeScene implements Scene {
 
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      glyph.textContent = def.glyph;
+      const skillSvg = SKILL_GLYPHS[def.id];
+      if (skillSvg) setIconHtml(glyph, skillSvg);
+      else glyph.textContent = def.glyph;
       header.appendChild(glyph);
 
       const nameSpan = document.createElement("span");
@@ -142,7 +146,8 @@ export class SkillTreeScene implements Scene {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "big-btn";
-    back.textContent = "← back";
+    back.appendChild(iconSpan(iconBack));
+    back.append(" back");
     back.style.marginTop = "8px";
     back.addEventListener("click", () => this.cb.onBack());
     inner.appendChild(back);
