@@ -1,5 +1,6 @@
 import { Graphics } from "pixi.js";
 import { PLAY_H, PLAY_W } from "./game/config";
+import { BOSS_FAN_SPREAD, BOSS_TELEGRAPH_LEAD } from "./game/systems/bossWeapon";
 import type { EnemyKind, World } from "./game/world";
 import type { StageTheme } from "./game/stageThemes";
 
@@ -27,6 +28,26 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
       g.circle(c.pos!.x, c.pos!.y, c.radius! + 1.5);
       g.stroke({ color: strokeColor, width: 1 });
     }
+  }
+
+  // Boss telegraph: draw each pending fan ray before enemies so the boss
+  // body overlaps the origin. Alpha ramps up as the shot nears.
+  const RAY_LEN = Math.hypot(PLAY_W, PLAY_H);
+  for (const [, c] of world.with("enemy", "weapon", "pos")) {
+    if (c.enemy!.kind !== "boss") continue;
+    const ang = c.enemy!.telegraphAngle;
+    if (ang === undefined) continue;
+    const remaining = c.weapon!.cooldown;
+    const t = 1 - Math.max(0, Math.min(1, remaining / BOSS_TELEGRAPH_LEAD));
+    const alpha = 0.2 + 0.55 * t;
+    const n = Math.max(1, c.weapon!.projectiles);
+    const startAngle = ang - (BOSS_FAN_SPREAD * (n - 1)) / 2;
+    for (let i = 0; i < n; i++) {
+      const a = startAngle + BOSS_FAN_SPREAD * i;
+      g.moveTo(c.pos!.x, c.pos!.y);
+      g.lineTo(c.pos!.x + Math.cos(a) * RAY_LEN, c.pos!.y + Math.sin(a) * RAY_LEN);
+    }
+    g.stroke({ color: 0xff2020, alpha, width: 2 });
   }
 
   for (const [, c] of world.with("enemy", "pos", "radius")) {
