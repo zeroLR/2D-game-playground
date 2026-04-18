@@ -4,6 +4,13 @@ import { BOSS_FAN_SPREAD, BOSS_TELEGRAPH_LEAD } from "./game/systems/bossWeapon"
 import type { EnemyKind, World } from "./game/world";
 import type { StageTheme } from "./game/stageThemes";
 
+// Cap for the fullscreen matte layer so enemies remain readable.
+const MAX_BASE_FOG_ALPHA = 0.18;
+// Maps theme fogAlpha (0..1) to the fullscreen matte layer opacity.
+const FOG_ALPHA_SCALE = 0.55;
+// Additional alpha multiplier for soft fog blobs.
+const FOG_BLOB_ALPHA_MULTIPLIER = 0.12;
+
 export function drawGrid(g: Graphics, gridColor: number = 0xf0f0f0): void {
   const STEP = 40;
   for (let x = 0; x <= PLAY_W; x += STEP) { g.moveTo(x, 0); g.lineTo(x, PLAY_H); }
@@ -16,6 +23,7 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
   const dark = theme?.dark ?? false;
   const strokeColor = theme?.enemyStroke ?? 0x111111;
   const playerBodyColor = theme?.playerColor ?? 0x111111;
+  drawMatteFog(g, theme);
 
   for (const [, c] of world.with("projectile", "pos", "radius")) {
     const enemyShot = c.team === "enemy-shot";
@@ -87,6 +95,25 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
       g.circle(x, y, r + 4);
       g.stroke({ color: 0x00bcd4, width: 1.5 });
     }
+  }
+}
+
+function drawMatteFog(g: Graphics, theme?: StageTheme): void {
+  const fogAlpha = theme?.fogAlpha ?? 0;
+  if (fogAlpha <= 0) return;
+  const fogColor = theme?.fogColor ?? 0xffffff;
+  g.rect(0, 0, PLAY_W, PLAY_H);
+  g.fill({ color: fogColor, alpha: Math.min(MAX_BASE_FOG_ALPHA, fogAlpha * FOG_ALPHA_SCALE) });
+  const blobs = [
+    { x: PLAY_W * 0.18, y: PLAY_H * 0.2, r: 120, a: 1.0 },
+    { x: PLAY_W * 0.78, y: PLAY_H * 0.28, r: 150, a: 0.85 },
+    { x: PLAY_W * 0.52, y: PLAY_H * 0.58, r: 170, a: 0.7 },
+    { x: PLAY_W * 0.2, y: PLAY_H * 0.86, r: 135, a: 0.9 },
+    { x: PLAY_W * 0.82, y: PLAY_H * 0.84, r: 145, a: 0.75 },
+  ] as const;
+  for (const blob of blobs) {
+    g.circle(blob.x, blob.y, blob.r);
+    g.fill({ color: fogColor, alpha: fogAlpha * FOG_BLOB_ALPHA_MULTIPLIER * blob.a });
   }
 }
 
