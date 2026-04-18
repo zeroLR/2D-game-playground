@@ -85,15 +85,39 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
     const r = c.radius!;
     const a = c.avatar!;
     const bodyFill = (c.flash ?? 0) > 0 ? 0xffffff : playerBodyColor;
-    const h = r * Math.sqrt(3) / 2;
-    g.moveTo(x, y - h * 0.9);
-    g.lineTo(x + r * 0.9, y + h * 0.6);
-    g.lineTo(x - r * 0.9, y + h * 0.6);
-    g.closePath();
+    drawAvatarShape(g, a.skinId ?? "triangle", x, y, r);
     g.fill({ color: bodyFill }).stroke({ color: playerBodyColor, width: 2 });
     if (a.iframes > 0) {
       g.circle(x, y, r + 4);
       g.stroke({ color: 0x00bcd4, width: 1.5 });
+    }
+  }
+}
+
+function drawAvatarShape(g: Graphics, skinId: string, x: number, y: number, r: number): void {
+  switch (skinId) {
+    case "skin-square":
+      g.rect(x - r, y - r, r * 2, r * 2);
+      break;
+    case "skin-diamond":
+      drawDiamond(g, x, y, r);
+      break;
+    case "skin-hexagon":
+      drawPolygon(g, x, y, r, 6);
+      break;
+    case "skin-star":
+      drawStar(g, x, y, r, 5);
+      break;
+    case "skin-boss":
+      drawPolygon(g, x, y, r, 6);
+      break;
+    default: {
+      const h = r * Math.sqrt(3) / 2;
+      g.moveTo(x, y - h * 0.9);
+      g.lineTo(x + r * 0.9, y + h * 0.6);
+      g.lineTo(x - r * 0.9, y + h * 0.6);
+      g.closePath();
+      break;
     }
   }
 }

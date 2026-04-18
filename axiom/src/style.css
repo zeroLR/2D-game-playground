@@ -43,6 +43,7 @@ body {
   color: var(--muted);
   background: var(--bg);
   border-bottom: 1px solid var(--chrome);
+  overflow-x: auto;
 }
 
 .hud-chip {
@@ -76,6 +77,11 @@ body {
 
 #topbar .ctrl-btn:active {
   background: var(--chrome);
+}
+
+#topbar .ctrl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 #game {
@@ -115,10 +121,13 @@ body {
 #overlay-inner {
   width: 100%;
   max-width: 340px;
+  max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .overlay-title {
