@@ -43,6 +43,12 @@ export function drawWorld(g: Graphics, world: World, theme?: StageTheme): void {
       g.circle(x, y, r + 3);
       g.stroke({ color: 0x00e5ff, width: 1.5 });
     }
+
+    // Elite ring — visual tell that this kill yields a draft token.
+    if (c.enemy!.isElite) {
+      g.circle(x, y, r + 5);
+      g.stroke({ color: 0xd81b60, width: 1.5 });
+    }
   }
 
   for (const [, c] of world.with("avatar", "pos", "radius")) {

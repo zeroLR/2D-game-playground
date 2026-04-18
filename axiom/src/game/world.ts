@@ -60,6 +60,8 @@ export interface Enemy {
   burn?: { dps: number; remaining: number };
   /** Slow debuff applied by keyword effects. */
   slow?: { pct: number; remaining: number };
+  /** Marked as elite at spawn time. Elite kills yield +1 draft token. */
+  isElite?: boolean;
 }
 
 export type SynergyId = "combustion" | "desperate" | "kinetic" | "stillness";

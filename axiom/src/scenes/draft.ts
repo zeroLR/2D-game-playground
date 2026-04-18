@@ -6,31 +6,73 @@ import { CARD_GLYPHS, setIconHtml } from "../icons";
 // Overlay-based scene — no Pixi drawing. Renders into `#overlay-inner` and
 // waits for a tap on one of the offered cards.
 
+export interface DraftHandlers {
+  onPick: (card: Card) => void;
+  /** Spend a token to redraw the offer. Returns true iff redraw happened. */
+  onReroll: () => boolean;
+  /** Leave without picking and without consuming a token. */
+  onSkip: () => void;
+  /** Current token balance, read each render. */
+  getTokens: () => number;
+  /** Cost of a reroll (for label rendering). */
+  rerollCost: number;
+}
+
 export class DraftScene implements Scene {
   readonly root: Container;
-  private readonly offer: readonly Card[];
-  private readonly onPick: (card: Card) => void;
+  private offer: readonly Card[];
+  private readonly handlers: DraftHandlers;
   private readonly clearedWaveLabel: string;
   private selected: Card | null = null;
 
-  constructor(offer: readonly Card[], clearedWaveLabel: string, onPick: (card: Card) => void) {
+  constructor(offer: readonly Card[], clearedWaveLabel: string, handlers: DraftHandlers) {
     this.root = new Container();
     this.offer = offer;
-    this.onPick = onPick;
+    this.handlers = handlers;
     this.clearedWaveLabel = clearedWaveLabel;
+  }
+
+  /** Replace the visible card offer (used by reroll). */
+  setOffer(next: readonly Card[]): void {
+    this.offer = next;
+    this.selected = null;
+    this.renderDom();
   }
 
   enter(): void {
     const overlay = document.getElementById("overlay");
-    const inner = document.getElementById("overlay-inner");
-    if (!overlay || !inner) return;
-    inner.innerHTML = "";
+    if (!overlay) return;
     this.selected = null;
+    this.renderDom();
+    overlay.hidden = false;
+  }
+
+  exit(): void {
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (inner) inner.innerHTML = "";
+    if (overlay) overlay.hidden = true;
+  }
+
+  update(_dt: number): void {}
+  // Pixi render hook is a no-op; this scene draws through DOM on enter/reroll.
+  render(_alpha: number): void {}
+
+  private renderDom(): void {
+    const inner = document.getElementById("overlay-inner");
+    if (!inner) return;
+    inner.innerHTML = "";
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = `wave ${this.clearedWaveLabel} cleared — pick a rune`;
     inner.appendChild(title);
+
+    const tokens = this.handlers.getTokens();
+    const tokenRow = document.createElement("div");
+    tokenRow.className = "draft-tokens";
+    tokenRow.textContent = `tokens: ${tokens}`;
+    inner.appendChild(tokenRow);
 
     const list = document.createElement("div");
     list.className = "card-list";
@@ -85,21 +127,32 @@ export class DraftScene implements Scene {
     confirmBtn.disabled = true;
     confirmBtn.textContent = "pick a card first";
     confirmBtn.addEventListener("click", () => {
-      if (this.selected) this.onPick(this.selected);
+      if (this.selected) this.handlers.onPick(this.selected);
     });
     inner.appendChild(confirmBtn);
 
-    overlay.hidden = false;
+    const actionRow = document.createElement("div");
+    actionRow.className = "draft-actions";
+
+    const rerollBtn = document.createElement("button");
+    rerollBtn.type = "button";
+    rerollBtn.className = "secondary-btn";
+    rerollBtn.textContent = `reroll (${this.handlers.rerollCost})`;
+    rerollBtn.disabled = tokens < this.handlers.rerollCost;
+    rerollBtn.addEventListener("click", () => {
+      if (this.handlers.onReroll()) {
+        // setOffer re-renders; no further action here.
+      }
+    });
+
+    const skipBtn = document.createElement("button");
+    skipBtn.type = "button";
+    skipBtn.className = "secondary-btn";
+    skipBtn.textContent = "skip";
+    skipBtn.addEventListener("click", () => this.handlers.onSkip());
+
+    actionRow.appendChild(rerollBtn);
+    actionRow.appendChild(skipBtn);
+    inner.appendChild(actionRow);
   }
-
-  exit(): void {
-    const overlay = document.getElementById("overlay");
-    const inner = document.getElementById("overlay-inner");
-    if (inner) inner.innerHTML = "";
-    if (overlay) overlay.hidden = true;
-  }
-
-  update(_dt: number): void {}
-
-  render(_alpha: number): void {}
 }
