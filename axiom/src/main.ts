@@ -59,9 +59,11 @@ async function boot(): Promise<void> {
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
   const btnPause = document.getElementById("btn-pause");
+  const btnComments = document.getElementById("btn-comments");
   const btnMute = document.getElementById("btn-mute");
   const btnMenu = document.getElementById("btn-menu");
   const hudSkills = document.getElementById("hud-skills");
+  const commentsDialog = document.getElementById("comments-dialog");
   if (!gameEl) throw new Error("#game element missing");
 
   // ── Load persistent state ───────────────────────────────────────────────
@@ -544,6 +546,11 @@ async function boot(): Promise<void> {
     const top = stack.top();
     if (!paused && top !== play) return;
     setPaused(!paused);
+  });
+  btnComments?.addEventListener("click", () => {
+    if (!(commentsDialog instanceof HTMLDialogElement)) return;
+    if (!paused && currentRun) setPaused(true);
+    commentsDialog.showModal();
   });
   btnMenu?.addEventListener("click", () => showMainMenu());
 
