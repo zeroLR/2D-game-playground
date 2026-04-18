@@ -1,0 +1,2 @@
+@STYLE.md
+@CLAUDE.md
