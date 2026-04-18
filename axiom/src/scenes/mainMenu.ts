@@ -1,10 +1,5 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
-import {
-  iconPlay, iconInfinity, iconShop, iconEquipment,
-  iconSkills, iconAchievements, iconExport, iconImport,
-  iconSpan,
-} from "../icons";
 
 // ── Main Menu (DOM overlay) ─────────────────────────────────────────────────
 // Entry point of the game. Shows mode selection and meta-system access.
@@ -51,8 +46,8 @@ export class MainMenuScene implements Scene {
     inner.appendChild(sub);
 
     // Mode buttons
-    this.addBtn(inner, iconPlay, "Normal Mode", "normalMode", "big-btn");
-    this.addBtn(inner, iconInfinity, "Survival Mode", "survivalMode", "big-btn");
+    this.addBtn(inner, "▶  Normal Mode", "normalMode", "big-btn");
+    this.addBtn(inner, "∞  Survival Mode", "survivalMode", "big-btn");
 
     // Spacer
     const spacer = document.createElement("div");
@@ -64,10 +59,10 @@ export class MainMenuScene implements Scene {
     row.style.display = "grid";
     row.style.gridTemplateColumns = "1fr 1fr";
     row.style.gap = "8px";
-    this.addBtn(row, iconShop, "Shop", "shop", "menu-btn");
-    this.addBtn(row, iconEquipment, "Equipment", "equipment", "menu-btn");
-    this.addBtn(row, iconSkills, "Skills", "skillTree", "menu-btn");
-    this.addBtn(row, iconAchievements, "Achievements", "achievements", "menu-btn");
+    this.addBtn(row, "🛒 Shop", "shop", "menu-btn");
+    this.addBtn(row, "⚙ Equipment", "equipment", "menu-btn");
+    this.addBtn(row, "🌳 Skills", "skillTree", "menu-btn");
+    this.addBtn(row, "🏆 Achievements", "achievements", "menu-btn");
     inner.appendChild(row);
 
     // Data row
@@ -75,8 +70,8 @@ export class MainMenuScene implements Scene {
     dataRow.style.display = "flex";
     dataRow.style.gap = "8px";
     dataRow.style.marginTop = "8px";
-    this.addBtn(dataRow, iconExport, "Export", "exportData", "menu-btn", "flex:1");
-    this.addBtn(dataRow, iconImport, "Import", "importData", "menu-btn", "flex:1");
+    this.addBtn(dataRow, "📤 Export", "exportData", "menu-btn", "flex:1");
+    this.addBtn(dataRow, "📥 Import", "importData", "menu-btn", "flex:1");
     inner.appendChild(dataRow);
 
     overlay.hidden = false;
@@ -94,7 +89,6 @@ export class MainMenuScene implements Scene {
 
   private addBtn(
     parent: HTMLElement,
-    icon: string,
     label: string,
     action: MenuAction["kind"],
     className: string,
@@ -103,8 +97,7 @@ export class MainMenuScene implements Scene {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = className;
-    btn.appendChild(iconSpan(icon));
-    btn.append(` ${label}`);
+    btn.textContent = label;
     if (extraStyle) btn.style.cssText += extraStyle;
     btn.addEventListener("click", () => this.onAction({ kind: action }));
     parent.appendChild(btn);
