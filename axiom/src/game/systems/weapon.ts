@@ -1,5 +1,6 @@
 import { spawnProjectile } from "../entities";
 import type { Rng } from "../rng";
+import { computeSynergyBonuses } from "../synergies";
 import type { EntityId, World } from "../world";
 
 const FAN_SPREAD = 0.25;
@@ -38,6 +39,18 @@ export function updateWeapon(
     if (w.cooldown < -0.5) w.cooldown = 0;
     return;
   }
+
+  // Synergy bonuses (Desperate/Kinetic/Stillness) apply per-shot, never mutate
+  // the base WeaponState, so conditions that later stop holding revert cleanly.
+  const velMag = c.vel ? Math.hypot(c.vel.x, c.vel.y) : 0;
+  const bonus = c.avatar
+    ? computeSynergyBonuses(c.avatar.synergies, c.avatar, velMag)
+    : { damageMul: 1, periodMul: 1, critAdd: 0 };
+  const effPeriod = Math.max(0.05, w.period * bonus.periodMul);
+  const effDamage = w.damage * bonus.damageMul;
+  const effCrit = Math.min(1, w.crit + bonus.critAdd);
+  const effWeapon = { ...w, damage: effDamage, period: effPeriod, crit: effCrit };
+
   const target = world.get(targetId)!;
   const dx = target.pos!.x - c.pos.x;
   const dy = target.pos!.y - c.pos.y;
@@ -48,8 +61,8 @@ export function updateWeapon(
     const a = startAngle + FAN_SPREAD * i;
     const vx = Math.cos(a) * w.projectileSpeed;
     const vy = Math.sin(a) * w.projectileSpeed;
-    const crit = rng() < w.crit;
-    spawnProjectile(world, c.pos.x, c.pos.y, vx, vy, w, crit);
+    const crit = rng() < effCrit;
+    spawnProjectile(world, c.pos.x, c.pos.y, vx, vy, effWeapon, crit);
   }
-  w.cooldown = w.period;
+  w.cooldown = effPeriod;
 }

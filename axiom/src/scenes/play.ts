@@ -26,6 +26,7 @@ import {
 } from "../game/skills";
 import { survivalWaveSpec, isMirrorBossWave, survivalHpScale, survivalSpeedScale } from "../game/survivalWaves";
 import type { StageTheme } from "../game/stageThemes";
+import { SYNERGY_CONFIG, explodeAt } from "../game/synergies";
 
 export type GameMode = "normal" | "survival";
 
@@ -246,10 +247,11 @@ export class PlayScene implements Scene {
     }
 
     let died = false;
-    const events = {
+    const events: import("../game/events").GameEvents = {
       onEnemyKilled: (eid: EntityId) => {
         playSfx("hit");
         this.onEnemyKilled(eid);
+        this.tickCombustion(events);
       },
       onPlayerDied: () => { died = true; },
     };
@@ -301,6 +303,24 @@ export class PlayScene implements Scene {
       const drop = rollBossLoot(this.rng);
       this.loot.push(drop);
       if (drop.kind === "points") this.runPoints += drop.value;
+    }
+  }
+
+  private tickCombustion(events: import("../game/events").GameEvents): void {
+    const a = this.world.get(this.avatarId);
+    const pos = a?.pos;
+    const synergies = a?.avatar?.synergies;
+    if (!pos || !synergies) return;
+    const cfg = SYNERGY_CONFIG.combustion;
+    for (const s of synergies) {
+      if (s.id !== "combustion") continue;
+      s.killCounter = (s.killCounter ?? 0) + 1;
+      if (s.killCounter >= cfg.interval) {
+        // Reset before firing so chain-kills start a fresh cycle and we can't
+        // re-trigger this same blast recursively.
+        s.killCounter = 0;
+        explodeAt(this.world, pos.x, pos.y, cfg.radius, cfg.damage, events);
+      }
     }
   }
 
