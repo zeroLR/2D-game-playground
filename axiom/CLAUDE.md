@@ -1,4 +1,2 @@
-# CLAUDE.md
-
-## Axiom adjustment log
+@AGENTS.md
 
