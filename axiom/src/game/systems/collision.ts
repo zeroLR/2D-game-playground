@@ -122,15 +122,7 @@ export function updateCollisions(
     const rr = ar + er;
     if (dx * dx + dy * dy > rr * rr) continue;
     if (a.iframes > 0) continue;
-    const dmg = ec.enemy!.contactDamage;
-    a.hp -= dmg;
-    a.iframes = AVATAR_IFRAMES;
-    avatar.flash = HIT_FLASH_TIME;
-    events.onPlayerHit?.(dmg);
-    if (a.hp <= 0) {
-      a.hp = 0;
-      events.onPlayerDied?.();
-    }
+    if (applyAvatarDamage(avatar, ec.enemy!.contactDamage, events)) break;
     break;
   }
 
@@ -142,18 +134,55 @@ export function updateCollisions(
     const dy = sc.pos!.y - ay;
     const rr = ar + sc.radius!;
     if (dx * dx + dy * dy > rr * rr) continue;
-    const dmg = sc.projectile!.damage;
-    a.hp -= dmg;
-    a.iframes = AVATAR_IFRAMES;
-    avatar.flash = HIT_FLASH_TIME;
-    events.onPlayerHit?.(dmg);
+    applyAvatarDamage(avatar, sc.projectile!.damage, events);
     world.remove(sid);
-    if (a.hp <= 0) {
-      a.hp = 0;
-      events.onPlayerDied?.();
-    }
     break;
   }
+}
+
+// Resolve one incoming hit against the avatar's defensive layers in order:
+//   dodge charge → shield → HP (with Revenant on lethal).
+// Returns true regardless — the caller's iteration always breaks after a
+// successful intercept so one frame can't burn through every layer.
+function applyAvatarDamage(
+  avatar: Components,
+  dmg: number,
+  events: GameEvents,
+): boolean {
+  const a = avatar.avatar!;
+  // Phase Shift: free dodge consumes a charge instead of HP.
+  if ((a.dodgeCharges ?? 0) > 0) {
+    a.dodgeCharges = (a.dodgeCharges ?? 0) - 1;
+    a.dodgeCooldown = 0;
+    a.iframes = AVATAR_IFRAMES;
+    avatar.flash = HIT_FLASH_TIME;
+    return true;
+  }
+  // Aegis: shield soaks one hit (any size). Hit gates regen for the period.
+  if ((a.shield ?? 0) > 0) {
+    a.shield = (a.shield ?? 0) - 1;
+    a.shieldRegenTimer = 0;
+    a.iframes = AVATAR_IFRAMES;
+    avatar.flash = HIT_FLASH_TIME;
+    events.onPlayerHit?.(0);
+    return true;
+  }
+  a.hp -= dmg;
+  a.iframes = AVATAR_IFRAMES;
+  avatar.flash = HIT_FLASH_TIME;
+  events.onPlayerHit?.(dmg);
+  if (a.hp <= 0) {
+    // Revenant: spend the one-shot revive instead of dying.
+    if (a.secondChance) {
+      a.secondChance = false;
+      a.hp = Math.max(1, Math.floor(a.maxHp / 2));
+      a.iframes = AVATAR_IFRAMES * 2;
+      return true;
+    }
+    a.hp = 0;
+    events.onPlayerDied?.();
+  }
+  return true;
 }
 
 // After a projectile hits an enemy, decide whether it keeps flying (pierce),

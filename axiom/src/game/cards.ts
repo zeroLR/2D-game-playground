@@ -16,7 +16,12 @@ export type CardEffect =
   | { kind: "chainAdd"; value: number }
   | { kind: "burnAdd"; dps: number; duration: number }
   | { kind: "slowAdd"; pct: number; duration: number }
-  | { kind: "synergy"; id: SynergyId };
+  | { kind: "synergy"; id: SynergyId }
+  // --- Evolution effects ---
+  | { kind: "shieldRegen"; max: number; period: number }
+  | { kind: "secondChance" }
+  | { kind: "hitboxMul"; value: number }
+  | { kind: "dodgeCD"; cooldown: number };
 
 export interface Card {
   id: string;
@@ -46,6 +51,10 @@ export const POOL: readonly Card[] = [
   { id: "desperate",  name: "Desperate",     glyph: "✖", rarity: "rare",     text: "While HP ≤ 2: ×2 damage",       effect: { kind: "synergy", id: "desperate" } },
   { id: "kinetic",    name: "Kinetic",       glyph: "↯", rarity: "uncommon", text: "While moving: +25% crit",       effect: { kind: "synergy", id: "kinetic" } },
   { id: "stillness",  name: "Stillness",     glyph: "◦", rarity: "uncommon", text: "While still: -25% fire interval", effect: { kind: "synergy", id: "stillness" } },
+  { id: "aegis",      name: "Aegis",         glyph: "❖", rarity: "rare",     text: "Shield 2; +1 every 6s when safe", effect: { kind: "shieldRegen", max: 2, period: 6 } },
+  { id: "revenant",   name: "Revenant",      glyph: "↻", rarity: "rare",     text: "Once per run: revive at 50% HP",  effect: { kind: "secondChance" } },
+  { id: "compact",    name: "Compact",       glyph: "▽", rarity: "uncommon", text: "-25% hitbox",                     effect: { kind: "hitboxMul", value: 0.75 } },
+  { id: "phaseShift", name: "Phase Shift",   glyph: "⇶", rarity: "rare",     text: "Auto-dodge every 8s",             effect: { kind: "dodgeCD", cooldown: 8 } },
 ];
 
 export function drawOffer(rng: Rng, count: number, pool: readonly Card[] = POOL): Card[] {
@@ -85,6 +94,27 @@ export function applyCard(world: World, avatarId: EntityId, card: Card): void {
       c.avatar.synergies.push(
         e.id === "combustion" ? { id: e.id, killCounter: 0 } : { id: e.id },
       );
+      break;
+    case "shieldRegen":
+      c.avatar.shieldMax = (c.avatar.shieldMax ?? 0) + e.max;
+      c.avatar.shield = (c.avatar.shield ?? 0) + e.max;
+      // Stacking copies use the shortest regen window so picks compound.
+      c.avatar.shieldRegenPeriod = Math.min(c.avatar.shieldRegenPeriod ?? Infinity, e.period);
+      c.avatar.shieldRegenTimer = 0;
+      break;
+    case "secondChance":
+      // Only the first pick matters; later copies are dead picks rather than
+      // stacking lives (keeps the card from trivialising late-run runs).
+      if (c.avatar.secondChance === undefined) c.avatar.secondChance = true;
+      break;
+    case "hitboxMul":
+      if (c.radius !== undefined) c.radius = Math.max(2, c.radius * e.value);
+      break;
+    case "dodgeCD":
+      c.avatar.dodgeMax = (c.avatar.dodgeMax ?? 0) + 1;
+      c.avatar.dodgeCharges = (c.avatar.dodgeCharges ?? 0) + 1;
+      c.avatar.dodgePeriod = Math.min(c.avatar.dodgePeriod ?? Infinity, e.cooldown);
+      c.avatar.dodgeCooldown = 0;
       break;
   }
 }

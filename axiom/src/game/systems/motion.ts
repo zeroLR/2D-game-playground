@@ -30,6 +30,24 @@ export function updateAvatarMotion(world: World, dt: number): void {
     if (p.y < 0) p.y = 0;
     if (p.y > PLAY_H) p.y = PLAY_H;
     if (a.iframes > 0) a.iframes = Math.max(0, a.iframes - dt);
+    // Aegis: shield regens 1 every shieldRegenPeriod sec while not at max.
+    if (a.shieldMax !== undefined && (a.shield ?? 0) < a.shieldMax) {
+      a.shieldRegenTimer = (a.shieldRegenTimer ?? 0) + dt;
+      const period = a.shieldRegenPeriod ?? 6;
+      if (a.shieldRegenTimer >= period) {
+        a.shield = Math.min(a.shieldMax, (a.shield ?? 0) + 1);
+        a.shieldRegenTimer = 0;
+      }
+    }
+    // Phase Shift: dodge charge regens on cooldown timer.
+    if (a.dodgeMax !== undefined && (a.dodgeCharges ?? 0) < a.dodgeMax) {
+      a.dodgeCooldown = (a.dodgeCooldown ?? 0) + dt;
+      const period = a.dodgePeriod ?? 8;
+      if (a.dodgeCooldown >= period) {
+        a.dodgeCharges = Math.min(a.dodgeMax, (a.dodgeCharges ?? 0) + 1);
+        a.dodgeCooldown = 0;
+      }
+    }
   }
 }
 
