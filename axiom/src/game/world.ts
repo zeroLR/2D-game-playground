@@ -10,6 +10,7 @@ export interface Pos { x: number; y: number }
 export interface Vel { x: number; y: number }
 
 export interface WeaponState {
+  mode?: "vertex" | "faceBeam" | "orbitShard";
   period: number;     // seconds between shots
   damage: number;
   projectileSpeed: number;
@@ -24,6 +25,7 @@ export interface WeaponState {
   burnDuration: number; // seconds the burn lasts on target
   slowPct: number;    // per-hit inflicted slow fraction (0..1)
   slowDuration: number; // seconds the slow lasts on target
+  orbitAngle?: number;
 }
 
 export interface Projectile {
@@ -39,6 +41,12 @@ export interface Projectile {
   // Enemies already hit, so pierce/ricochet/chain don't re-hit the same target.
   hitIds: Set<EntityId>;
   ttl: number;
+  orbit?: {
+    ownerId: EntityId;
+    angle: number;
+    radius: number;
+    angularSpeed: number;
+  };
 }
 
 export interface Enemy {

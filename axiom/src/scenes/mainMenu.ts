@@ -2,7 +2,7 @@ import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import {
   iconPlay, iconInfinity, iconShop, iconEquipment,
-  iconSkills, iconAchievements, iconExport, iconImport,
+  iconSkills, iconAchievements, iconExport, iconImport, iconSkins,
   iconSpan,
 } from "../icons";
 
@@ -14,6 +14,7 @@ export type MenuAction =
   | { kind: "survivalMode" }
   | { kind: "shop" }
   | { kind: "equipment" }
+  | { kind: "startShape" }
   | { kind: "skillTree" }
   | { kind: "achievements" }
   | { kind: "settings" }
@@ -69,6 +70,8 @@ export class MainMenuScene implements Scene {
     this.addBtn(row, iconSkills, "Skills", "skillTree", "menu-btn");
     this.addBtn(row, iconAchievements, "Achievements", "achievements", "menu-btn");
     inner.appendChild(row);
+
+    this.addBtn(inner, iconSkins, "Starting Shape", "startShape", "menu-btn");
 
     // Data row
     const dataRow = document.createElement("div");

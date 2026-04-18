@@ -81,7 +81,18 @@ async function putStore<T>(store: StoreName, value: T): Promise<void> {
 // ── Public typed accessors ──────────────────────────────────────────────────
 
 export async function loadProfile(): Promise<PlayerProfile> {
-  return getStore("profile", defaultPlayerProfile());
+  const raw = await getStore("profile", defaultPlayerProfile());
+  const base = defaultPlayerProfile();
+  return {
+    ...base,
+    ...raw,
+    activeStartShape: raw.activeStartShape ?? base.activeStartShape,
+    stats: {
+      ...base.stats,
+      ...raw.stats,
+      totalPointsEarned: raw.stats?.totalPointsEarned ?? base.stats.totalPointsEarned,
+    },
+  };
 }
 export async function saveProfile(p: PlayerProfile): Promise<void> {
   return putStore("profile", p);

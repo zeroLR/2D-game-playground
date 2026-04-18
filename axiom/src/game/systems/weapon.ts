@@ -1,4 +1,4 @@
-import { spawnProjectile } from "../entities";
+import { spawnOrbitShard, spawnProjectile } from "../entities";
 import type { Rng } from "../rng";
 import { computeSynergyBonuses } from "../synergies";
 import type { EntityId, World } from "../world";
@@ -56,6 +56,37 @@ export function updateWeapon(
   const dy = target.pos!.y - c.pos.y;
   const baseAngle = Math.atan2(dy, dx);
   const n = Math.max(1, w.projectiles);
+
+  if (w.mode === "faceBeam") {
+    const dirs = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+    const speed = w.projectileSpeed * 1.35;
+    for (let k = 0; k < n; k++) {
+      const spread = (k - (n - 1) / 2) * 0.08;
+      for (const d of dirs) {
+        const a = d + spread;
+        const vx = Math.cos(a) * speed;
+        const vy = Math.sin(a) * speed;
+        const crit = rng() < effCrit;
+        spawnProjectile(world, c.pos.x, c.pos.y, vx, vy, effWeapon, crit, 0.24);
+      }
+    }
+    w.cooldown = effPeriod;
+    return;
+  }
+
+  if (w.mode === "orbitShard") {
+    const base = w.orbitAngle ?? baseAngle;
+    const step = (Math.PI * 2) / n;
+    for (let i = 0; i < n; i++) {
+      const a = base + i * step;
+      const crit = rng() < effCrit;
+      spawnOrbitShard(world, avatarId, a, effWeapon, crit);
+    }
+    w.orbitAngle = base + 0.55;
+    w.cooldown = effPeriod;
+    return;
+  }
+
   const startAngle = baseAngle - FAN_SPREAD * (n - 1) / 2;
   for (let i = 0; i < n; i++) {
     const a = startAngle + FAN_SPREAD * i;

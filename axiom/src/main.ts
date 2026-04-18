@@ -14,6 +14,7 @@ import { MainMenuScene, type MenuAction } from "./scenes/mainMenu";
 import { StageSelectScene } from "./scenes/stageSelect";
 import { ShopScene } from "./scenes/shop";
 import { EquipmentScene } from "./scenes/equipment";
+import { StartShapeSelectScene } from "./scenes/startShapeSelect";
 import { SkillTreeScene } from "./scenes/skillTree";
 import { AchievementsScene } from "./scenes/achievements";
 import { STAGE_THEMES, DEFAULT_THEME, type StageTheme } from "./game/stageThemes";
@@ -25,6 +26,11 @@ import { equipCard, unequipCard } from "./game/equipment";
 import { createActiveSkillStates } from "./game/skills";
 import { unlockAchievement } from "./game/achievements";
 import type { RunResult } from "./game/rewards";
+import {
+  applyStartingShapeLoadout,
+  resolveSelectedStartingShape,
+  runSkinForStartingShape,
+} from "./game/startingShapes";
 import { iconTimeStop, iconClone, setIconHtml } from "./icons";
 import {
   loadProfile, saveProfile,
@@ -262,6 +268,9 @@ async function boot(): Promise<void> {
 
     const activeSkills = createActiveSkillStates(skillTree);
 
+    const startingShape = resolveSelectedStartingShape(profile);
+    const runSkin = runSkinForStartingShape(startingShape, profile.activeSkin);
+
     play = new PlayScene(
       rng,
       {
@@ -306,9 +315,10 @@ async function boot(): Promise<void> {
         onRunComplete: (result) => settleRun(result),
       },
       mapper,
-      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills, theme, activeSkin: profile.activeSkin },
+      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills, theme, activeSkin: runSkin },
     );
 
+    applyStartingShapeLoadout(play.world, play.avatarId, startingShape);
     // Apply equipment loadout at run start.
     applyEquipment(equipment, play.world, play.avatarId);
 
@@ -330,6 +340,7 @@ async function boot(): Promise<void> {
     profile.stats.totalRuns += 1;
     profile.stats.totalKills += result.totalKills;
     profile.stats.totalBossKills += result.bossKills;
+    profile.stats.totalPointsEarned += result.pointsEarned;
 
     // Apply loot
     for (const drop of result.loot) {
@@ -432,6 +443,18 @@ async function boot(): Promise<void> {
             },
             onActivateSkin: async (skinId) => {
               profile.activeSkin = skinId;
+              await saveProfile(profile);
+            },
+            onBack: () => { stack.pop(); showMainMenu(); },
+          }));
+          break;
+
+        case "startShape":
+          stack.pop();
+          stack.push(new StartShapeSelectScene({
+            getProfile: () => profile,
+            onSelect: async (shapeId) => {
+              profile.activeStartShape = shapeId;
               await saveProfile(profile);
             },
             onBack: () => { stack.pop(); showMainMenu(); },
