@@ -8,7 +8,5 @@
 ## Subprojects
 - `simple-roguelike/` — existing roguelike; do not modify unless asked.
 - `axiom/` — reverse bullet-hell + card drafter; concept in `axiom/docs/concept.md`.
+- Axiom adjustment entries are tracked in `axiom/docs/ADJUSTMENT_LOG.md`.
 - CI (`.github/workflows/deploy.yml`) builds both subprojects and publishes to GitHub Pages.
-
-## Axiom adjustment log
-- For Axiom, record every game-related change in `axiom/docs/ADJUSTMENT_LOG.md` as one adjustment entry per change (new features, new enemies, balance/value tuning, UI changes, bug fixes, etc.).
