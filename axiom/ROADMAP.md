@@ -6,8 +6,8 @@
 ## P0 — 對齊 concept.md MVP 缺口
 
 ### 戰鬥系統
-- [ ] **Boss 技能地面預警線**（技能釋放前 ~0.8 秒畫出警告區；concept § 偏離表明訂）
-- [ ] **Elite 標記 + 擊殺 +1 draft token**（補齊 token 經濟：起始 2、elite / wave clear +1）
+- [x] **Boss 技能地面預警線**（技能釋放前 ~0.8 秒畫出警告區；concept § 偏離表明訂）
+- [x] **Elite 標記 + 擊殺 +1 draft token**（補齊 token 經濟：起始 2、elite / wave clear +1）
 - [x] **Pentagon splitter** 行為：擊殺後分裂成 2–3 個小圓形敵人
 
 ### 關鍵字系統

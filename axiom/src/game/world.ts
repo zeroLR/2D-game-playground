@@ -62,6 +62,12 @@ export interface Enemy {
   slow?: { pct: number; remaining: number };
   /** Marked as elite at spawn time. Elite kills yield +1 draft token. */
   isElite?: boolean;
+  /**
+   * Boss telegraph aim snapshotted at the start of the lead window.
+   * Locked so the player can dodge from the warning they see, not from
+   * where the boss is currently tracking. Cleared when the shot fires.
+   */
+  telegraphAngle?: number;
 }
 
 export type SynergyId = "combustion" | "desperate" | "kinetic" | "stillness";
