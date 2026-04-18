@@ -75,7 +75,7 @@ export function updateWeapon(
   }
 
   if (w.mode === "orbitShard") {
-    const base = w.orbitAngle ?? baseAngle;
+    const base = w.orbitAngle ?? 0;
     const step = (Math.PI * 2) / n;
     for (let i = 0; i < n; i++) {
       const a = base + i * step;

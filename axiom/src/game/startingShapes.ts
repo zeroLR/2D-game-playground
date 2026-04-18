@@ -67,23 +67,20 @@ export function applyStartingShapeLoadout(world: World, avatarId: EntityId, shap
   const avatar = world.get(avatarId);
   if (!avatar?.weapon) return;
   const weapon = avatar.weapon;
+  weapon.orbitAngle = 0;
   switch (shapeId) {
     case "square":
       weapon.mode = "faceBeam";
       weapon.period = WEAPON_BASE_PERIOD * 1.15;
-      weapon.orbitAngle = 0;
       break;
     case "diamond":
       weapon.mode = "orbitShard";
       weapon.period = WEAPON_BASE_PERIOD;
-      weapon.orbitAngle = 0;
       break;
     case "triangle":
     default:
       weapon.mode = "vertex";
       weapon.period = WEAPON_BASE_PERIOD;
-      weapon.orbitAngle = 0;
       break;
   }
 }
-
