@@ -2,6 +2,7 @@ import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import { SHOP_ITEMS, type ShopItem } from "../game/data/shop";
 import type { PlayerProfile, EquipmentLoadout, ShopUnlocks } from "../game/data/types";
+import { iconSkins, iconEnhance, iconBack, iconSpan, SHOP_GLYPHS, setIconHtml } from "../icons";
 
 // ── Shop scene (DOM overlay) ────────────────────────────────────────────────
 
@@ -45,8 +46,8 @@ export class ShopScene implements Scene {
     // Tab row
     const tabRow = document.createElement("div");
     tabRow.className = "tab-row";
-    const skinTab = this.createTab("🎨 Skins", "skin", tabRow);
-    const enhTab = this.createTab("⚡ Enhance", "enhance", tabRow);
+    const skinTab = this.createTab(iconSkins, "Skins", "skin", tabRow);
+    const enhTab = this.createTab(iconEnhance, "Enhance", "enhance", tabRow);
     if (this.activeTab === "skin") skinTab.classList.add("tab-active");
     else enhTab.classList.add("tab-active");
     inner.appendChild(tabRow);
@@ -74,7 +75,9 @@ export class ShopScene implements Scene {
 
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      glyph.textContent = item.glyph;
+      const svgGlyph = SHOP_GLYPHS[item.id];
+      if (svgGlyph) setIconHtml(glyph, svgGlyph);
+      else glyph.textContent = item.glyph;
       btn.appendChild(glyph);
 
       const body = document.createElement("span");
@@ -106,7 +109,8 @@ export class ShopScene implements Scene {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "big-btn";
-    back.textContent = "← back";
+    back.appendChild(iconSpan(iconBack));
+    back.append(" back");
     back.style.marginTop = "8px";
     back.addEventListener("click", () => this.cb.onBack());
     inner.appendChild(back);
@@ -124,11 +128,12 @@ export class ShopScene implements Scene {
   update(_dt: number): void {}
   render(_alpha: number): void {}
 
-  private createTab(label: string, tab: ShopTab, parent: HTMLElement): HTMLButtonElement {
+  private createTab(icon: string, label: string, tab: ShopTab, parent: HTMLElement): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tab-btn";
-    btn.textContent = label;
+    btn.appendChild(iconSpan(icon));
+    btn.append(` ${label}`);
     btn.addEventListener("click", () => {
       this.activeTab = tab;
       this.enter();

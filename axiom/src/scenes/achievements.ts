@@ -2,6 +2,7 @@ import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import type { AchievementState } from "../game/data/types";
 import { ACHIEVEMENTS } from "../game/achievements";
+import { iconBack, iconSpan, ACHIEVEMENT_GLYPHS, setIconHtml } from "../icons";
 
 // ── Achievements browse scene ───────────────────────────────────────────────
 
@@ -47,7 +48,13 @@ export class AchievementsScene implements Scene {
 
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      glyph.textContent = entry.unlocked ? def.glyph : "?";
+      if (entry.unlocked) {
+        const achSvg = ACHIEVEMENT_GLYPHS[def.id];
+        if (achSvg) setIconHtml(glyph, achSvg);
+        else glyph.textContent = def.glyph;
+      } else {
+        glyph.textContent = "?";
+      }
       btn.appendChild(glyph);
 
       const body = document.createElement("span");
@@ -76,7 +83,8 @@ export class AchievementsScene implements Scene {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "big-btn";
-    back.textContent = "← back";
+    back.appendChild(iconSpan(iconBack));
+    back.append(" back");
     back.style.marginTop = "8px";
     back.addEventListener("click", () => this.onBack());
     inner.appendChild(back);
