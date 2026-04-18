@@ -3,7 +3,6 @@ import type { Scene } from "./scene";
 import type { EquipmentLoadout, PlayerProfile } from "../game/data/types";
 import { SHOP_ITEMS, EQUIP_EFFECTS } from "../game/data/shop";
 import { canEquip, MAX_SAME_CARD } from "../game/equipment";
-import { iconSkins, iconEnhance, iconBack, iconSpan, SHOP_GLYPHS, glyphTriangle, setIconHtml } from "../icons";
 
 // ── Equipment management scene (DOM overlay) ────────────────────────────────
 
@@ -42,8 +41,8 @@ export class EquipmentScene implements Scene {
     // Tab row
     const tabRow = document.createElement("div");
     tabRow.className = "tab-row";
-    const skinTab = this.createTab(iconSkins, "Skins", "skin", tabRow);
-    const enhTab = this.createTab(iconEnhance, "Enhance", "enhance", tabRow);
+    const skinTab = this.createTab("🎨 Skins", "skin", tabRow);
+    const enhTab = this.createTab("⚡ Enhance", "enhance", tabRow);
     if (this.activeTab === "skin") skinTab.classList.add("tab-active");
     else enhTab.classList.add("tab-active");
     inner.appendChild(tabRow);
@@ -57,8 +56,7 @@ export class EquipmentScene implements Scene {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "big-btn";
-    back.appendChild(iconSpan(iconBack));
-    back.append(" back");
+    back.textContent = "← back";
     back.style.marginTop = "8px";
     back.addEventListener("click", () => this.cb.onBack());
     inner.appendChild(back);
@@ -76,12 +74,11 @@ export class EquipmentScene implements Scene {
   update(_dt: number): void {}
   render(_alpha: number): void {}
 
-  private createTab(icon: string, label: string, tab: EquipTab, parent: HTMLElement): HTMLButtonElement {
+  private createTab(label: string, tab: EquipTab, parent: HTMLElement): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tab-btn";
-    btn.appendChild(iconSpan(icon));
-    btn.append(` ${label}`);
+    btn.textContent = label;
     btn.addEventListener("click", () => {
       this.activeTab = tab;
       this.enter();
@@ -110,17 +107,16 @@ export class EquipmentScene implements Scene {
     skinList.style.overflowY = "auto";
 
     // Default skin
-    this.addSkinButton(skinList, "triangle", glyphTriangle, "Triangle (default)", profile.activeSkin === "triangle");
+    this.addSkinButton(skinList, "triangle", "△", "Triangle (default)", profile.activeSkin === "triangle");
 
     // Owned skins
     for (const skinId of profile.ownedSkins) {
       if (skinId === "triangle") continue; // already added
       const shopItem = SHOP_ITEMS.find((i) => i.id === skinId);
-      const skinGlyph = SHOP_GLYPHS[skinId] ?? shopItem?.glyph ?? "?";
       this.addSkinButton(
         skinList,
         skinId,
-        skinGlyph,
+        shopItem?.glyph ?? "?",
         shopItem?.name ?? skinId,
         profile.activeSkin === skinId,
       );
@@ -151,9 +147,7 @@ export class EquipmentScene implements Scene {
 
     const glyphEl = document.createElement("span");
     glyphEl.className = "card-glyph";
-    // glyph is either an SVG string (contains <svg) or plain text
-    if (glyph.includes("<svg")) setIconHtml(glyphEl, glyph);
-    else glyphEl.textContent = glyph;
+    glyphEl.textContent = glyph;
     btn.appendChild(glyphEl);
 
     const body = document.createElement("span");
@@ -208,9 +202,7 @@ export class EquipmentScene implements Scene {
       btn.className = "card-btn selected";
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      const eqSvg = SHOP_GLYPHS[cardId];
-      if (eqSvg) setIconHtml(glyph, eqSvg);
-      else glyph.textContent = item?.glyph ?? "?";
+      glyph.textContent = item?.glyph ?? "?";
       btn.appendChild(glyph);
       const body = document.createElement("span");
       body.className = "card-body";
@@ -273,9 +265,7 @@ export class EquipmentScene implements Scene {
       if (!able) btn.style.opacity = "0.5";
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      const ownSvg = SHOP_GLYPHS[cardId];
-      if (ownSvg) setIconHtml(glyph, ownSvg);
-      else glyph.textContent = item?.glyph ?? "?";
+      glyph.textContent = item?.glyph ?? "?";
       btn.appendChild(glyph);
       const body = document.createElement("span");
       body.className = "card-body";

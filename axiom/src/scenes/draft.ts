@@ -1,7 +1,6 @@
 import { Container } from "pixi.js";
 import type { Card } from "../game/cards";
 import type { Scene } from "./scene";
-import { CARD_GLYPHS, setIconHtml } from "../icons";
 
 // Overlay-based scene — no Pixi drawing. Renders into `#overlay-inner` and
 // waits for a tap on one of the offered cards.
@@ -43,9 +42,7 @@ export class DraftScene implements Scene {
 
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
-      const svgGlyph = CARD_GLYPHS[card.id];
-      if (svgGlyph) setIconHtml(glyph, svgGlyph);
-      else glyph.textContent = card.glyph;
+      glyph.textContent = card.glyph;
       glyph.setAttribute("aria-hidden", "true");
       btn.appendChild(glyph);
 

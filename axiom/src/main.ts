@@ -25,7 +25,6 @@ import { equipCard, unequipCard } from "./game/equipment";
 import { createActiveSkillStates } from "./game/skills";
 import { unlockAchievement } from "./game/achievements";
 import type { RunResult } from "./game/rewards";
-import { iconTimeStop, iconClone, setIconHtml } from "./icons";
 import {
   loadProfile, saveProfile,
   loadEquipment, saveEquipment,
@@ -136,18 +135,14 @@ async function boot(): Promise<void> {
       btn.addEventListener("click", () => play.activateSkill(i));
 
       const updateLabel = (): void => {
-        const icon = sk.id === "timeStop" ? iconTimeStop : iconClone;
         if (sk.active > 0) {
-          setIconHtml(btn, icon);
-          btn.append(` ${sk.active.toFixed(1)}s`);
+          btn.textContent = `${sk.id === "timeStop" ? "⏱" : "👤"} ${sk.active.toFixed(1)}s`;
           btn.disabled = true;
         } else if (sk.cooldown > 0) {
-          setIconHtml(btn, icon);
-          btn.append(` ${Math.ceil(sk.cooldown)}s`);
+          btn.textContent = `${sk.id === "timeStop" ? "⏱" : "👤"} ${Math.ceil(sk.cooldown)}s`;
           btn.disabled = true;
         } else {
-          setIconHtml(btn, icon);
-          btn.append(sk.id === "timeStop" ? " Time Stop" : " Clone");
+          btn.textContent = sk.id === "timeStop" ? "⏱ Time Stop" : "👤 Clone";
           btn.disabled = false;
         }
       };
