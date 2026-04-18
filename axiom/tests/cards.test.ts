@@ -125,4 +125,24 @@ describe("applyCard", () => {
     expect(w.slowPct).toBe(0.9);
     expect(w.slowDuration).toBe(2);
   });
+
+  it("synergy cards register on avatar without touching weapon stats", () => {
+    const world = new World();
+    const id = spawnAvatar(world);
+    const weaponBefore = { ...world.get(id)!.weapon! };
+    const maxHpBefore = world.get(id)!.avatar!.maxHp;
+    for (const cid of ["combustion", "desperate", "kinetic", "stillness"]) {
+      applyCard(world, id, cardById(cid));
+    }
+    const avatar = world.get(id)!.avatar!;
+    expect(avatar.synergies?.map((s) => s.id)).toEqual([
+      "combustion",
+      "desperate",
+      "kinetic",
+      "stillness",
+    ]);
+    expect(avatar.synergies?.[0]?.killCounter).toBe(0);
+    expect(world.get(id)!.weapon).toEqual(weaponBefore);
+    expect(avatar.maxHp).toBe(maxHpBefore);
+  });
 });

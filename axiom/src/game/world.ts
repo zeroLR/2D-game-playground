@@ -62,6 +62,14 @@ export interface Enemy {
   slow?: { pct: number; remaining: number };
 }
 
+export type SynergyId = "combustion" | "desperate" | "kinetic" | "stillness";
+
+export interface SynergyRuntime {
+  id: SynergyId;
+  /** Combustion only: rolling kill count since last detonation. */
+  killCounter?: number;
+}
+
 export interface Avatar {
   hp: number;
   maxHp: number;
@@ -69,6 +77,8 @@ export interface Avatar {
   iframes: number;    // seconds of invulnerability remaining
   targetX: number;
   targetY: number;
+  /** Active synergy cards the player has drafted. Evaluated at fire time. */
+  synergies?: SynergyRuntime[];
 }
 
 export interface Components {

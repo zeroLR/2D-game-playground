@@ -1,5 +1,5 @@
 import { type Rng, shuffle } from "./rng";
-import type { World, EntityId } from "./world";
+import type { EntityId, SynergyId, World } from "./world";
 
 export type Rarity = "common" | "uncommon" | "rare";
 
@@ -15,7 +15,8 @@ export type CardEffect =
   | { kind: "ricochetAdd"; value: number }
   | { kind: "chainAdd"; value: number }
   | { kind: "burnAdd"; dps: number; duration: number }
-  | { kind: "slowAdd"; pct: number; duration: number };
+  | { kind: "slowAdd"; pct: number; duration: number }
+  | { kind: "synergy"; id: SynergyId };
 
 export interface Card {
   id: string;
@@ -41,6 +42,10 @@ export const POOL: readonly Card[] = [
   { id: "ignite",     name: "Ignite",        glyph: "※", rarity: "rare",     text: "Burn 2 dps for 3s",      effect: { kind: "burnAdd", dps: 2, duration: 3 } },
   { id: "freeze",     name: "Freeze",        glyph: "❄", rarity: "uncommon", text: "Slow 35% for 2s",        effect: { kind: "slowAdd", pct: 0.35, duration: 2 } },
   { id: "arc",        name: "Arc",           glyph: "⌇", rarity: "rare",     text: "+1 chain",               effect: { kind: "chainAdd", value: 1 } },
+  { id: "combustion", name: "Combustion",    glyph: "❂", rarity: "rare",     text: "Every 10 kills: AoE explosion", effect: { kind: "synergy", id: "combustion" } },
+  { id: "desperate",  name: "Desperate",     glyph: "✖", rarity: "rare",     text: "While HP ≤ 2: ×2 damage",       effect: { kind: "synergy", id: "desperate" } },
+  { id: "kinetic",    name: "Kinetic",       glyph: "↯", rarity: "uncommon", text: "While moving: +25% crit",       effect: { kind: "synergy", id: "kinetic" } },
+  { id: "stillness",  name: "Stillness",     glyph: "◦", rarity: "uncommon", text: "While still: -25% fire interval", effect: { kind: "synergy", id: "stillness" } },
 ];
 
 export function drawOffer(rng: Rng, count: number, pool: readonly Card[] = POOL): Card[] {
@@ -73,6 +78,13 @@ export function applyCard(world: World, avatarId: EntityId, card: Card): void {
     case "slowAdd":
       c.weapon.slowPct = Math.min(0.9, c.weapon.slowPct + e.pct);
       c.weapon.slowDuration = Math.max(c.weapon.slowDuration, e.duration);
+      break;
+    case "synergy":
+      if (!c.avatar.synergies) c.avatar.synergies = [];
+      // Combustion starts at 0 kills; others carry no per-instance state.
+      c.avatar.synergies.push(
+        e.id === "combustion" ? { id: e.id, killCounter: 0 } : { id: e.id },
+      );
       break;
   }
 }

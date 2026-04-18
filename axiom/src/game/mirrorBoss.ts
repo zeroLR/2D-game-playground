@@ -91,6 +91,15 @@ export function mirrorBossSpec(picks: readonly Card[]): MirrorBossSpec {
         // Slow on the player is harsh; mirror as boss moving faster.
         maxSpeed *= 1 + e.pct * 0.5;
         break;
+      case "synergy":
+        // Conditional player buffs mirror as flat stat increases on the boss.
+        switch (e.id) {
+          case "combustion": w.damage += 2; break;
+          case "desperate":  hp += 15; break;
+          case "kinetic":    maxSpeed *= 1.15; break;
+          case "stillness":  w.period = Math.max(0.2, w.period * 0.85); break;
+        }
+        break;
     }
   }
 
