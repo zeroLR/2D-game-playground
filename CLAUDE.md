@@ -8,5 +8,7 @@
 ## Subprojects
 - `simple-roguelike/` — existing roguelike; do not modify unless asked.
 - `axiom/` — reverse bullet-hell + card drafter; concept in `axiom/docs/concept.md`.
-- In Axiom, every game-related change must be recorded in `CLAUDE.md` as an adjustment entry (new features, new enemies, balance/value tuning, UI changes, bug fixes, etc.).
 - CI (`.github/workflows/deploy.yml`) builds both subprojects and publishes to GitHub Pages.
+
+## Axiom adjustment log
+- For Axiom, record every game-related change under this section in `CLAUDE.md` as one adjustment entry per change (new features, new enemies, balance/value tuning, UI changes, bug fixes, etc.).
