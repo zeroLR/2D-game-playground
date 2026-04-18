@@ -124,6 +124,57 @@ async function boot(): Promise<void> {
     }
   }
 
+  function renderPauseOverlay(): void {
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (!overlay || !inner || !paused) return;
+    inner.innerHTML = "";
+
+    const title = document.createElement("div");
+    title.className = "overlay-title";
+    title.textContent = "paused";
+    inner.appendChild(title);
+
+    const resumeBtn = document.createElement("button");
+    resumeBtn.type = "button";
+    resumeBtn.className = "big-btn";
+    resumeBtn.textContent = "resume";
+    resumeBtn.addEventListener("click", () => setPaused(false));
+    inner.appendChild(resumeBtn);
+
+    const restartBtn = document.createElement("button");
+    restartBtn.type = "button";
+    restartBtn.className = "menu-btn";
+    restartBtn.textContent = "restart";
+    restartBtn.addEventListener("click", () => {
+      if (!currentRun) return;
+      startRun(currentRun.mode, currentRun.stageIndex);
+    });
+    inner.appendChild(restartBtn);
+
+    const menuBtn = document.createElement("button");
+    menuBtn.type = "button";
+    menuBtn.className = "menu-btn";
+    menuBtn.textContent = "main menu";
+    menuBtn.addEventListener("click", () => showMainMenu());
+    inner.appendChild(menuBtn);
+
+    overlay.hidden = false;
+  }
+
+  function setPaused(next: boolean): void {
+    paused = next;
+    syncRunControlButtons();
+    const overlay = document.getElementById("overlay");
+    const inner = document.getElementById("overlay-inner");
+    if (!paused) {
+      if (overlay) overlay.hidden = true;
+      if (inner) inner.innerHTML = "";
+      return;
+    }
+    renderPauseOverlay();
+  }
+
   function setTheme(theme: StageTheme): void {
     app.renderer.background.color = theme.background;
     const overlay = document.getElementById("overlay");
@@ -193,8 +244,7 @@ async function boot(): Promise<void> {
     while (stack.top()) stack.pop();
     app.stage.removeChildren();
     currentRun = { mode, stageIndex };
-    paused = false;
-    syncRunControlButtons();
+    setPaused(false);
 
     const theme = mode === "normal" ? (STAGE_THEMES[stageIndex] ?? DEFAULT_THEME) : DEFAULT_THEME;
     setTheme(theme);
@@ -243,15 +293,13 @@ async function boot(): Promise<void> {
         onPlayerDied: () => {
           playSfx("death");
           currentRun = null;
-          paused = false;
-          syncRunControlButtons();
+          setPaused(false);
           const total = mode === "survival" ? play.currentWave1() : play.totalWaves();
           stack.push(new EndgameScene("dead", play.currentWave1(), total, () => showMainMenu()));
         },
         onRunWon: () => {
           currentRun = null;
-          paused = false;
-          syncRunControlButtons();
+          setPaused(false);
           const total = play.totalWaves();
           stack.push(new EndgameScene("won", total, total, () => showMainMenu()));
         },
@@ -327,8 +375,7 @@ async function boot(): Promise<void> {
     while (stack.top()) stack.pop();
     app.stage.removeChildren();
     currentRun = null;
-    paused = false;
-    syncRunControlButtons();
+    setPaused(false);
     setTheme(DEFAULT_THEME);
     if (hudSkills) hudSkills.innerHTML = "";
 
@@ -471,8 +518,9 @@ async function boot(): Promise<void> {
   });
   btnPause?.addEventListener("click", () => {
     if (!currentRun) return;
-    paused = !paused;
-    syncRunControlButtons();
+    const top = stack.top();
+    if (!paused && top !== play) return;
+    setPaused(!paused);
   });
   btnMenu?.addEventListener("click", () => showMainMenu());
 

@@ -36,7 +36,6 @@ body {
 #topbar {
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px 12px calc(4px + env(safe-area-inset-top)) 12px;
@@ -44,6 +43,7 @@ body {
   color: var(--muted);
   background: var(--bg);
   border-bottom: 1px solid var(--chrome);
+  overflow-x: auto;
 }
 
 .hud-chip {
