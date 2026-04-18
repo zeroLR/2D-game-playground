@@ -17,7 +17,7 @@ import {
 import { type Rng } from "./rng";
 import { type EnemyKind, type EntityId, type WeaponState, World } from "./world";
 
-export function spawnAvatar(world: World): EntityId {
+export function spawnAvatar(world: World, skinId: string = "triangle"): EntityId {
   return world.create({
     pos: { x: AVATAR_START_X, y: AVATAR_START_Y },
     vel: { x: 0, y: 0 },
@@ -30,6 +30,7 @@ export function spawnAvatar(world: World): EntityId {
       iframes: 0,
       targetX: AVATAR_START_X,
       targetY: AVATAR_START_Y,
+      skinId,
     },
     weapon: {
       period: WEAPON_BASE_PERIOD,

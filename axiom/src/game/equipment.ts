@@ -7,7 +7,7 @@ import { EQUIP_EFFECTS } from "./data/shop";
 import type { World, EntityId } from "./world";
 
 /** Maximum copies of the same card that can be equipped simultaneously. */
-export const MAX_SAME_CARD = 2;
+export const MAX_SAME_CARD = 1;
 
 /** Check if a card can be added to the loadout. */
 export function canEquip(loadout: EquipmentLoadout, cardId: string): boolean {

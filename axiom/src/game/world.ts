@@ -87,6 +87,8 @@ export interface Avatar {
   targetY: number;
   /** Active synergy cards the player has drafted. Evaluated at fire time. */
   synergies?: SynergyRuntime[];
+  /** Cosmetic avatar skin ID chosen from equipment screen. */
+  skinId?: string;
 }
 
 export interface Components {

@@ -30,7 +30,7 @@ describe("equipment system", () => {
     equipCard(loadout, "eq-toughness");
     equipCard(loadout, "eq-toughness");
     expect(loadout.equipped).toHaveLength(MAX_SAME_CARD);
-    // Third copy is rejected
+    // Second copy is rejected when only one same card is allowed.
     expect(canEquip(loadout, "eq-toughness")).toBe(false);
   });
 

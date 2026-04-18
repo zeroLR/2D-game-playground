@@ -52,6 +52,7 @@ async function boot(): Promise<void> {
   const hudTokens = document.getElementById("hud-tokens");
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
+  const btnPause = document.getElementById("btn-pause");
   const btnMute = document.getElementById("btn-mute");
   const btnMenu = document.getElementById("btn-menu");
   const hudSkills = document.getElementById("hud-skills");
@@ -107,8 +108,19 @@ async function boot(): Promise<void> {
   window.addEventListener("resize", fitCanvas);
 
   let play: PlayScene;
+  let currentRun: { mode: GameMode; stageIndex: number } | null = null;
+  let paused = false;
   let seed = 0;
   let menuRng = createRng(42);
+
+  function syncRunControlButtons(): void {
+    const runActive = currentRun !== null;
+    if (btnRestart instanceof HTMLButtonElement) btnRestart.disabled = !runActive;
+    if (btnPause instanceof HTMLButtonElement) {
+      btnPause.disabled = !runActive;
+      btnPause.textContent = paused ? "resume" : "pause";
+    }
+  }
 
   function setTheme(theme: StageTheme): void {
     app.renderer.background.color = theme.background;
@@ -178,6 +190,9 @@ async function boot(): Promise<void> {
   function startRun(mode: GameMode, stageIndex: number): void {
     while (stack.top()) stack.pop();
     app.stage.removeChildren();
+    currentRun = { mode, stageIndex };
+    paused = false;
+    syncRunControlButtons();
 
     const theme = mode === "normal" ? (STAGE_THEMES[stageIndex] ?? DEFAULT_THEME) : DEFAULT_THEME;
     setTheme(theme);
@@ -225,17 +240,23 @@ async function boot(): Promise<void> {
         },
         onPlayerDied: () => {
           playSfx("death");
+          currentRun = null;
+          paused = false;
+          syncRunControlButtons();
           const total = mode === "survival" ? play.currentWave1() : play.totalWaves();
           stack.push(new EndgameScene("dead", play.currentWave1(), total, () => showMainMenu()));
         },
         onRunWon: () => {
+          currentRun = null;
+          paused = false;
+          syncRunControlButtons();
           const total = play.totalWaves();
           stack.push(new EndgameScene("won", total, total, () => showMainMenu()));
         },
         onRunComplete: (result) => settleRun(result),
       },
       mapper,
-      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills, theme },
+      { mode, waves, gridColor: theme.gridColor, stageIndex, activeSkills, theme, activeSkin: profile.activeSkin },
     );
 
     // Apply equipment loadout at run start.
@@ -303,6 +324,9 @@ async function boot(): Promise<void> {
   function showMainMenu(): void {
     while (stack.top()) stack.pop();
     app.stage.removeChildren();
+    currentRun = null;
+    paused = false;
+    syncRunControlButtons();
     setTheme(DEFAULT_THEME);
     if (hudSkills) hudSkills.innerHTML = "";
 
@@ -439,7 +463,15 @@ async function boot(): Promise<void> {
 
   // ── Controls ──────────────────────────────────────────────────────────
 
-  btnRestart?.addEventListener("click", () => showMainMenu());
+  btnRestart?.addEventListener("click", () => {
+    if (!currentRun) return;
+    startRun(currentRun.mode, currentRun.stageIndex);
+  });
+  btnPause?.addEventListener("click", () => {
+    if (!currentRun) return;
+    paused = !paused;
+    syncRunControlButtons();
+  });
   btnMenu?.addEventListener("click", () => showMainMenu());
 
   function onFirstGesture(): void {
@@ -462,9 +494,11 @@ async function boot(): Promise<void> {
   // ── Start ─────────────────────────────────────────────────────────────
 
   showMainMenu();
+  syncRunControlButtons();
 
   startLoop(
     (dt) => {
+      if (paused) return;
       stack.update(dt);
       refreshSkillButtons();
     },
@@ -476,4 +510,3 @@ boot().catch((err) => {
   // eslint-disable-next-line no-console
   console.error("[axiom] boot failed:", err);
 });
-

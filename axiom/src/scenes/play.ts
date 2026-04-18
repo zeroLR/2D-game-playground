@@ -96,6 +96,7 @@ export class PlayScene implements Scene {
       stageIndex?: number;
       activeSkills?: ActiveSkillState[];
       theme?: StageTheme;
+      activeSkin?: string;
     },
   ) {
     this.root = new Container();
@@ -114,7 +115,7 @@ export class PlayScene implements Scene {
     this.stageIndex = opts.stageIndex ?? 0;
     this.activeSkills = opts.activeSkills ?? [];
     this.theme = opts.theme;
-    this.avatarId = spawnAvatar(this.world);
+    this.avatarId = spawnAvatar(this.world, opts.activeSkin ?? "triangle");
     this.waveIdx = 0;
     this.wave = newWaveState(this.waves[this.waveIdx]!);
     resetStatusPhase();
