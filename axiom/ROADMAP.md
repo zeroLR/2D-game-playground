@@ -7,21 +7,21 @@
 
 ### 戰鬥系統
 - [ ] **Boss 技能地面預警線**（技能釋放前 ~0.8 秒畫出警告區；concept § 偏離表明訂）
-- [ ] **Elite 標記 + 擊殺 +1 draft token**（補齊 token 經濟：起始 2、elite / wave clear +1）
-- [ ] **Pentagon splitter** 行為：擊殺後分裂成兩個小 pentagon
+- [x] **Elite 標記 + 擊殺 +1 draft token**（補齊 token 經濟：起始 2、elite / wave clear +1）
+- [x] **Pentagon splitter** 行為：擊殺後分裂成兩個小 pentagon
 
 ### 關鍵字系統
-- [ ] **Ricochet (N)**：投射物彈跳邏輯
-- [ ] **Burn (dps, t)**：DoT 標記 + tick 系統
-- [ ] **Slow (%, t)**：debuff 計時器
-- [ ] **Chain (N)**：跳躍至附近 N 個敵人
-- [ ] 事件 bus（`onKill` / `onHit` / `onWaveStart` / `onDamageTaken`）統一派發 Synergy 卡效果
+- [x] **Ricochet (N)**：投射物彈跳邏輯
+- [x] **Burn (dps, t)**：DoT 標記 + tick 系統
+- [x] **Slow (%, t)**：debuff 計時器
+- [x] **Chain (N)**：跳躍至附近 N 個敵人
+- [x] 事件 bus（`onKill` / `onHit` / `onWaveStart` / `onDamageTaken`）統一派發 Synergy 卡效果
 
 ### 卡池擴充到 24 張
 - [ ] **Weapon 類別開張（6 張）**：`Face Beam`（四方雷射）、`Orbit Shard`（環繞軌道彈）、追蹤彈、爆裂彈、扇形散射、聚能砲；引擎需支援武器槽抉擇
 - [ ] **Modifier 補到 10 張**：multi-shot、projectile size、homing 等（含上述關鍵字的承載卡）
 - [ ] **Evolution 補到 4 張**：shield regen、second chance、size/collision、dash CD
-- [ ] **Synergy 補到 4 張**：每 N kills 爆炸／低血 ×2／移動 +crit／靜止 +fire rate
+- [x] **Synergy 補到 4 張**：每 N kills 爆炸／低血 ×2／移動 +crit／靜止 +fire rate
 
 ### 起始形狀解鎖
 - [ ] 累計貨幣解鎖**方塊**（Face Beam）為起始形狀
