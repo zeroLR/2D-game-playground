@@ -119,6 +119,8 @@ async function boot(): Promise<void> {
     if (btnPause instanceof HTMLButtonElement) {
       btnPause.disabled = !runActive;
       btnPause.textContent = paused ? "resume" : "pause";
+      btnPause.setAttribute("aria-pressed", paused ? "true" : "false");
+      btnPause.setAttribute("aria-label", paused ? "Resume run" : "Pause run");
     }
   }
 
