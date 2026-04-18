@@ -90,4 +90,39 @@ describe("applyCard", () => {
     applyCard(world, id, cardById("dash"));
     expect(world.get(id)!.avatar!.speedMul).toBeCloseTo(before * 1.2, 6);
   });
+
+  it("rebound adds 1 ricochet", () => {
+    const world = new World();
+    const id = spawnAvatar(world);
+    expect(world.get(id)!.weapon!.ricochet).toBe(0);
+    applyCard(world, id, cardById("rebound"));
+    applyCard(world, id, cardById("rebound"));
+    expect(world.get(id)!.weapon!.ricochet).toBe(2);
+  });
+
+  it("arc adds 1 chain", () => {
+    const world = new World();
+    const id = spawnAvatar(world);
+    applyCard(world, id, cardById("arc"));
+    expect(world.get(id)!.weapon!.chain).toBe(1);
+  });
+
+  it("ignite stacks burn DPS additively, duration stays max", () => {
+    const world = new World();
+    const id = spawnAvatar(world);
+    applyCard(world, id, cardById("ignite"));
+    applyCard(world, id, cardById("ignite"));
+    const w = world.get(id)!.weapon!;
+    expect(w.burnDps).toBe(4);
+    expect(w.burnDuration).toBe(3);
+  });
+
+  it("freeze stacks slow pct additively up to 0.9", () => {
+    const world = new World();
+    const id = spawnAvatar(world);
+    for (let i = 0; i < 5; i++) applyCard(world, id, cardById("freeze"));
+    const w = world.get(id)!.weapon!;
+    expect(w.slowPct).toBe(0.9);
+    expect(w.slowDuration).toBe(2);
+  });
 });

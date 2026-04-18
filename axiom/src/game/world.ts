@@ -17,13 +17,26 @@ export interface WeaponState {
   pierce: number;     // projectile hits before despawn (0 = one hit)
   crit: number;       // 0..1 crit chance for 2x damage
   cooldown: number;   // seconds remaining until next shot
+  // Keyword modifiers (defaults = 0, no effect).
+  ricochet: number;   // bounces to next nearest enemy after exhausting pierce
+  chain: number;      // spawns chain bolts to additional nearby enemies on hit
+  burnDps: number;    // per-hit inflicted burn damage per second
+  burnDuration: number; // seconds the burn lasts on target
+  slowPct: number;    // per-hit inflicted slow fraction (0..1)
+  slowDuration: number; // seconds the slow lasts on target
 }
 
 export interface Projectile {
   damage: number;
   crit: boolean;
   pierceRemaining: number;
-  // Enemies already hit, so pierce doesn't re-hit the same target mid-flight.
+  ricochetRemaining: number;
+  chainRemaining: number;
+  burnDps: number;
+  burnDuration: number;
+  slowPct: number;
+  slowDuration: number;
+  // Enemies already hit, so pierce/ricochet/chain don't re-hit the same target.
   hitIds: Set<EntityId>;
   ttl: number;
 }
@@ -43,6 +56,10 @@ export interface Enemy {
   orbitAngle?: number;
   /** Whether survival scaling has been applied (prevents double-scaling). */
   scaled?: boolean;
+  /** Burn DoT applied by keyword effects. */
+  burn?: { dps: number; remaining: number };
+  /** Slow debuff applied by keyword effects. */
+  slow?: { pct: number; remaining: number };
 }
 
 export interface Avatar {

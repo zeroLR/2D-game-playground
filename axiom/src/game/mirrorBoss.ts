@@ -20,6 +20,12 @@ const BASE: {
     pierce: 0,
     crit: 0,
     cooldown: 1.0,
+    ricochet: 0,
+    chain: 0,
+    burnDps: 0,
+    burnDuration: 0,
+    slowPct: 0,
+    slowDuration: 0,
   },
   contactDamage: 1,
   maxSpeed: 50,
@@ -68,6 +74,22 @@ export function mirrorBossSpec(picks: readonly Card[]): MirrorBossSpec {
         break;
       case "speedMul":
         maxSpeed *= e.value;
+        break;
+      case "ricochetAdd":
+        // Bouncing enemy shots would be noisy; mirror as bonus HP instead.
+        hp += e.value * 6;
+        break;
+      case "chainAdd":
+        // Extra projectiles stand in for chain jumps.
+        w.projectiles += e.value;
+        break;
+      case "burnAdd":
+        // Sustained damage → bigger bullets that hurt more.
+        w.damage += Math.max(1, Math.round(e.dps * e.duration * 0.25));
+        break;
+      case "slowAdd":
+        // Slow on the player is harsh; mirror as boss moving faster.
+        maxSpeed *= 1 + e.pct * 0.5;
         break;
     }
   }

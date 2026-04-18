@@ -11,7 +11,11 @@ export type CardEffect =
   | { kind: "pierceAdd"; value: number }
   | { kind: "critAdd"; value: number }         // 0..1
   | { kind: "maxHpAdd"; value: number }
-  | { kind: "speedMul"; value: number };
+  | { kind: "speedMul"; value: number }
+  | { kind: "ricochetAdd"; value: number }
+  | { kind: "chainAdd"; value: number }
+  | { kind: "burnAdd"; dps: number; duration: number }
+  | { kind: "slowAdd"; pct: number; duration: number };
 
 export interface Card {
   id: string;
@@ -33,6 +37,10 @@ export const POOL: readonly Card[] = [
   { id: "dash",       name: "Dash",          glyph: "≫", rarity: "common",   text: "+20% move speed",        effect: { kind: "speedMul", value: 1.2 } },
   { id: "overclock",  name: "Overclock",     glyph: "◎", rarity: "rare",     text: "-35% fire interval",     effect: { kind: "periodMul", value: 0.65 } },
   { id: "heavy",      name: "Heavy Rounds",  glyph: "■", rarity: "rare",     text: "+2 damage",              effect: { kind: "damageAdd", value: 2 } },
+  { id: "rebound",    name: "Rebound",       glyph: "⇌", rarity: "uncommon", text: "+1 ricochet",            effect: { kind: "ricochetAdd", value: 1 } },
+  { id: "ignite",     name: "Ignite",        glyph: "※", rarity: "rare",     text: "Burn 2 dps for 3s",      effect: { kind: "burnAdd", dps: 2, duration: 3 } },
+  { id: "freeze",     name: "Freeze",        glyph: "❄", rarity: "uncommon", text: "Slow 35% for 2s",        effect: { kind: "slowAdd", pct: 0.35, duration: 2 } },
+  { id: "arc",        name: "Arc",           glyph: "⌇", rarity: "rare",     text: "+1 chain",               effect: { kind: "chainAdd", value: 1 } },
 ];
 
 export function drawOffer(rng: Rng, count: number, pool: readonly Card[] = POOL): Card[] {
@@ -55,5 +63,16 @@ export function applyCard(world: World, avatarId: EntityId, card: Card): void {
       c.avatar.hp = Math.min(c.avatar.maxHp, c.avatar.hp + e.value);
       break;
     case "speedMul":           c.avatar.speedMul *= e.value; break;
+    case "ricochetAdd":        c.weapon.ricochet += e.value; break;
+    case "chainAdd":           c.weapon.chain += e.value; break;
+    case "burnAdd":
+      // Stack burn DPS additively; extend duration to the longer of the two.
+      c.weapon.burnDps += e.dps;
+      c.weapon.burnDuration = Math.max(c.weapon.burnDuration, e.duration);
+      break;
+    case "slowAdd":
+      c.weapon.slowPct = Math.min(0.9, c.weapon.slowPct + e.pct);
+      c.weapon.slowDuration = Math.max(c.weapon.slowDuration, e.duration);
+      break;
   }
 }

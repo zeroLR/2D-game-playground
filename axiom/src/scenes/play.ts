@@ -9,6 +9,7 @@ import { updateEnemyAi } from "../game/systems/ai";
 import { updateBossWeapon } from "../game/systems/bossWeapon";
 import { removeDeadEnemies, updateCollisions } from "../game/systems/collision";
 import { decayHitFlash, updateAvatarMotion, updateProjectileMotion } from "../game/systems/motion";
+import { resetStatusPhase, updateStatusEffects } from "../game/systems/status";
 import { newWaveState, updateWave, type WaveState } from "../game/systems/wave";
 import { updateWeapon } from "../game/systems/weapon";
 import type { WaveSpec } from "../game/waves";
@@ -109,6 +110,7 @@ export class PlayScene implements Scene {
     this.avatarId = spawnAvatar(this.world);
     this.waveIdx = 0;
     this.wave = newWaveState(this.waves[this.waveIdx]!);
+    resetStatusPhase();
 
     this.boundOnDown = (ev) => this.onPointerDown(ev);
     this.boundOnMove = (ev) => this.onPointerMove(ev);
@@ -244,13 +246,15 @@ export class PlayScene implements Scene {
     }
 
     let died = false;
-    updateCollisions(this.world, this.avatarId, {
-      onEnemyKilled: (eid) => {
+    const events = {
+      onEnemyKilled: (eid: EntityId) => {
         playSfx("hit");
         this.onEnemyKilled(eid);
       },
       onPlayerDied: () => { died = true; },
-    }, this.rng);
+    };
+    updateCollisions(this.world, this.avatarId, events, this.rng);
+    updateStatusEffects(this.world, enemyDt, events);
     removeDeadEnemies(this.world);
     decayHitFlash(this.world, dt);
 
@@ -347,6 +351,12 @@ export class PlayScene implements Scene {
         pierce: avatar.weapon.pierce,
         crit: avatar.weapon.crit * ratio,
         cooldown: 0.3,
+        ricochet: avatar.weapon.ricochet,
+        chain: avatar.weapon.chain,
+        burnDps: avatar.weapon.burnDps * ratio,
+        burnDuration: avatar.weapon.burnDuration,
+        slowPct: avatar.weapon.slowPct,
+        slowDuration: avatar.weapon.slowDuration,
       },
     });
   }

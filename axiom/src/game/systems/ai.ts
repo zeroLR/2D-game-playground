@@ -35,9 +35,9 @@ export function updateEnemyAi(world: World, avatarId: EntityId, dt: number, rng?
     if (e.kind === "diamond" && e.dashCooldown !== undefined) {
       e.dashCooldown -= dt;
       if (e.dashCooldown <= 0) {
-        // Dash: high-speed lunge
-        v.x = nx * e.maxSpeed * 3;
-        v.y = ny * e.maxSpeed * 3;
+        const dashMul = e.slow ? 1 - e.slow.pct : 1;
+        v.x = nx * e.maxSpeed * 3 * dashMul;
+        v.y = ny * e.maxSpeed * 3 * dashMul;
         p.x += v.x * dt;
         p.y += v.y * dt;
         e.dashCooldown = 2.5 + (rng ? rng() * 1.5 : 1);
@@ -70,8 +70,10 @@ export function updateEnemyAi(world: World, avatarId: EntityId, dt: number, rng?
       }
     }
 
-    const targetVx = nx * e.maxSpeed;
-    const targetVy = ny * e.maxSpeed;
+    const slowMul = e.slow ? 1 - e.slow.pct : 1;
+    const curSpeed = e.maxSpeed * slowMul;
+    const targetVx = nx * curSpeed;
+    const targetVy = ny * curSpeed;
     const dvx = targetVx - v.x;
     const dvy = targetVy - v.y;
     const dvLen = Math.hypot(dvx, dvy);

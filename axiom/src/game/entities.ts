@@ -39,6 +39,12 @@ export function spawnAvatar(world: World): EntityId {
       pierce: WEAPON_BASE_PIERCE,
       crit: WEAPON_BASE_CRIT,
       cooldown: 0.2, // tiny grace before first shot
+      ricochet: 0,
+      chain: 0,
+      burnDps: 0,
+      burnDuration: 0,
+      slowPct: 0,
+      slowDuration: 0,
     },
   });
 }
@@ -140,8 +146,54 @@ export function spawnProjectile(
       damage: weapon.damage * (crit ? 2 : 1),
       crit,
       pierceRemaining: weapon.pierce,
+      ricochetRemaining: weapon.ricochet,
+      chainRemaining: weapon.chain,
+      burnDps: weapon.burnDps,
+      burnDuration: weapon.burnDuration,
+      slowPct: weapon.slowPct,
+      slowDuration: weapon.slowDuration,
       hitIds: new Set<EntityId>(),
       ttl: 1.6,
+    },
+  });
+}
+
+/** Spawn a chain-jumped projectile from `(x,y)` toward the given target. */
+export function spawnChainBolt(
+  world: World,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  damage: number,
+  chainRemaining: number,
+  burnDps: number,
+  burnDuration: number,
+  slowPct: number,
+  slowDuration: number,
+  hitIds: Set<EntityId>,
+): EntityId {
+  const dx = tx - x;
+  const dy = ty - y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = 520;
+  return world.create({
+    pos: { x, y },
+    vel: { x: (dx / dist) * speed, y: (dy / dist) * speed },
+    radius: PROJECTILE_RADIUS,
+    team: "projectile",
+    projectile: {
+      damage,
+      crit: false,
+      pierceRemaining: 0,
+      ricochetRemaining: 0,
+      chainRemaining,
+      burnDps,
+      burnDuration,
+      slowPct,
+      slowDuration,
+      hitIds: new Set(hitIds),
+      ttl: 0.5,
     },
   });
 }
@@ -164,6 +216,12 @@ export function spawnEnemyShot(
       damage: crit ? damage * 2 : damage,
       crit,
       pierceRemaining: 0,
+      ricochetRemaining: 0,
+      chainRemaining: 0,
+      burnDps: 0,
+      burnDuration: 0,
+      slowPct: 0,
+      slowDuration: 0,
       hitIds: new Set<EntityId>(),
       ttl: 2.4,
     },
