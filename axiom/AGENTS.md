@@ -1,2 +1,3 @@
 @STYLE.md
-@CLAUDE.md
+
+## Adjustment log
