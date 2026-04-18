@@ -87,16 +87,16 @@ export const iconClone = wrap(
   `<rect x="2" y="6" width="12" height="12" rx="1"/><rect x="10" y="2" width="12" height="12" rx="1"/>`,
 );
 
-// ── Card / item glyph icons (larger, 36×36 display) ─────────────────────────
+// ── Card / item glyph icons ──────────────────────────────────────────────────
 // These map to the `glyph` field in data structures. Rendered in `.card-glyph`.
 
-/** Large SVG glyph wrapper: meant for the card-glyph container. */
+/** Glyph wrapper sized from the parent container so card layouts stay balanced. */
 function glyphWrap(inner: string, vb = "0 0 24 24"): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1.4em" height="1.4em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
 
 function glyphFill(inner: string, vb = "0 0 24 24"): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1.4em" height="1.4em" fill="currentColor" stroke="none">${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1em" height="1em" fill="currentColor" stroke="none">${inner}</svg>`;
 }
 
 // ── Card glyphs ─────────────────────────────────────────────────────────────
