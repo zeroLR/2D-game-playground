@@ -65,7 +65,7 @@ export function updateEnemyAi(world: World, avatarId: EntityId, dt: number, rng?
         const spd = 160;
         const vx = nx * spd;
         const vy = ny * spd;
-        spawnEnemyShot(world, p.x, p.y, vx, vy, 1, false);
+        spawnEnemyShot(world, p.x, p.y, vx, vy, e.contactDamage, false);
         e.shootCooldown = 2.0 + rng() * 1.0;
       }
     }

@@ -31,6 +31,9 @@ import { SYNERGY_CONFIG, explodeAt } from "../game/synergies";
 
 export type GameMode = "normal" | "survival";
 
+// Stage 1 / Stage 2 / Stage 3 normal-mode enemy strength multipliers.
+const NORMAL_STAGE_STRENGTH_MUL: readonly number[] = [1, 1.5, 2.5];
+
 export interface PlayCallbacks {
   onWaveCleared: (clearedIdx: number) => void; // 1-based
   onPlayerDied: () => void;
@@ -205,11 +208,6 @@ export class PlayScene implements Scene {
 
     updateWave(this.wave, this.world, this.rng, dt);
 
-    // Apply survival scaling to newly spawned enemies.
-    if (this.mode === "survival") {
-      this.applySurvivalScaling();
-    }
-
     // Mirror boss application (normal mode last wave, or survival mirror waves).
     const wave1 = this.waveIdx + 1;
     const shouldMirror =
@@ -218,6 +216,13 @@ export class PlayScene implements Scene {
         : isMirrorBossWave(wave1);
     if (shouldMirror && !this.mirrorApplied) {
       this.applyMirrorBuildOnce();
+    }
+
+    // Apply mode-specific scaling to newly spawned enemies after mirror stats.
+    if (this.mode === "survival") {
+      this.applySurvivalScaling();
+    } else {
+      this.applyNormalStageScaling();
     }
 
     updateAvatarMotion(this.world, dt);
@@ -353,6 +358,21 @@ export class PlayScene implements Scene {
       if (c.enemy!.scaled) continue;
       c.hp!.value = Math.ceil(c.hp!.value * hpMul);
       c.enemy!.maxSpeed *= spdMul;
+      c.enemy!.scaled = true;
+    }
+  }
+
+  private applyNormalStageScaling(): void {
+    // `stageIndex` is 0-based (0=stage 1, 1=stage 2, 2=stage 3).
+    const stageMul = this.stageIndex >= 0 && this.stageIndex < NORMAL_STAGE_STRENGTH_MUL.length
+      ? NORMAL_STAGE_STRENGTH_MUL[this.stageIndex]!
+      : 1;
+    for (const [, c] of this.world.with("enemy", "hp")) {
+      if (c.enemy!.scaled) continue;
+      c.hp!.value = Math.max(1, Math.ceil(c.hp!.value * stageMul));
+      c.enemy!.maxSpeed *= stageMul;
+      c.enemy!.contactDamage = Math.max(1, Math.ceil(c.enemy!.contactDamage * stageMul));
+      if (c.weapon) c.weapon.damage = Math.max(1, Math.ceil(c.weapon.damage * stageMul));
       c.enemy!.scaled = true;
     }
   }

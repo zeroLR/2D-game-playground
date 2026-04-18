@@ -18,6 +18,10 @@ export interface StageTheme {
   playerColor?: number;
   /** Enemy stroke colour override for contrast on dark backgrounds. */
   enemyStroke?: number;
+  /** Optional matte fog tint layered over the play-field. */
+  fogColor?: number;
+  /** Optional matte fog intensity (0..1). */
+  fogAlpha?: number;
 }
 
 export const STAGE_THEMES: readonly StageTheme[] = [
@@ -29,21 +33,25 @@ export const STAGE_THEMES: readonly StageTheme[] = [
   },
   {
     name: "Deep Blue",
-    background: 0x0a0e2a,
-    gridColor: 0x1a2555,
-    overlayBg: "rgba(10,14,42,0.62)",
+    background: 0x1b2340,
+    gridColor: 0x2e3f66,
+    overlayBg: "rgba(27,35,64,0.58)",
     dark: true,
     playerColor: 0x00e5ff,
     enemyStroke: 0xaaccff,
+    fogColor: 0xc9d6ff,
+    fogAlpha: 0.18,
   },
   {
     name: "Dark Core",
-    background: 0x1a0808,
-    gridColor: 0x3a1a0a,
-    overlayBg: "rgba(26,8,8,0.62)",
+    background: 0x2b1b22,
+    gridColor: 0x4a3440,
+    overlayBg: "rgba(43,27,34,0.58)",
     dark: true,
     playerColor: 0xff6e40,
     enemyStroke: 0xffccaa,
+    fogColor: 0xf2d8dc,
+    fogAlpha: 0.24,
   },
 ];
 
