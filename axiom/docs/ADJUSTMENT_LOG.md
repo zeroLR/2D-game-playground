@@ -4,3 +4,4 @@
 - Softened Stage 2 and Stage 3 theme palettes and added configurable matte fog overlay rendering for darker stage atmospheres.
 - Added normal-mode stage strength multipliers (Stage 2 = 1.5×, Stage 3 = 2.5×) applied to enemy HP, movement speed, contact damage, and enemy weapon damage at spawn-time.
 - Fixed equipment overlay overflow so growing lists no longer push the back button out of reach; limited enhancement card equips to one copy per card; correctly applied selected avatar skin during runs; and added pause/resume/restart run controls.
+- Added starting-shape progression: cumulative points now unlock Square (Face Beam) and Diamond (Orbit Shard), added a dedicated "Starting Shape" menu page, persisted selected starting shape in profile data, and applied shape-specific starting weapon modes at run start.

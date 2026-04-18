@@ -33,6 +33,7 @@ export function spawnAvatar(world: World, skinId: string = "triangle"): EntityId
       skinId,
     },
     weapon: {
+      mode: "vertex",
       period: WEAPON_BASE_PERIOD,
       damage: WEAPON_BASE_DAMAGE,
       projectileSpeed: WEAPON_BASE_PROJECTILE_SPEED,
@@ -151,6 +152,7 @@ export function spawnProjectile(
   vy: number,
   weapon: WeaponState,
   crit: boolean,
+  ttl: number = 1.6,
 ): EntityId {
   return world.create({
     pos: { x, y },
@@ -168,7 +170,48 @@ export function spawnProjectile(
       slowPct: weapon.slowPct,
       slowDuration: weapon.slowDuration,
       hitIds: new Set<EntityId>(),
-      ttl: 1.6,
+      ttl,
+    },
+  });
+}
+
+export function spawnOrbitShard(
+  world: World,
+  ownerId: EntityId,
+  angle: number,
+  weapon: WeaponState,
+  crit: boolean,
+): EntityId {
+  const owner = world.get(ownerId);
+  const ox = owner?.pos?.x ?? AVATAR_START_X;
+  const oy = owner?.pos?.y ?? AVATAR_START_Y;
+  const radius = 34;
+  return world.create({
+    pos: {
+      x: ox + Math.cos(angle) * radius,
+      y: oy + Math.sin(angle) * radius,
+    },
+    vel: { x: 0, y: 0 },
+    radius: PROJECTILE_RADIUS + 1,
+    team: "projectile",
+    projectile: {
+      damage: weapon.damage * (crit ? 2 : 1),
+      crit,
+      pierceRemaining: weapon.pierce,
+      ricochetRemaining: weapon.ricochet,
+      chainRemaining: weapon.chain,
+      burnDps: weapon.burnDps,
+      burnDuration: weapon.burnDuration,
+      slowPct: weapon.slowPct,
+      slowDuration: weapon.slowDuration,
+      hitIds: new Set<EntityId>(),
+      ttl: 2.8,
+      orbit: {
+        ownerId,
+        angle,
+        radius,
+        angularSpeed: 5.2,
+      },
     },
   });
 }

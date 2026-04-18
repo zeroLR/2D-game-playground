@@ -35,8 +35,20 @@ export function updateAvatarMotion(world: World, dt: number): void {
 
 export function updateProjectileMotion(world: World, dt: number): void {
   for (const [id, c] of world.with("projectile", "pos", "vel")) {
-    c.pos!.x += c.vel!.x * dt;
-    c.pos!.y += c.vel!.y * dt;
+    const orbit = c.projectile!.orbit;
+    if (orbit) {
+      const owner = world.get(orbit.ownerId);
+      if (!owner?.pos) {
+        world.remove(id);
+        continue;
+      }
+      orbit.angle += orbit.angularSpeed * dt;
+      c.pos!.x = owner.pos.x + Math.cos(orbit.angle) * orbit.radius;
+      c.pos!.y = owner.pos.y + Math.sin(orbit.angle) * orbit.radius;
+    } else {
+      c.pos!.x += c.vel!.x * dt;
+      c.pos!.y += c.vel!.y * dt;
+    }
     c.projectile!.ttl -= dt;
     // Despawn if out of bounds or timed out.
     if (

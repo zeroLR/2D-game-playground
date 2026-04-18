@@ -15,9 +15,13 @@ export interface PlayerProfile {
   ownedSkins: string[];
   /** Currently selected skin ID. */
   activeSkin: string;
+  /** Currently selected starting shape ID (drives starting weapon). */
+  activeStartShape: StartingShapeId;
   /** Lifetime stats. */
   stats: PlayerStats;
 }
+
+export type StartingShapeId = "triangle" | "square" | "diamond";
 
 export interface PlayerStats {
   totalRuns: number;
@@ -25,6 +29,8 @@ export interface PlayerStats {
   totalBossKills: number;
   bestSurvivalWave: number;
   normalCleared: boolean[];  // indexed 0..2 for 3 stages
+  /** Cumulative points earned across all runs; used for progression unlocks. */
+  totalPointsEarned: number;
 }
 
 export function defaultPlayerProfile(): PlayerProfile {
@@ -32,12 +38,14 @@ export function defaultPlayerProfile(): PlayerProfile {
     points: 0,
     ownedSkins: ["triangle"],
     activeSkin: "triangle",
+    activeStartShape: "triangle",
     stats: {
       totalRuns: 0,
       totalKills: 0,
       totalBossKills: 0,
       bestSurvivalWave: 0,
       normalCleared: [false, false, false],
+      totalPointsEarned: 0,
     },
   };
 }
