@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { REROLL_TOKEN_COST, STARTING_DRAFT_TOKENS } from "../src/game/config";
 import { isEliteKind, spawnEnemy } from "../src/game/entities";
 import { createRng } from "../src/game/rng";
-import { REROLL_TOKEN_COST, STARTING_DRAFT_TOKENS } from "../src/scenes/play";
 import { World, type EnemyKind } from "../src/game/world";
 
 describe("draft token constants", () => {

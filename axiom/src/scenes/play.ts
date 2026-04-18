@@ -2,6 +2,7 @@ import { Container, Graphics } from "pixi.js";
 
 import { playSfx } from "../game/audio";
 import type { Card } from "../game/cards";
+import { STARTING_DRAFT_TOKENS } from "../game/config";
 import { spawnAvatar } from "../game/entities";
 import { applyMirrorSpec, mirrorBossSpec } from "../game/mirrorBoss";
 import type { Rng } from "../game/rng";
@@ -37,11 +38,6 @@ export interface PlayCallbacks {
   onRunComplete: (result: RunResult) => void;
   updateHud: (hp: number, maxHp: number, waveIdx: number, totalWaves: number, points: number, tokens: number) => void;
 }
-
-/** Starting draft tokens per run; see concept.md § Resource model. */
-export const STARTING_DRAFT_TOKENS = 2;
-/** Token cost to reroll the current draft offer. */
-export const REROLL_TOKEN_COST = 1;
 
 // The canvas CSS size varies per viewport; map pointer events back to the
 // fixed 360×640 play-field so gameplay math stays resolution-independent.

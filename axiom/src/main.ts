@@ -2,13 +2,13 @@ import "./style.css";
 import { Application } from "pixi.js";
 
 import { isMuted, playSfx, primeSfx, setMuted } from "./game/audio";
-import { PLAY_H, PLAY_W } from "./game/config";
+import { PLAY_H, PLAY_W, REROLL_TOKEN_COST } from "./game/config";
 import { startLoop } from "./game/loop";
 import { createRng, pickSeed } from "./game/rng";
 import { applyCard, drawOffer, type Card } from "./game/cards";
 import { DraftScene } from "./scenes/draft";
 import { EndgameScene } from "./scenes/endgame";
-import { PlayScene, REROLL_TOKEN_COST, type PointerMapper, type GameMode } from "./scenes/play";
+import { PlayScene, type PointerMapper, type GameMode } from "./scenes/play";
 import { SceneStack } from "./scenes/scene";
 import { MainMenuScene, type MenuAction } from "./scenes/mainMenu";
 import { StageSelectScene } from "./scenes/stageSelect";
