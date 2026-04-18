@@ -170,10 +170,21 @@ body {
 }
 
 .card-glyph {
-  font-size: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  font-size: 24px;
   line-height: 1;
-  width: 36px;
   text-align: center;
+}
+
+.card-glyph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .card-body {
