@@ -15,7 +15,7 @@ import {
   WEAPON_BASE_PROJECTILE_SPEED,
 } from "./config";
 import { type Rng } from "./rng";
-import { type EnemyKind, type EntityId, type WeaponState, World } from "./world";
+import { type EnemyKind, type EntityId, type WeaponMode, type WeaponState, World } from "./world";
 
 export function spawnAvatar(world: World, skinId: string = "triangle"): EntityId {
   return world.create({
@@ -254,6 +254,86 @@ export function spawnChainBolt(
       ttl: 0.5,
     },
   });
+}
+
+/**
+ * Build a fresh WeaponState for a Weapon-class draft pick. Each mode picks its
+ * own period / damage / projectile-speed defaults so extras don't inherit the
+ * primary's modifiers (mostly so balance is decoupled from prior picks).
+ */
+export function createWeaponForMode(mode: WeaponMode): WeaponState {
+  const base: WeaponState = {
+    mode,
+    period: WEAPON_BASE_PERIOD,
+    damage: WEAPON_BASE_DAMAGE,
+    projectileSpeed: WEAPON_BASE_PROJECTILE_SPEED,
+    projectiles: WEAPON_BASE_PROJECTILES,
+    pierce: WEAPON_BASE_PIERCE,
+    crit: WEAPON_BASE_CRIT,
+    cooldown: 0.4, // small stagger so all extras don't fire on the same frame
+    ricochet: 0,
+    chain: 0,
+    burnDps: 0,
+    burnDuration: 0,
+    slowPct: 0,
+    slowDuration: 0,
+  };
+  switch (mode) {
+    case "faceBeam":
+      return { ...base, period: 0.95, damage: 1, projectiles: 1 };
+    case "orbitShard":
+      return { ...base, period: 1.6, damage: 1, projectiles: 3 };
+    case "homing":
+      return { ...base, period: 0.8, damage: 2, projectileSpeed: 320, projectiles: 1 };
+    case "burst":
+      return { ...base, period: 1.1, damage: 3, projectileSpeed: 360, projectiles: 1 };
+    case "fan":
+      return { ...base, period: 0.7, damage: 1, projectiles: 5 };
+    case "charge":
+      return { ...base, period: 1.6, damage: 4, projectileSpeed: 700, pierce: 99, projectiles: 1 };
+    default:
+      return base;
+  }
+}
+
+/**
+ * Spawn N small radial projectiles from (x,y). Used by burst weapons when their
+ * primary projectile is consumed (hit or ttl). Fragments inherit a fraction of
+ * the parent damage and never burst again to keep the chain bounded.
+ */
+export function spawnBurstFragments(
+  world: World,
+  x: number,
+  y: number,
+  count: number,
+  parentDamage: number,
+): void {
+  const dmg = Math.max(1, Math.round(parentDamage * 0.5));
+  const speed = 320;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const vx = Math.cos(a) * speed;
+    const vy = Math.sin(a) * speed;
+    world.create({
+      pos: { x, y },
+      vel: { x: vx, y: vy },
+      radius: PROJECTILE_RADIUS,
+      team: "projectile",
+      projectile: {
+        damage: dmg,
+        crit: false,
+        pierceRemaining: 0,
+        ricochetRemaining: 0,
+        chainRemaining: 0,
+        burnDps: 0,
+        burnDuration: 0,
+        slowPct: 0,
+        slowDuration: 0,
+        hitIds: new Set<EntityId>(),
+        ttl: 0.45,
+      },
+    });
+  }
 }
 
 export function spawnEnemyShot(

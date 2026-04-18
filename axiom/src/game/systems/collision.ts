@@ -1,5 +1,5 @@
 import { AVATAR_IFRAMES, HIT_FLASH_TIME } from "../config";
-import { spawnChainBolt, spawnEnemyAt } from "../entities";
+import { spawnBurstFragments, spawnChainBolt, spawnEnemyAt } from "../entities";
 import type { GameEvents } from "../events";
 import type { Rng } from "../rng";
 import type { Components, EntityId, World } from "../world";
@@ -58,7 +58,7 @@ export function updateCollisions(
         ec.flash = HIT_FLASH_TIME;
         proj.hitIds.add(eid);
         if (!advanceProjectile(world, pid, pc, ec.pos!.x, ec.pos!.y)) {
-          world.remove(pid);
+          consumeProjectile(world, pid, pc);
         }
         break;
       }
@@ -101,7 +101,7 @@ export function updateCollisions(
       }
 
       if (!advanceProjectile(world, pid, pc, ec.pos!.x, ec.pos!.y)) {
-        world.remove(pid);
+        consumeProjectile(world, pid, pc);
       }
       break;
     }
@@ -239,6 +239,17 @@ function advanceProjectile(
     }
   }
   return false;
+}
+
+// Removes a projectile after a hit, triggering burst fragmentation if the
+// weapon mode requested it. Mirrors the same check in motion.ts (ttl/oob
+// despawn) so burst fires whether the projectile dies on contact or in flight.
+function consumeProjectile(world: World, pid: EntityId, pc: Components): void {
+  const p = pc.projectile;
+  if (p?.burstFragments && pc.pos) {
+    spawnBurstFragments(world, pc.pos.x, pc.pos.y, p.burstFragments, p.damage);
+  }
+  world.remove(pid);
 }
 
 export function removeDeadEnemies(world: World): void {
