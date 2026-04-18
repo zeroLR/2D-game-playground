@@ -7,3 +7,4 @@
 - Added starting-shape progression: cumulative points now unlock Square (Face Beam) and Diamond (Orbit Shard), added a dedicated "Starting Shape" menu page, persisted selected starting shape in profile data, and applied shape-specific starting weapon modes at run start.
 - Added 4 Evolution-class draft cards — Aegis (regenerating shield, max 2 / 6s), Revenant (one-shot revive at 50% maxHp), Compact (-25% hitbox), Phase Shift (auto-dodge with 8s cooldown). Refactored avatar-damage resolution into a single helper (dodge → shield → HP → revenant). Mirror Boss reflects each pick as bonus HP or speed.
 - Added an in-game Discussions modal and embedded giscus (`giscus.app/client.js`) for Axiom, wired to `zeroLR/2D-game-playground` discussions and opened from a new topbar `comments` button.
+- Added a fallback link in the Axiom Discussions modal that opens the repository’s GitHub Discussions page directly when in-widget posting fails.
