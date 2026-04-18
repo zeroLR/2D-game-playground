@@ -35,8 +35,13 @@ export interface PlayCallbacks {
   onPlayerDied: () => void;
   onRunWon: () => void;
   onRunComplete: (result: RunResult) => void;
-  updateHud: (hp: number, maxHp: number, waveIdx: number, totalWaves: number, points: number) => void;
+  updateHud: (hp: number, maxHp: number, waveIdx: number, totalWaves: number, points: number, tokens: number) => void;
 }
+
+/** Starting draft tokens per run; see concept.md § Resource model. */
+export const STARTING_DRAFT_TOKENS = 2;
+/** Token cost to reroll the current draft offer. */
+export const REROLL_TOKEN_COST = 1;
 
 // The canvas CSS size varies per viewport; map pointer events back to the
 // fixed 360×640 play-field so gameplay math stays resolution-independent.
@@ -72,6 +77,8 @@ export class PlayScene implements Scene {
   private runPoints = 0;
   private runKills = 0;
   private runBossKills = 0;
+  private runEliteKills = 0;
+  draftTokens = STARTING_DRAFT_TOKENS;
   private readonly loot: LootDrop[] = [];
   readonly stageIndex: number;
 
@@ -276,6 +283,9 @@ export class PlayScene implements Scene {
         this.cb.onRunComplete(this.buildRunResult());
         this.cb.onRunWon();
       } else {
+        // Wave clear grants a draft token, awarded before the draft screen
+        // opens so reroll is affordable on the very first draft.
+        this.draftTokens += 1;
         this.cb.onWaveCleared(cleared);
       }
     }
@@ -294,6 +304,11 @@ export class PlayScene implements Scene {
     const pts = KILL_POINTS[kind] ?? 1;
     this.runPoints += pts;
     this.runKills += 1;
+
+    if (ec.enemy.isElite) {
+      this.runEliteKills += 1;
+      this.draftTokens += 1;
+    }
 
     if (kind === "boss") {
       this.runBossKills += 1;
@@ -385,7 +400,7 @@ export class PlayScene implements Scene {
     const c = this.world.get(this.avatarId);
     const hp = c?.avatar?.hp ?? 0;
     const maxHp = c?.avatar?.maxHp ?? 0;
-    this.cb.updateHud(hp, maxHp, this.waveIdx + 1, this.totalWaves(), this.runPoints);
+    this.cb.updateHud(hp, maxHp, this.waveIdx + 1, this.totalWaves(), this.runPoints, this.draftTokens);
   }
 
   private onPointerDown(ev: PointerEvent): void {

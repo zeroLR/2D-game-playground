@@ -8,7 +8,7 @@ import { createRng, pickSeed } from "./game/rng";
 import { applyCard, drawOffer, type Card } from "./game/cards";
 import { DraftScene } from "./scenes/draft";
 import { EndgameScene } from "./scenes/endgame";
-import { PlayScene, type PointerMapper, type GameMode } from "./scenes/play";
+import { PlayScene, REROLL_TOKEN_COST, type PointerMapper, type GameMode } from "./scenes/play";
 import { SceneStack } from "./scenes/scene";
 import { MainMenuScene, type MenuAction } from "./scenes/mainMenu";
 import { StageSelectScene } from "./scenes/stageSelect";
@@ -49,6 +49,7 @@ async function boot(): Promise<void> {
   const hudHp = document.getElementById("hud-hp");
   const hudWave = document.getElementById("hud-wave");
   const hudPts = document.getElementById("hud-pts");
+  const hudTokens = document.getElementById("hud-tokens");
   const hudSeed = document.getElementById("hud-seed");
   const btnRestart = document.getElementById("btn-restart");
   const btnMute = document.getElementById("btn-mute");
@@ -117,10 +118,18 @@ async function boot(): Promise<void> {
 
   // ── HUD ─────────────────────────────────────────────────────────────────
 
-  function updateHud(hp: number, maxHp: number, waveIdx: number, totalWaves: number, points: number): void {
+  function updateHud(
+    hp: number,
+    maxHp: number,
+    waveIdx: number,
+    totalWaves: number,
+    points: number,
+    tokens: number,
+  ): void {
     if (hudHp) hudHp.textContent = `HP: ${hp}/${maxHp}`;
     if (hudWave) hudWave.textContent = `W: ${waveIdx}/${totalWaves}`;
     if (hudPts) hudPts.textContent = `${points}pts`;
+    if (hudTokens) hudTokens.textContent = `⟐ ${tokens}`;
   }
 
   const skillButtonUpdaters = new WeakMap<HTMLButtonElement, () => void>();
@@ -192,11 +201,27 @@ async function boot(): Promise<void> {
         updateHud,
         onWaveCleared: (cleared) => {
           playSfx("draft");
-          const offer = drawOffer(rng, 3);
           const label = mode === "survival"
             ? `${cleared}`
             : `${cleared} of ${play.totalWaves()}`;
-          stack.push(new DraftScene(offer, label, (pick) => onPickCard(pick)));
+          const offer = drawOffer(rng, 3);
+          let draft: DraftScene;
+          draft = new DraftScene(offer, label, {
+            onPick: (pick) => onPickCard(pick),
+            onReroll: () => {
+              if (play.draftTokens < REROLL_TOKEN_COST) return false;
+              play.draftTokens -= REROLL_TOKEN_COST;
+              draft.setOffer(drawOffer(rng, 3));
+              return true;
+            },
+            onSkip: () => {
+              stack.pop();
+              play.advanceToNextWave();
+            },
+            getTokens: () => play.draftTokens,
+            rerollCost: REROLL_TOKEN_COST,
+          });
+          stack.push(draft);
         },
         onPlayerDied: () => {
           playSfx("death");

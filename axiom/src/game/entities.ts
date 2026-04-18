@@ -68,6 +68,16 @@ const ENEMY_STATS: Record<EnemyKind, EnemyStats> = {
   crescent:  { hp: 5,  maxSpeed: 78,  contactDamage: 1, radius: 9 },
 };
 
+/** Kinds tagged as elite at spawn. Aligns with tier-2+ KILL_POINTS. */
+const ELITE_KINDS: ReadonlySet<EnemyKind> = new Set(["star", "pentagon", "hexagon", "cross"]);
+
+/** Per-kill HP multiplier applied to elite-marked spawns. */
+const ELITE_HP_MUL = 1.5;
+
+export function isEliteKind(kind: EnemyKind): boolean {
+  return ELITE_KINDS.has(kind);
+}
+
 export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
   const stats = ENEMY_STATS[kind];
   // Bosses appear in the upper play-field, centered. Other enemies spawn on
@@ -83,6 +93,7 @@ export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
     else if (edge === 2)   { x = rng() * PLAY_W; y = PLAY_H - ENEMY_SPAWN_MARGIN; }
     else                   { x = ENEMY_SPAWN_MARGIN; y = rng() * PLAY_H; }
   }
+  const elite = isEliteKind(kind);
   return world.create({
     pos: { x, y },
     vel: { x: 0, y: 0 },
@@ -98,8 +109,9 @@ export function spawnEnemy(world: World, kind: EnemyKind, rng: Rng): EntityId {
       dashCooldown: kind === "diamond" ? 2 + rng() * 2 : undefined,
       shootCooldown: kind === "cross" ? 1.5 + rng() : undefined,
       orbitAngle: kind === "crescent" ? rng() * Math.PI * 2 : undefined,
+      isElite: elite || undefined,
     },
-    hp: { value: stats.hp },
+    hp: { value: elite ? Math.ceil(stats.hp * ELITE_HP_MUL) : stats.hp },
   });
 }
 
@@ -109,6 +121,7 @@ export function spawnEnemyAt(world: World, kind: EnemyKind, rng: Rng, atX: numbe
   const spread = 12;
   const x = atX + (rng() - 0.5) * spread;
   const y = atY + (rng() - 0.5) * spread;
+  const elite = isEliteKind(kind);
   return world.create({
     pos: { x, y },
     vel: { x: 0, y: 0 },
@@ -123,8 +136,9 @@ export function spawnEnemyAt(world: World, kind: EnemyKind, rng: Rng, atX: numbe
       dashCooldown: kind === "diamond" ? 2 + rng() * 2 : undefined,
       shootCooldown: kind === "cross" ? 1.5 + rng() : undefined,
       orbitAngle: kind === "crescent" ? rng() * Math.PI * 2 : undefined,
+      isElite: elite || undefined,
     },
-    hp: { value: stats.hp },
+    hp: { value: elite ? Math.ceil(stats.hp * ELITE_HP_MUL) : stats.hp },
   });
 }
 
