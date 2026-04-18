@@ -12,3 +12,4 @@
 
 ## Axiom adjustment log
 - For Axiom, record every game-related change under this section in `CLAUDE.md` as one adjustment entry per change (new features, new enemies, balance/value tuning, UI changes, bug fixes, etc.).
+- Added documentation for current Axiom enemy roster/behavior (`axiom/docs/ENEMY.md`), card pool (`axiom/docs/CARDS.md`), and primal skills (`axiom/docs/SKILLS.md`).
