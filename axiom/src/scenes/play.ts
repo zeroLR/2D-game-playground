@@ -288,10 +288,10 @@ export class PlayScene implements Scene {
           const heal = lifestealHeal(0);
           let healed = false;
           for (const [, c] of this.world.with("pos", "hp", "enemy")) {
-            const dx = c.pos.x - avatar.pos.x;
-            const dy = c.pos.y - avatar.pos.y;
+            const dx = c.pos!.x - avatar.pos.x;
+            const dy = c.pos!.y - avatar.pos.y;
             if (dx * dx + dy * dy <= radius * radius) {
-              c.hp.value -= dmg;
+              c.hp!.value -= dmg;
               healed = true;
             }
           }
@@ -475,8 +475,20 @@ export class PlayScene implements Scene {
         pos: { x: avatar.pos.x, y: avatar.pos.y },
         vel: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
         radius: 3,
-        team: "player",
-        projectile: { damage: dmg, pierce: 1, from: this.avatarId },
+        team: "projectile",
+        projectile: {
+          damage: dmg,
+          crit: false,
+          pierceRemaining: 1,
+          ricochetRemaining: 0,
+          chainRemaining: 0,
+          burnDps: 0,
+          burnDuration: 0,
+          slowPct: 0,
+          slowDuration: 0,
+          hitIds: new Set(),
+          ttl: 1.2,
+        },
       });
     }
   }

@@ -22,4 +22,32 @@ describe("achievements", () => {
       expect(state[def.id].unlocked).toBe(false);
     }
   });
+
+  it("has 16 achievement definitions", () => {
+    expect(ACHIEVEMENTS).toHaveLength(16);
+  });
+
+  it("achievement IDs are unique", () => {
+    const ids = ACHIEVEMENTS.map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("default state includes all 16 achievement IDs", () => {
+    const state = defaultAchievementState();
+    const ids = Object.keys(state);
+    expect(ids).toHaveLength(16);
+    for (const def of ACHIEVEMENTS) {
+      expect(ids).toContain(def.id);
+    }
+  });
+
+  it("new achievements can be unlocked", () => {
+    const state = defaultAchievementState();
+    expect(unlockAchievement(state, "kill100")).toBe(true);
+    expect(state.kill100.unlocked).toBe(true);
+    expect(unlockAchievement(state, "survival32")).toBe(true);
+    expect(state.survival32.unlocked).toBe(true);
+    expect(unlockAchievement(state, "bossRush3")).toBe(true);
+    expect(state.bossRush3.unlocked).toBe(true);
+  });
 });
