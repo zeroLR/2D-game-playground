@@ -304,6 +304,17 @@ body {
   background: var(--bg);
 }
 
+#version-tag {
+  position: fixed;
+  right: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  z-index: 6;
+}
+
 /* ── Inline SVG icon helper ─────────────────────────────────────────────── */
 
 .svg-icon {
