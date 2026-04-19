@@ -17,7 +17,7 @@ import type { WaveSpec } from "../game/waves";
 import { type EntityId, World } from "../game/world";
 import { drawGrid, drawWorld } from "../render";
 import type { Scene } from "./scene";
-import { KILL_POINTS, BOSS_WAVE_BONUS, rollBossLoot, type LootDrop, type RunResult } from "../game/rewards";
+import { BOSS_WAVE_BONUS, killPointsForEnemy, rollBossLoot, type LootDrop, type RunResult } from "../game/rewards";
 import {
   type ActiveSkillState,
   activateSkill,
@@ -303,7 +303,7 @@ export class PlayScene implements Scene {
     const ec = this.world.get(eid);
     if (!ec?.enemy) return;
     const kind = ec.enemy.kind;
-    const pts = KILL_POINTS[kind] ?? 1;
+    const pts = killPointsForEnemy(kind, this.mode, this.stageIndex);
     this.runPoints += pts;
     this.runKills += 1;
 

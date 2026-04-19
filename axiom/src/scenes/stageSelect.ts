@@ -1,6 +1,7 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import { STAGE_THEMES } from "../game/stageThemes";
+import { STAGE_WAVES } from "../game/stageWaves";
 import { iconBack, iconSpan } from "../icons";
 
 // ── Stage select (Normal mode) ──────────────────────────────────────────────
@@ -47,7 +48,7 @@ export class StageSelectScene implements Scene {
       name.textContent = theme.name;
       const desc = document.createElement("span");
       desc.className = "card-text";
-      desc.textContent = `Stage ${i + 1} · 8 waves`;
+      desc.textContent = `Stage ${i + 1} · ${STAGE_WAVES[i]?.length ?? 0} waves`;
       body.appendChild(name);
       body.appendChild(desc);
       btn.appendChild(body);

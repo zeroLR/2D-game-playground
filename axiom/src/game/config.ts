@@ -34,4 +34,9 @@ export const HIT_FLASH_TIME = 0.1;
 
 // Draft token economy (concept.md § Resource model).
 export const STARTING_DRAFT_TOKENS = 2;
-export const REROLL_TOKEN_COST = 1;
+export const REROLL_TOKEN_BASE_COST = 1;
+
+/** Cost curve for draft rerolls within a single draft screen. */
+export function rerollTokenCostForUse(useCount: number): number {
+  return REROLL_TOKEN_BASE_COST + Math.max(0, Math.floor(useCount));
+}

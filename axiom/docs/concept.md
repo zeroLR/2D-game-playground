@@ -57,7 +57,7 @@ shuffle bias、effect ordering、relic 事件 hook、seeded RNG、save/load、sy
 
 ### Run shape
 - 單一 act，共 **8 波**：w1–w7 為一般波（各 20–40 秒），w8 為 **Mirror Boss**（鏡像玩家卡組的大型幾何體）
-- 波間 **draft screen**：從 3 張隨機卡中選 1，或花 1 token reroll / 0 token skip
+- 波間 **draft screen**：從 3 張隨機卡中選 1，或花 token reroll（同一輪 draft 每次 reroll 消耗 +1）/ 0 token skip
 - 全程目標 **3–5 分鐘**；死亡立即 run-over，tap 重開 < 3 秒
 
 ### Starting loadout
@@ -70,7 +70,7 @@ shuffle bias、effect ordering、relic 事件 hook、seeded RNG、save/load、sy
 
 ### Resource model
 - **無 energy / mana**：波內戰鬥不消耗資源
-- **Draft tokens**：run 開始給 2 token，擊殺 elite / 完成波次 +1 token；只在 draft screen 消耗（reroll 花 1）
+- **Draft tokens**：run 開始給 2 token，擊殺 elite / 完成波次 +1 token；只在 draft screen 消耗（reroll 基礎 1，且同一輪每次 +1）
 - **Currency (Shards)**：每波結束依效率給 1–3 shards；run 結束累計到 meta 解鎖
 
 ### Card pool (MVP = 24 張)
