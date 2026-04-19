@@ -5,7 +5,8 @@ import { isMuted, playSfx, primeSfx, setMuted } from "./game/audio";
 import { PLAY_H, PLAY_W, rerollTokenCostForUse } from "./game/config";
 import { startLoop } from "./game/loop";
 import { createRng, pickSeed } from "./game/rng";
-import { applyCard, drawOffer, type Card } from "./game/cards";
+import { applyCard, applyCardLevelUp, drawOffer, POOL, type Card } from "./game/cards";
+import { CardInventory, isLevelableEffect } from "./game/cardLevels";
 import { DraftScene } from "./scenes/draft";
 import { EndgameScene } from "./scenes/endgame";
 import { PlayScene, type PointerMapper, type GameMode } from "./scenes/play";
@@ -32,7 +33,7 @@ import {
   resolveSelectedStartingShape,
   runSkinForStartingShape,
 } from "./game/startingShapes";
-import { iconTimeStop, iconClone, iconReflect, iconBarrage, iconLifesteal, setIconHtml } from "./icons";
+import { iconTimeStop, iconClone, iconReflect, iconBarrage, iconLifesteal, setIconHtml, CARD_GLYPHS } from "./icons";
 import {
   loadProfile, saveProfile,
   loadEquipment, saveEquipment,
@@ -50,6 +51,9 @@ import type {
   AchievementState,
   ShopUnlocks,
 } from "./game/data/types";
+
+/** O(1) lookup for pool cards by ID. */
+const POOL_BY_ID = new Map(POOL.map((c) => [c.id, c]));
 
 async function boot(): Promise<void> {
   const gameEl = document.getElementById("game");
@@ -121,6 +125,7 @@ async function boot(): Promise<void> {
   let paused = false;
   let seed = 0;
   let menuRng = createRng(42);
+  let runInventory = new CardInventory();
 
   function syncRunControlButtons(): void {
     const runActive = currentRun !== null;
@@ -262,6 +267,48 @@ async function boot(): Promise<void> {
     }
   }
 
+  // ── Card HUD (top-left overlay) ─────────────────────────────────────────
+
+  function renderCardHud(): void {
+    let container = document.getElementById("hud-cards");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "hud-cards";
+      gameEl!.appendChild(container);
+    }
+    container.innerHTML = "";
+
+    for (const [, entry] of runInventory.all()) {
+      const chip = document.createElement("span");
+      chip.className = "card-chip";
+      chip.title = `${entry.card.name} Lv${entry.level}`;
+
+      const glyphSpan = document.createElement("span");
+      glyphSpan.className = "card-chip-glyph";
+      const svgGlyph = CARD_GLYPHS[entry.card.id];
+      if (svgGlyph) setIconHtml(glyphSpan, svgGlyph);
+      else glyphSpan.textContent = entry.card.glyph;
+
+      const lvSpan = document.createElement("span");
+      lvSpan.className = "card-chip-lv";
+      lvSpan.textContent = `${entry.level}`;
+
+      chip.appendChild(glyphSpan);
+      chip.appendChild(lvSpan);
+      container.appendChild(chip);
+    }
+
+    container.hidden = runInventory.size === 0;
+  }
+
+  function clearCardHud(): void {
+    const container = document.getElementById("hud-cards");
+    if (container) {
+      container.innerHTML = "";
+      container.hidden = true;
+    }
+  }
+
   // ── Run lifecycle ───────────────────────────────────────────────────────
 
   function startRun(mode: GameMode, stageIndex: number): void {
@@ -288,6 +335,9 @@ async function boot(): Promise<void> {
 
     const startingShape = resolveSelectedStartingShape(profile);
     const runSkin = runSkinForStartingShape(startingShape, profile.activeSkin);
+
+    // Reset card inventory for this run.
+    runInventory = new CardInventory();
 
     play = new PlayScene(
       rng,
@@ -317,6 +367,7 @@ async function boot(): Promise<void> {
             },
             getTokens: () => play.draftTokens,
             getRerollCost: () => rerollTokenCostForUse(rerollUses),
+            getInventory: () => runInventory,
           });
           stack.push(draft);
         },
@@ -343,16 +394,35 @@ async function boot(): Promise<void> {
     // Apply equipment loadout at run start.
     applyEquipment(equipment, play.world, play.avatarId);
 
+    // Seed the card inventory with equipped equipment cards (they count as Lv 1).
+    for (const cardId of equipment.equipped) {
+      const poolCard = POOL_BY_ID.get(cardId);
+      if (poolCard && !runInventory.has(cardId)) {
+        runInventory.add(poolCard);
+      }
+    }
+
     app.stage.addChild(play.root);
     stack.push(play);
     showSkillButtons();
+    renderCardHud();
   }
 
   function onPickCard(card: Card): void {
-    applyCard(play.world, play.avatarId, card);
+    if (runInventory.has(card.id) && isLevelableEffect(card.effect)) {
+      // Duplicate pick — level up instead of stacking another copy.
+      const newLevel = runInventory.levelUp(card.id);
+      if (newLevel > 0) {
+        applyCardLevelUp(play.world, play.avatarId, card, newLevel);
+      }
+    } else {
+      applyCard(play.world, play.avatarId, card);
+      runInventory.add(card);
+    }
     play.recordPick(card);
     stack.pop();
     play.advanceToNextWave();
+    renderCardHud();
   }
 
   async function settleRun(result: RunResult): Promise<void> {
@@ -448,6 +518,7 @@ async function boot(): Promise<void> {
     setPaused(false);
     setTheme(DEFAULT_THEME);
     if (hudSkills) hudSkills.innerHTML = "";
+    clearCardHud();
 
     const menu = new MainMenuScene(async (action: MenuAction) => {
       switch (action.kind) {

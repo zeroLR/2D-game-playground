@@ -1,5 +1,6 @@
 import { Container } from "pixi.js";
 import type { Card } from "../game/cards";
+import { isLevelableEffect, MAX_CARD_LEVEL, type CardInventory } from "../game/cardLevels";
 import type { Scene } from "./scene";
 import { CARD_GLYPHS, setIconHtml } from "../icons";
 
@@ -16,6 +17,8 @@ export interface DraftHandlers {
   getTokens: () => number;
   /** Cost of the next reroll (for label rendering). */
   getRerollCost: () => number;
+  /** Run-scoped card inventory for level display. */
+  getInventory: () => CardInventory;
 }
 
 export class DraftScene implements Scene {
@@ -74,6 +77,8 @@ export class DraftScene implements Scene {
     tokenRow.textContent = `tokens: ${tokens}`;
     inner.appendChild(tokenRow);
 
+    const inventory = this.handlers.getInventory();
+
     const list = document.createElement("div");
     list.className = "card-list";
     const btnByCard = new Map<string, HTMLButtonElement>();
@@ -82,6 +87,14 @@ export class DraftScene implements Scene {
       btn.type = "button";
       btn.className = "card-btn";
       btn.setAttribute("data-card-id", card.id);
+
+      // Check if this card is already held and can level up.
+      const entry = inventory.get(card.id);
+      const isUpgrade = entry != null && isLevelableEffect(card.effect);
+      const atMaxLevel = entry != null && entry.level >= MAX_CARD_LEVEL;
+
+      if (isUpgrade) btn.classList.add("card-btn--upgrade");
+      if (atMaxLevel) btn.classList.add("card-btn--maxed");
 
       const glyph = document.createElement("span");
       glyph.className = "card-glyph";
@@ -95,13 +108,25 @@ export class DraftScene implements Scene {
       body.className = "card-body";
       const name = document.createElement("span");
       name.className = "card-name";
-      name.textContent = card.name;
+      if (isUpgrade && !atMaxLevel) {
+        name.textContent = `${card.name}  ↑ Lv${entry!.level + 1}`;
+      } else if (atMaxLevel) {
+        name.textContent = `${card.name}  MAX`;
+      } else {
+        name.textContent = card.name;
+      }
       const text = document.createElement("span");
       text.className = "card-text";
       text.textContent = card.text;
       const rarity = document.createElement("span");
       rarity.className = "card-rarity";
-      rarity.textContent = card.rarity;
+      if (isUpgrade && !atMaxLevel) {
+        rarity.textContent = `${card.rarity} · level up`;
+      } else if (atMaxLevel) {
+        rarity.textContent = `${card.rarity} · max level`;
+      } else {
+        rarity.textContent = card.rarity;
+      }
       body.appendChild(name);
       body.appendChild(text);
       body.appendChild(rarity);
@@ -111,7 +136,11 @@ export class DraftScene implements Scene {
         this.selected = card;
         for (const [id, b] of btnByCard) b.classList.toggle("selected", id === card.id);
         confirmBtn.disabled = false;
-        confirmBtn.textContent = `confirm: ${card.name}`;
+        if (isUpgrade && !atMaxLevel) {
+          confirmBtn.textContent = `level up: ${card.name}`;
+        } else {
+          confirmBtn.textContent = `confirm: ${card.name}`;
+        }
       });
       btnByCard.set(card.id, btn);
       list.appendChild(btn);

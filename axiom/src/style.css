@@ -494,3 +494,69 @@ body {
 .tab-btn:not(.tab-active):active {
   background: var(--chrome);
 }
+
+/* ── Card HUD (in-game top-left, shows held cards + levels) ──────────── */
+
+#hud-cards {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  pointer-events: none;
+  z-index: 4;
+  max-width: 50%;
+}
+
+#hud-cards[hidden] { display: none; }
+
+.card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--fg);
+}
+
+.card-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  font-size: 10px;
+}
+
+.card-chip-glyph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.card-chip-lv {
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Draft card upgrade indicators ───────────────────────────────────── */
+
+.card-btn--upgrade {
+  border-color: var(--accent);
+  border-width: 2px;
+  padding: 11px 13px;
+}
+
+.card-btn--upgrade .card-rarity {
+  color: var(--accent);
+}
+
+.card-btn--maxed {
+  opacity: 0.55;
+}
