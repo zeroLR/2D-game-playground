@@ -120,6 +120,8 @@ export function drawPrimalSkill(state: SkillTreeState, rng: Rng): DrawResult | n
 
 export interface ActiveSkillState {
   id: PrimalSkillId;
+  /** Skill upgrade level (affects scaling). */
+  level: number;
   /** Remaining cooldown (0 = ready). */
   cooldown: number;
   /** Remaining active duration (0 = inactive). */
@@ -137,6 +139,7 @@ export function createActiveSkillStates(tree: SkillTreeState): ActiveSkillState[
     const def = PRIMAL_SKILLS[id];
     result.push({
       id,
+      level: entry.level,
       cooldown: 0,
       active: 0,
       duration: skillDuration(def, entry.level),

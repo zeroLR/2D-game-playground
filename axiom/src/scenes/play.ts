@@ -283,9 +283,9 @@ export class PlayScene implements Scene {
         this.lifestealTick -= 1;
         const avatar = this.world.get(this.avatarId);
         if (avatar?.pos && avatar.avatar) {
-          const radius = lifestealRadius(0);
-          const dmg = lifestealDamage(0);
-          const heal = lifestealHeal(0);
+          const radius = lifestealRadius(lifestealSkill.level);
+          const dmg = lifestealDamage(lifestealSkill.level);
+          const heal = lifestealHeal(lifestealSkill.level);
           let healed = false;
           for (const [, c] of this.world.with("pos", "hp", "enemy")) {
             const dx = c.pos!.x - avatar.pos.x;
@@ -427,10 +427,10 @@ export class PlayScene implements Scene {
     }
   }
 
-  private spawnClone(_sk: ActiveSkillState): void {
+  private spawnClone(sk: ActiveSkillState): void {
     const avatar = this.world.get(this.avatarId);
     if (!avatar?.pos || !avatar.weapon || !avatar.avatar) return;
-    const ratio = cloneInheritRatio(0);
+    const ratio = cloneInheritRatio(sk.level);
     this.cloneId = this.world.create({
       pos: { x: avatar.pos.x + 20, y: avatar.pos.y + 20 },
       vel: { x: 0, y: 0 },
@@ -463,11 +463,11 @@ export class PlayScene implements Scene {
   }
 
   /** Fire a burst of projectiles in all directions. */
-  private fireBarrage(_sk: ActiveSkillState): void {
+  private fireBarrage(sk: ActiveSkillState): void {
     const avatar = this.world.get(this.avatarId);
     if (!avatar?.pos) return;
-    const count = barrageProjectiles(0);
-    const dmg = barrageDamage(0);
+    const count = barrageProjectiles(sk.level);
+    const dmg = barrageDamage(sk.level);
     const speed = 250;
     for (let i = 0; i < count; i++) {
       const angle = (2 * Math.PI * i) / count;
