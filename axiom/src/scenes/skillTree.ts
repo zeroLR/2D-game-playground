@@ -36,19 +36,22 @@ export class SkillTreeScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const state = this.cb.getState();
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "primal skills";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     // Resources bar
     const res = document.createElement("div");
     res.className = "overlay-sub";
     res.textContent = `cores: ${state.cores}  ·  skill pts: ${state.skillPoints}`;
-    inner.appendChild(res);
+    content.appendChild(res);
 
     // Draw button
     if (state.cores > 0) {
@@ -70,7 +73,7 @@ export class SkillTreeScene implements Scene {
           }
         }
       });
-      inner.appendChild(drawBtn);
+      content.appendChild(drawBtn);
     }
 
     // Skill list
@@ -147,7 +150,7 @@ export class SkillTreeScene implements Scene {
 
       list.appendChild(btn);
     }
-    inner.appendChild(list);
+    content.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

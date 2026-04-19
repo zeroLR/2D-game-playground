@@ -36,20 +36,23 @@ export class AchievementsScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const state = this.getState();
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "achievements";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     const unlocked = Object.values(state).filter((e) => e.unlocked).length;
     const total = ACHIEVEMENTS.length;
     const sub = document.createElement("div");
     sub.className = "overlay-sub";
     sub.textContent = `${unlocked}/${total} unlocked`;
-    inner.appendChild(sub);
+    content.appendChild(sub);
 
     const achMap = new Map<string, AchievementDef>();
     for (const def of ACHIEVEMENTS) achMap.set(def.id, def);
@@ -60,7 +63,7 @@ export class AchievementsScene implements Scene {
       catLabel.style.marginTop = "12px";
       catLabel.style.fontWeight = "bold";
       catLabel.textContent = cat.label;
-      inner.appendChild(catLabel);
+      content.appendChild(catLabel);
 
       const list = document.createElement("div");
       list.className = "card-list";
@@ -105,7 +108,7 @@ export class AchievementsScene implements Scene {
         btn.appendChild(body);
         list.appendChild(btn);
       }
-      inner.appendChild(list);
+      content.appendChild(list);
     }
 
     const back = document.createElement("button");
