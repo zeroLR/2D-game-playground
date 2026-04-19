@@ -1,3 +1,4 @@
+import { isLevelableEffect, levelBonusFraction } from "./cardLevels";
 import { createWeaponForMode } from "./entities";
 import { type Rng, shuffle } from "./rng";
 import type { EntityId, SynergyId, WeaponMode, World } from "./world";
@@ -136,6 +137,83 @@ export function applyCard(world: World, avatarId: EntityId, card: Card): void {
       if (c.avatar.extraWeapons.length < MAX_EXTRA_WEAPONS) {
         c.avatar.extraWeapons.push(createWeaponForMode(e.mode));
       }
+      break;
+  }
+}
+
+/**
+ * Apply the *delta* from levelling a card from `newLevel - 1` → `newLevel`.
+ *
+ * For levelable effects (stat modifiers), each level applies a diminishing
+ * fraction of the base effect.  Multiplicative effects (periodMul, speedMul,
+ * projectileSpeedMul, hitboxMul) are converted to additive deltas so they
+ * don't compound exponentially.
+ *
+ * Non-levelable effects (synergy, evolution, weapon-class) are ignored — they
+ * only fire once via `applyCard` on the first pick and don't scale further.
+ */
+export function applyCardLevelUp(world: World, avatarId: EntityId, card: Card, newLevel: number): void {
+  if (!isLevelableEffect(card.effect)) return;
+
+  const c = world.get(avatarId);
+  if (!c || !c.avatar || !c.weapon) return;
+
+  const frac = levelBonusFraction(newLevel);
+  const e = card.effect;
+
+  switch (e.kind) {
+    case "damageAdd":
+      c.weapon.damage += Math.max(1, Math.round(e.value * frac));
+      break;
+    case "periodMul": {
+      // Base bonus is (1 - value), e.g. 0.8 → 0.2 reduction.
+      // Each level adds a diminishing additive chunk of that reduction.
+      const baseReduction = 1 - e.value; // positive for speed-ups
+      const delta = baseReduction * frac;
+      c.weapon.period = Math.max(0.05, c.weapon.period - c.weapon.period * delta);
+      break;
+    }
+    case "projectileSpeedMul": {
+      const baseBoost = e.value - 1; // e.g. 1.25 → 0.25
+      const delta = baseBoost * frac;
+      c.weapon.projectileSpeed *= 1 + delta;
+      break;
+    }
+    case "projectilesAdd":
+      // Only grant +1 at certain levels (rounding)
+      if (e.value * frac >= 0.5) c.weapon.projectiles += Math.max(1, Math.round(e.value * frac));
+      break;
+    case "pierceAdd":
+      if (e.value * frac >= 0.5) c.weapon.pierce += Math.max(1, Math.round(e.value * frac));
+      break;
+    case "critAdd":
+      c.weapon.crit = Math.min(1, c.weapon.crit + e.value * frac);
+      break;
+    case "maxHpAdd": {
+      const add = Math.max(1, Math.round(e.value * frac));
+      c.avatar.maxHp += add;
+      c.avatar.hp = Math.min(c.avatar.maxHp, c.avatar.hp + add);
+      break;
+    }
+    case "speedMul": {
+      const baseBoost = e.value - 1; // e.g. 1.2 → 0.2
+      const delta = baseBoost * frac;
+      c.avatar.speedMul *= 1 + delta;
+      break;
+    }
+    case "ricochetAdd":
+      if (e.value * frac >= 0.5) c.weapon.ricochet += Math.max(1, Math.round(e.value * frac));
+      break;
+    case "chainAdd":
+      if (e.value * frac >= 0.5) c.weapon.chain += Math.max(1, Math.round(e.value * frac));
+      break;
+    case "burnAdd":
+      c.weapon.burnDps += e.dps * frac;
+      c.weapon.burnDuration = Math.max(c.weapon.burnDuration, e.duration);
+      break;
+    case "slowAdd":
+      c.weapon.slowPct = Math.min(0.9, c.weapon.slowPct + e.pct * frac);
+      c.weapon.slowDuration = Math.max(c.weapon.slowDuration, e.duration);
       break;
   }
 }
