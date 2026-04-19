@@ -150,6 +150,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+  padding-right: 2px;
+}
+
+.overlay-body-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   overflow-y: auto;
   padding-right: 2px;
 }

@@ -51,10 +51,14 @@ export class EquipmentScene implements Scene {
     else enhTab.classList.add("tab-active");
     content.appendChild(tabRow);
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     if (this.activeTab === "skin") {
-      this.renderSkinTab(content);
+      this.renderSkinTab(body);
     } else {
-      this.renderEnhanceTab(content);
+      this.renderEnhanceTab(body);
     }
 
     const back = document.createElement("button");
@@ -109,8 +113,6 @@ export class EquipmentScene implements Scene {
 
     const skinList = document.createElement("div");
     skinList.className = "card-list";
-    skinList.style.maxHeight = "280px";
-    skinList.style.overflowY = "auto";
 
     // Default skin
     this.addSkinButton(skinList, "triangle", glyphTriangle, "Triangle (default)", profile.activeSkin === "triangle");
@@ -248,8 +250,6 @@ export class EquipmentScene implements Scene {
 
     const ownedDiv = document.createElement("div");
     ownedDiv.className = "card-list";
-    ownedDiv.style.maxHeight = "180px";
-    ownedDiv.style.overflowY = "auto";
 
     const unequipped = loadout.ownedCards.filter(
       (id) => {

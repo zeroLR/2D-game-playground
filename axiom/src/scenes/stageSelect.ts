@@ -31,6 +31,10 @@ export class StageSelectScene implements Scene {
     title.textContent = "select stage";
     content.appendChild(title);
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     const list = document.createElement("div");
     list.className = "card-list";
 
@@ -68,7 +72,7 @@ export class StageSelectScene implements Scene {
       btn.addEventListener("click", () => this.onSelect(i));
       list.appendChild(btn);
     });
-    content.appendChild(list);
+    body.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

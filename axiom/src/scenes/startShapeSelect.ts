@@ -42,6 +42,10 @@ export class StartShapeSelectScene implements Scene {
     sub.append(` total points: ${profile.stats.totalPointsEarned}`);
     content.appendChild(sub);
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     const list = document.createElement("div");
     list.className = "card-list";
 
@@ -92,7 +96,7 @@ export class StartShapeSelectScene implements Scene {
       list.appendChild(btn);
     }
 
-    content.appendChild(list);
+    body.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";
