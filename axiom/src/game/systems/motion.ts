@@ -1,5 +1,9 @@
 import { AVATAR_BASE_SPEED, PLAY_H, PLAY_W } from "../config";
+import { spawnBurstFragments } from "../entities";
+import { closestEnemy } from "../targeting";
 import type { World } from "../world";
+
+const HOMING_TURN_RATE = 8; // radians per second; bounded so missiles arc, not snap
 
 export function updateAvatarMotion(world: World, dt: number): void {
   for (const [, c] of world.with("avatar", "pos", "vel")) {
@@ -64,6 +68,26 @@ export function updateProjectileMotion(world: World, dt: number): void {
       c.pos!.x = owner.pos.x + Math.cos(orbit.angle) * orbit.radius;
       c.pos!.y = owner.pos.y + Math.sin(orbit.angle) * orbit.radius;
     } else {
+      // Homing weapons re-target the nearest live enemy each frame and steer
+      // their velocity toward it at a bounded turn rate.
+      if (c.projectile!.homing) {
+        const tid = closestEnemy(world, c.pos!.x, c.pos!.y);
+        if (tid !== null) {
+          const t = world.get(tid)!;
+          const dxh = t.pos!.x - c.pos!.x;
+          const dyh = t.pos!.y - c.pos!.y;
+          const speed = Math.hypot(c.vel!.x, c.vel!.y) || 1;
+          const targetAngle = Math.atan2(dyh, dxh);
+          const currentAngle = Math.atan2(c.vel!.y, c.vel!.x);
+          let delta = targetAngle - currentAngle;
+          while (delta > Math.PI) delta -= Math.PI * 2;
+          while (delta < -Math.PI) delta += Math.PI * 2;
+          const maxTurn = HOMING_TURN_RATE * dt;
+          const newAngle = currentAngle + Math.max(-maxTurn, Math.min(maxTurn, delta));
+          c.vel!.x = Math.cos(newAngle) * speed;
+          c.vel!.y = Math.sin(newAngle) * speed;
+        }
+      }
       c.pos!.x += c.vel!.x * dt;
       c.pos!.y += c.vel!.y * dt;
     }
@@ -74,6 +98,9 @@ export function updateProjectileMotion(world: World, dt: number): void {
       c.pos!.x < -20 || c.pos!.x > PLAY_W + 20 ||
       c.pos!.y < -20 || c.pos!.y > PLAY_H + 20
     ) {
+      if (c.projectile!.burstFragments) {
+        spawnBurstFragments(world, c.pos!.x, c.pos!.y, c.projectile!.burstFragments, c.projectile!.damage);
+      }
       world.remove(id);
     }
   }

@@ -9,8 +9,12 @@ export type EnemyKind =
 export interface Pos { x: number; y: number }
 export interface Vel { x: number; y: number }
 
+export type WeaponMode =
+  | "vertex" | "faceBeam" | "orbitShard"
+  | "homing" | "burst" | "fan" | "charge";
+
 export interface WeaponState {
-  mode?: "vertex" | "faceBeam" | "orbitShard";
+  mode?: WeaponMode;
   period: number;     // seconds between shots
   damage: number;
   projectileSpeed: number;
@@ -47,6 +51,10 @@ export interface Projectile {
     radius: number;
     angularSpeed: number;
   };
+  /** Homing weapon: motion system steers velocity toward the nearest enemy. */
+  homing?: boolean;
+  /** Burst weapon: when the projectile despawns, spawn N radial fragments. */
+  burstFragments?: number;
 }
 
 export interface Enemy {
@@ -110,6 +118,9 @@ export interface Avatar {
   dodgeCharges?: number;
   dodgePeriod?: number;
   dodgeCooldown?: number;
+  // --- Weapon-class cards: secondary weapons that fire alongside the primary. ---
+  /** Extra weapons added by Weapon-class draft picks. Each ticks its own cooldown. */
+  extraWeapons?: WeaponState[];
 }
 
 export interface Components {

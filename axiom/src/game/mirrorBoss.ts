@@ -116,6 +116,20 @@ export function mirrorBossSpec(picks: readonly Card[]): MirrorBossSpec {
         // Phase Shift adds an extra HP cushion roughly equal to a half-life.
         hp += 12;
         break;
+      case "addWeapon":
+        // Player gains a parallel weapon → boss gets a flavour-matched buff
+        // proportional to that weapon's threat. Mirror is symbolic, not literal:
+        // the boss can't fire two patterns at once, so each pick lands as raw
+        // stat pressure (damage / fire-rate / projectiles / HP).
+        switch (e.mode) {
+          case "faceBeam":   w.projectiles += 1; break;
+          case "orbitShard": w.damage += 1; hp += 8; break;
+          case "homing":     w.damage += 1; w.projectileSpeed *= 1.1; break;
+          case "burst":      w.damage += 2; break;
+          case "fan":        w.projectiles += 2; break;
+          case "charge":     w.damage += 3; w.period = Math.max(0.2, w.period * 0.85); break;
+        }
+        break;
     }
   }
 

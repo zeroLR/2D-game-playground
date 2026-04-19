@@ -1,5 +1,9 @@
+import { createWeaponForMode } from "./entities";
 import { type Rng, shuffle } from "./rng";
-import type { EntityId, SynergyId, World } from "./world";
+import type { EntityId, SynergyId, WeaponMode, World } from "./world";
+
+/** Soft cap on simultaneous Weapon-class picks per run. Prevents runaway DPS / FPS. */
+export const MAX_EXTRA_WEAPONS = 3;
 
 export type Rarity = "common" | "uncommon" | "rare";
 
@@ -21,7 +25,9 @@ export type CardEffect =
   | { kind: "shieldRegen"; max: number; period: number }
   | { kind: "secondChance" }
   | { kind: "hitboxMul"; value: number }
-  | { kind: "dodgeCD"; cooldown: number };
+  | { kind: "dodgeCD"; cooldown: number }
+  // --- Weapon-class cards: each adds a parallel weapon firing alongside primary. ---
+  | { kind: "addWeapon"; mode: WeaponMode };
 
 export interface Card {
   id: string;
@@ -55,6 +61,13 @@ export const POOL: readonly Card[] = [
   { id: "revenant",   name: "Revenant",      glyph: "↻", rarity: "rare",     text: "Once per run: revive at 50% HP",  effect: { kind: "secondChance" } },
   { id: "compact",    name: "Compact",       glyph: "▽", rarity: "uncommon", text: "-25% hitbox",                     effect: { kind: "hitboxMul", value: 0.75 } },
   { id: "phaseShift", name: "Phase Shift",   glyph: "⇶", rarity: "rare",     text: "Auto-dodge every 8s",             effect: { kind: "dodgeCD", cooldown: 8 } },
+  // --- Weapon-class: each adds a parallel weapon firing alongside primary. ---
+  { id: "wpnFaceBeam",   name: "Face Beam",   glyph: "✚", rarity: "rare",     text: "+Weapon: 4-way beam",             effect: { kind: "addWeapon", mode: "faceBeam" } },
+  { id: "wpnOrbitShard", name: "Orbit Shard", glyph: "◌", rarity: "rare",     text: "+Weapon: orbiting shards",        effect: { kind: "addWeapon", mode: "orbitShard" } },
+  { id: "wpnHoming",     name: "Tracker",     glyph: "⊙", rarity: "uncommon", text: "+Weapon: homing missile",         effect: { kind: "addWeapon", mode: "homing" } },
+  { id: "wpnBurst",      name: "Burst",       glyph: "✺", rarity: "rare",     text: "+Weapon: bursts into fragments",  effect: { kind: "addWeapon", mode: "burst" } },
+  { id: "wpnFan",        name: "Sweep",       glyph: "≋", rarity: "uncommon", text: "+Weapon: 5-shot fan",             effect: { kind: "addWeapon", mode: "fan" } },
+  { id: "wpnCharge",     name: "Cannon",      glyph: "⏶", rarity: "rare",     text: "+Weapon: piercing cannon",        effect: { kind: "addWeapon", mode: "charge" } },
 ];
 
 export function drawOffer(rng: Rng, count: number, pool: readonly Card[] = POOL): Card[] {
@@ -115,6 +128,14 @@ export function applyCard(world: World, avatarId: EntityId, card: Card): void {
       c.avatar.dodgeCharges = (c.avatar.dodgeCharges ?? 0) + 1;
       c.avatar.dodgePeriod = Math.min(c.avatar.dodgePeriod ?? Infinity, e.cooldown);
       c.avatar.dodgeCooldown = 0;
+      break;
+    case "addWeapon":
+      // Soft-cap parallel weapons. Past the cap, the pick is a dead draft —
+      // simpler than rerolling at draw time and still drives the cap visually.
+      if (!c.avatar.extraWeapons) c.avatar.extraWeapons = [];
+      if (c.avatar.extraWeapons.length < MAX_EXTRA_WEAPONS) {
+        c.avatar.extraWeapons.push(createWeaponForMode(e.mode));
+      }
       break;
   }
 }

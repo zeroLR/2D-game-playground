@@ -18,7 +18,7 @@
 - [x] 事件 bus（`onEnemyKilled` / `onEnemyHit` / `onPlayerHit` / `onWaveStart`）統一派發 Synergy 卡效果
 
 ### 卡池擴充到 24 張
-- [ ] **Weapon 類別開張（6 張）**：`Face Beam`（四方雷射）、`Orbit Shard`（環繞軌道彈）、追蹤彈、爆裂彈、扇形散射、聚能砲；引擎需支援武器槽抉擇
+- [x] **Weapon 類別開張（6 張）**：`Face Beam`（四方雷射）、`Orbit Shard`（環繞軌道彈）、追蹤彈、爆裂彈、扇形散射、聚能砲；引擎需支援武器槽抉擇
 - [x] **Modifier 補到 10 張**：multi-shot、projectile size、homing 等（含上述關鍵字的承載卡）
 - [x] **Evolution 補到 4 張**：shield regen、second chance、size/collision、dash CD
 - [x] **Synergy 補到 4 張**：每 N kills 爆炸／低血 ×2／移動 +crit／靜止 +fire rate
