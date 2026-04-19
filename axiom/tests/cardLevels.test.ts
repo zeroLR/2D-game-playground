@@ -158,8 +158,8 @@ describe("applyCardLevelUp", () => {
     applyCard(world, id, card); // level 1: full +2
     const afterLv1 = world.get(id)!.weapon!.damage;
 
-    applyCardLevelUp(world, id, card, 2); // +2 * 0.7 = 1.4 → rounds to 1
+    applyCardLevelUp(world, id, card, 2);
     const afterLv2 = world.get(id)!.weapon!.damage;
-    expect(afterLv2).toBe(afterLv1 + Math.max(1, Math.round(2 * 0.7)));
+    expect(afterLv2).toBe(afterLv1 + Math.max(1, Math.round(2 * levelBonusFraction(2))));
   });
 });

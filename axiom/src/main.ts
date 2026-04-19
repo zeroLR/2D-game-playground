@@ -52,6 +52,9 @@ import type {
   ShopUnlocks,
 } from "./game/data/types";
 
+/** O(1) lookup for pool cards by ID. */
+const POOL_BY_ID = new Map(POOL.map((c) => [c.id, c]));
+
 async function boot(): Promise<void> {
   const gameEl = document.getElementById("game");
   const hudHp = document.getElementById("hud-hp");
@@ -393,7 +396,7 @@ async function boot(): Promise<void> {
 
     // Seed the card inventory with equipped equipment cards (they count as Lv 1).
     for (const cardId of equipment.equipped) {
-      const poolCard = POOL.find((c) => c.id === cardId);
+      const poolCard = POOL_BY_ID.get(cardId);
       if (poolCard && !runInventory.has(cardId)) {
         runInventory.add(poolCard);
       }
