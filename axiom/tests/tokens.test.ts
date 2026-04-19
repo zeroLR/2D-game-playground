@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { REROLL_TOKEN_COST, STARTING_DRAFT_TOKENS } from "../src/game/config";
+import { REROLL_TOKEN_BASE_COST, STARTING_DRAFT_TOKENS, rerollTokenCostForUse } from "../src/game/config";
 import { isEliteKind, spawnEnemy } from "../src/game/entities";
 import { createRng } from "../src/game/rng";
 import { World, type EnemyKind } from "../src/game/world";
@@ -8,7 +8,13 @@ import { World, type EnemyKind } from "../src/game/world";
 describe("draft token constants", () => {
   it("starting tokens and reroll cost match the concept", () => {
     expect(STARTING_DRAFT_TOKENS).toBe(2);
-    expect(REROLL_TOKEN_COST).toBe(1);
+    expect(REROLL_TOKEN_BASE_COST).toBe(1);
+  });
+
+  it("reroll cost scales by +1 per reroll use", () => {
+    expect(rerollTokenCostForUse(0)).toBe(1);
+    expect(rerollTokenCostForUse(1)).toBe(2);
+    expect(rerollTokenCostForUse(2)).toBe(3);
   });
 });
 

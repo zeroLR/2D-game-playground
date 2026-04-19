@@ -2,7 +2,7 @@ import "./style.css";
 import { Application } from "pixi.js";
 
 import { isMuted, playSfx, primeSfx, setMuted } from "./game/audio";
-import { PLAY_H, PLAY_W, REROLL_TOKEN_COST } from "./game/config";
+import { PLAY_H, PLAY_W, rerollTokenCostForUse } from "./game/config";
 import { startLoop } from "./game/loop";
 import { createRng, pickSeed } from "./game/rng";
 import { applyCard, drawOffer, type Card } from "./game/cards";
@@ -283,12 +283,15 @@ async function boot(): Promise<void> {
             ? `${cleared}`
             : `${cleared} of ${play.totalWaves()}`;
           const offer = drawOffer(rng, 3);
+          let rerollUses = 0;
           let draft: DraftScene;
           draft = new DraftScene(offer, label, {
             onPick: (pick) => onPickCard(pick),
             onReroll: () => {
-              if (play.draftTokens < REROLL_TOKEN_COST) return false;
-              play.draftTokens -= REROLL_TOKEN_COST;
+              const cost = rerollTokenCostForUse(rerollUses);
+              if (play.draftTokens < cost) return false;
+              play.draftTokens -= cost;
+              rerollUses += 1;
               draft.setOffer(drawOffer(rng, 3));
               return true;
             },
@@ -297,7 +300,7 @@ async function boot(): Promise<void> {
               play.advanceToNextWave();
             },
             getTokens: () => play.draftTokens,
-            rerollCost: REROLL_TOKEN_COST,
+            getRerollCost: () => rerollTokenCostForUse(rerollUses),
           });
           stack.push(draft);
         },
@@ -355,8 +358,12 @@ async function boot(): Promise<void> {
       profile.stats.bestSurvivalWave = Math.max(profile.stats.bestSurvivalWave, result.wavesCleared);
     }
 
+    const normalStageWaveTarget = result.mode === "normal"
+      ? (STAGE_WAVES[result.stageIndex]?.length ?? WAVES.length)
+      : 0;
+
     // Normal mode clear tracking
-    if (result.mode === "normal" && result.wavesCleared >= 8) {
+    if (result.mode === "normal" && result.wavesCleared >= normalStageWaveTarget) {
       profile.stats.normalCleared[result.stageIndex] = true;
     }
 
@@ -367,7 +374,7 @@ async function boot(): Promise<void> {
         console.log("[axiom] Achievement unlocked: firstBossKill");
       }
     }
-    if (result.noPowerRun && result.mode === "normal" && result.wavesCleared >= 8) {
+    if (result.noPowerRun && result.mode === "normal" && result.wavesCleared >= normalStageWaveTarget) {
       unlockAchievement(achievements, "noPowerNormalClear");
     }
     if (result.noPowerRun && result.mode === "survival" && result.wavesCleared >= 16) {
