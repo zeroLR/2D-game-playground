@@ -24,6 +24,7 @@ import { survivalWaveSpec } from "./game/survivalWaves";
 import { applyEquipment } from "./game/equipment";
 import { equipCard, unequipCard } from "./game/equipment";
 import { createActiveSkillStates } from "./game/skills";
+import { MAX_SKILL_LEVEL } from "./game/data/types";
 import { unlockAchievement } from "./game/achievements";
 import type { RunResult } from "./game/rewards";
 import {
@@ -31,7 +32,7 @@ import {
   resolveSelectedStartingShape,
   runSkinForStartingShape,
 } from "./game/startingShapes";
-import { iconTimeStop, iconClone, setIconHtml } from "./icons";
+import { iconTimeStop, iconClone, iconReflect, iconBarrage, iconLifesteal, setIconHtml } from "./icons";
 import {
   loadProfile, saveProfile,
   loadEquipment, saveEquipment,
@@ -217,8 +218,23 @@ async function boot(): Promise<void> {
       btn.className = "skill-btn";
       btn.addEventListener("click", () => play.activateSkill(i));
 
+      const SKILL_ICONS: Record<string, string> = {
+        timeStop: iconTimeStop,
+        shadowClone: iconClone,
+        reflectShield: iconReflect,
+        barrage: iconBarrage,
+        lifestealPulse: iconLifesteal,
+      };
+      const SKILL_LABELS: Record<string, string> = {
+        timeStop: "Time Stop",
+        shadowClone: "Clone",
+        reflectShield: "Shield",
+        barrage: "Barrage",
+        lifestealPulse: "Lifesteal",
+      };
+
       const updateLabel = (): void => {
-        const icon = sk.id === "timeStop" ? iconTimeStop : iconClone;
+        const icon = SKILL_ICONS[sk.id] ?? iconTimeStop;
         if (sk.active > 0) {
           setIconHtml(btn, icon);
           btn.append(` ${sk.active.toFixed(1)}s`);
@@ -229,7 +245,7 @@ async function boot(): Promise<void> {
           btn.disabled = true;
         } else {
           setIconHtml(btn, icon);
-          btn.append(sk.id === "timeStop" ? " Time Stop" : " Clone");
+          btn.append(` ${SKILL_LABELS[sk.id] ?? sk.id}`);
           btn.disabled = false;
         }
       };
@@ -381,6 +397,40 @@ async function boot(): Promise<void> {
       unlockAchievement(achievements, "noPowerSurvival16");
     }
 
+    // Progress achievements
+    if (profile.stats.totalKills >= 100) {
+      unlockAchievement(achievements, "kill100");
+    }
+    if (profile.stats.totalKills >= 1000) {
+      unlockAchievement(achievements, "kill1000");
+    }
+    if (profile.stats.normalCleared.filter(Boolean).length >= 3) {
+      unlockAchievement(achievements, "clear3Stages");
+    }
+
+    // Difficulty achievements
+    if (result.mode === "survival" && result.wavesCleared >= 32) {
+      unlockAchievement(achievements, "survival32");
+    }
+    if (result.mode === "normal" && result.stageIndex === 2 && result.wavesCleared >= normalStageWaveTarget) {
+      unlockAchievement(achievements, "clearStage3");
+    }
+
+    // Boss rush
+    if (profile.stats.totalBossKills >= 3) {
+      unlockAchievement(achievements, "bossRush3");
+    }
+
+    // Style: full equipment
+    if (equipment.equipped.length >= equipment.maxSlots && equipment.maxSlots >= 3) {
+      unlockAchievement(achievements, "fullEquipment");
+    }
+
+    // Style: own 5 skins
+    if (profile.ownedSkins.length >= 5) {
+      unlockAchievement(achievements, "own5Skins");
+    }
+
     // Persist
     await Promise.all([
       saveProfile(profile),
@@ -477,10 +527,18 @@ async function boot(): Promise<void> {
             getRng: () => menuRng,
             onStateChanged: async (state) => {
               skillTree = state;
-              // Check achievement
+              // Check achievements
               const anyUnlocked = Object.values(skillTree.skills).some((s) => s.unlocked);
               if (anyUnlocked) {
                 if (unlockAchievement(achievements, "firstPrimalSkill")) {
+                  await saveAchievements(achievements);
+                }
+              }
+              const anyMaxed = Object.values(skillTree.skills).some(
+                (s) => s.unlocked && s.level >= MAX_SKILL_LEVEL,
+              );
+              if (anyMaxed) {
+                if (unlockAchievement(achievements, "maxSkillLevel")) {
                   await saveAchievements(achievements);
                 }
               }

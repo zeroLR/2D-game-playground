@@ -24,6 +24,11 @@ import {
   tickSkillState,
   timeStopSpeedMul,
   cloneInheritRatio,
+  barrageProjectiles,
+  barrageDamage,
+  lifestealRadius,
+  lifestealDamage,
+  lifestealHeal,
 } from "../game/skills";
 import { survivalWaveSpec, isMirrorBossWave, survivalHpScale, survivalSpeedScale } from "../game/survivalWaves";
 import type { StageTheme } from "../game/stageThemes";
@@ -84,6 +89,8 @@ export class PlayScene implements Scene {
   // Primal skills (runtime)
   readonly activeSkills: ActiveSkillState[];
   private cloneId: EntityId | null = null;
+  /** Accumulator for lifesteal pulse ticks (~1 per second while active). */
+  private lifestealTick = 0;
 
   constructor(
     rng: Rng,
@@ -180,6 +187,8 @@ export class PlayScene implements Scene {
 
     if (sk.id === "shadowClone") {
       this.spawnClone(sk);
+    } else if (sk.id === "barrage") {
+      this.fireBarrage(sk);
     }
   }
 
@@ -253,6 +262,46 @@ export class PlayScene implements Scene {
           this.cloneId = null;
         }
       }
+    }
+
+    // Reflect shield: grant invincibility while active
+    const reflectActive = this.activeSkills.some((s) => s.id === "reflectShield" && s.active > 0);
+    {
+      const avatar = this.world.get(this.avatarId);
+      if (avatar?.avatar) {
+        if (reflectActive && avatar.avatar.iframes < 1) {
+          avatar.avatar.iframes = 1; // keep refreshed while shield is active
+        }
+      }
+    }
+
+    // Lifesteal pulse: damage nearby enemies and heal avatar every ~1 second
+    const lifestealSkill = this.activeSkills.find((s) => s.id === "lifestealPulse" && s.active > 0);
+    if (lifestealSkill) {
+      this.lifestealTick += dt;
+      if (this.lifestealTick >= 1) {
+        this.lifestealTick -= 1;
+        const avatar = this.world.get(this.avatarId);
+        if (avatar?.pos && avatar.avatar) {
+          const radius = lifestealRadius(lifestealSkill.level);
+          const dmg = lifestealDamage(lifestealSkill.level);
+          const heal = lifestealHeal(lifestealSkill.level);
+          let healed = false;
+          for (const [, c] of this.world.with("pos", "hp", "enemy")) {
+            const dx = c.pos!.x - avatar.pos.x;
+            const dy = c.pos!.y - avatar.pos.y;
+            if (dx * dx + dy * dy <= radius * radius) {
+              c.hp!.value -= dmg;
+              healed = true;
+            }
+          }
+          if (healed) {
+            avatar.avatar.hp = Math.min(avatar.avatar.maxHp, avatar.avatar.hp + heal);
+          }
+        }
+      }
+    } else {
+      this.lifestealTick = 0;
     }
 
     let died = false;
@@ -378,10 +427,10 @@ export class PlayScene implements Scene {
     }
   }
 
-  private spawnClone(_sk: ActiveSkillState): void {
+  private spawnClone(sk: ActiveSkillState): void {
     const avatar = this.world.get(this.avatarId);
     if (!avatar?.pos || !avatar.weapon || !avatar.avatar) return;
-    const ratio = cloneInheritRatio(0);
+    const ratio = cloneInheritRatio(sk.level);
     this.cloneId = this.world.create({
       pos: { x: avatar.pos.x + 20, y: avatar.pos.y + 20 },
       vel: { x: 0, y: 0 },
@@ -411,6 +460,37 @@ export class PlayScene implements Scene {
         slowDuration: avatar.weapon.slowDuration,
       },
     });
+  }
+
+  /** Fire a burst of projectiles in all directions. */
+  private fireBarrage(sk: ActiveSkillState): void {
+    const avatar = this.world.get(this.avatarId);
+    if (!avatar?.pos) return;
+    const count = barrageProjectiles(sk.level);
+    const dmg = barrageDamage(sk.level);
+    const speed = 250;
+    for (let i = 0; i < count; i++) {
+      const angle = (2 * Math.PI * i) / count;
+      this.world.create({
+        pos: { x: avatar.pos.x, y: avatar.pos.y },
+        vel: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+        radius: 3,
+        team: "projectile",
+        projectile: {
+          damage: dmg,
+          crit: false,
+          pierceRemaining: 1,
+          ricochetRemaining: 0,
+          chainRemaining: 0,
+          burnDps: 0,
+          burnDuration: 0,
+          slowPct: 0,
+          slowDuration: 0,
+          hitIds: new Set(),
+          ttl: 1.2,
+        },
+      });
+    }
   }
 
   private updateHud(): void {
