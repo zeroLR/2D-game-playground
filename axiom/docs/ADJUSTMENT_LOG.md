@@ -9,4 +9,13 @@
 - Added an in-game Discussions modal and embedded giscus (`giscus.app/client.js`) for Axiom, wired to `zeroLR/2D-game-playground` discussions and opened from a new topbar `comments` button.
 - Added a fallback link in the Axiom Discussions modal that opens the repository’s GitHub Discussions page directly when in-widget posting fails.
 - Added 6 Weapon-class draft cards (Face Beam, Orbit Shard, Tracker, Burst, Sweep, Cannon) and the parallel-weapon slot system: each pick appends a secondary weapon (cap 3) that fires alongside the primary. Introduced 4 new firing modes (homing missile with bounded turn rate, burst-into-fragments, wide 5-shot fan, slow piercing cannon). Mirror Boss reflects weapon picks as flavour-matched stat pressure (extra projectiles / damage / fire-rate / HP).
+- Rebalanced normal-mode progression: enemy kills now use documented base points with stage multipliers (Stage 1=1x, Stage 2=2x, Stage 3=3x), draft reroll token cost now increases by +1 per reroll use within a draft, and stage wave counts are now Stage 1=8 / Stage 2=12 / Stage 3=15.
+- **Skill Tree / Meta expansion (SCHEMA_VERSION 1 → 2):**
+  - Expanded Primal Skills from 2 → 5: added Reflect Shield (blocks damage + reflects projectiles, 3s/35s), Barrage (radial burst, 2s/25s), Lifesteal Pulse (AoE damage + heal, 4s/40s).
+  - Added MAX_SKILL_LEVEL = 10 cap; upgrade button hidden at max; `upgradeCost()` returns Infinity at cap.
+  - Expanded Achievements from 4 → 16 across 4 categories (Progress, Difficulty, Style, Speed).
+  - Added 4 new equipment cards: Resilience (+0.3s iframe), Magnet (+20% pickup radius), Piercing Shot (+1 pierce), Multi Shot (+1 projectile).
+  - Added 6th equipment slot expansion (slot-6, 2500 pts).
+  - Storage layer now migrates v1 skill tree and achievement states to v2 by merging missing keys from defaults.
+  - Export/import handles both v1 and v2 save formats transparently.
 - Drafted Main Story Mode redesign plan at `docs/plans/main-story-redesign.md`: repositions Normal Mode as a 3-stage 主線模式 with Domain / Theorem framing (Axis → Wing → Mirror), keeps Mirror Boss as the final-stage boss while introducing Orthogon (Stage 1) and Jets (Stage 2) via a new boss registry, gates 5 new cards + 2 new primal skills behind boss clears with linear unlock, and phases the work in 3 shippable PRs. No gameplay code changed yet.

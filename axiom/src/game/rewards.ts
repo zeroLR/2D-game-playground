@@ -6,7 +6,7 @@ import type { EnemyKind } from "./world";
 import type { Rng } from "./rng";
 
 /** Points awarded per enemy kill by kind. */
-export const KILL_POINTS: Record<EnemyKind, number> = {
+export const BASE_KILL_POINTS: Record<EnemyKind, number> = {
   circle:   1,
   square:   2,
   star:     3,
@@ -17,6 +17,24 @@ export const KILL_POINTS: Record<EnemyKind, number> = {
   crescent: 3,
   boss:     50,
 };
+
+/** Stage 1 / Stage 2 / Stage 3 normal-mode point multipliers. */
+export const NORMAL_STAGE_POINT_MUL: readonly number[] = [1, 2, 3];
+
+/** Backward-compatible alias for base points. */
+export const KILL_POINTS = BASE_KILL_POINTS;
+
+export function normalStagePointMultiplier(stageIndex: number): number {
+  return stageIndex >= 0 && stageIndex < NORMAL_STAGE_POINT_MUL.length
+    ? NORMAL_STAGE_POINT_MUL[stageIndex]!
+    : 1;
+}
+
+export function killPointsForEnemy(kind: EnemyKind, mode: "normal" | "survival", stageIndex: number): number {
+  const base = BASE_KILL_POINTS[kind] ?? 1;
+  if (mode !== "normal") return base;
+  return Math.max(1, Math.ceil(base * normalStagePointMultiplier(stageIndex)));
+}
 
 /** Bonus points added per wave number for boss kills (wave × multiplier). */
 export const BOSS_WAVE_BONUS = 5;

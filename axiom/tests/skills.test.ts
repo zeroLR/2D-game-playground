@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRng } from "../src/game/rng";
-import { defaultSkillTreeState } from "../src/game/data/types";
+import { defaultSkillTreeState, MAX_SKILL_LEVEL } from "../src/game/data/types";
 import {
   drawPrimalSkill,
   skillDuration,
@@ -10,6 +10,11 @@ import {
   createActiveSkillStates,
   activateSkill,
   tickSkillState,
+  barrageProjectiles,
+  barrageDamage,
+  lifestealRadius,
+  lifestealDamage,
+  reflectDamageRatio,
 } from "../src/game/skills";
 
 describe("primal skills", () => {
@@ -35,8 +40,12 @@ describe("primal skills", () => {
   it("converts duplicates to skill points", () => {
     const state = defaultSkillTreeState();
     state.cores = 10;
+    // Unlock all 5 skills
     state.skills.timeStop.unlocked = true;
     state.skills.shadowClone.unlocked = true;
+    state.skills.reflectShield.unlocked = true;
+    state.skills.barrage.unlocked = true;
+    state.skills.lifestealPulse.unlocked = true;
     const rng = createRng(99);
     const result = drawPrimalSkill(state, rng);
     expect(result).not.toBeNull();
@@ -61,6 +70,58 @@ describe("primal skills", () => {
     expect(upgradeCost(1)).toBeGreaterThan(upgradeCost(0));
     expect(upgradeCost(5)).toBeGreaterThan(upgradeCost(1));
   });
+
+  it("upgrade cost is Infinity at max level", () => {
+    expect(upgradeCost(MAX_SKILL_LEVEL)).toBe(Infinity);
+    expect(upgradeCost(MAX_SKILL_LEVEL + 1)).toBe(Infinity);
+  });
+
+  it("has 5 skill definitions", () => {
+    const ids = Object.keys(PRIMAL_SKILLS);
+    expect(ids).toHaveLength(5);
+    expect(ids).toContain("timeStop");
+    expect(ids).toContain("shadowClone");
+    expect(ids).toContain("reflectShield");
+    expect(ids).toContain("barrage");
+    expect(ids).toContain("lifestealPulse");
+  });
+
+  it("new skills have valid balance parameters", () => {
+    for (const def of Object.values(PRIMAL_SKILLS)) {
+      expect(def.baseDuration).toBeGreaterThan(0);
+      expect(def.baseCooldown).toBeGreaterThan(0);
+      expect(def.durationPerLevel).toBeGreaterThan(0);
+      expect(def.cooldownPerLevel).toBeGreaterThan(0);
+      expect(skillCooldown(def, 100)).toBeGreaterThanOrEqual(5); // min cooldown cap
+    }
+  });
+});
+
+describe("new skill helpers", () => {
+  it("barrageProjectiles scales with level", () => {
+    expect(barrageProjectiles(0)).toBe(12);
+    expect(barrageProjectiles(5)).toBe(22);
+  });
+
+  it("barrageDamage scales with level", () => {
+    expect(barrageDamage(0)).toBe(2);
+    expect(barrageDamage(3)).toBe(5);
+  });
+
+  it("lifestealRadius scales with level", () => {
+    expect(lifestealRadius(0)).toBe(80);
+    expect(lifestealRadius(5)).toBe(130);
+  });
+
+  it("lifestealDamage scales with level", () => {
+    expect(lifestealDamage(0)).toBe(1);
+    expect(lifestealDamage(4)).toBe(3);
+  });
+
+  it("reflectDamageRatio scales with level", () => {
+    expect(reflectDamageRatio(0)).toBe(1);
+    expect(reflectDamageRatio(5)).toBeCloseTo(1.75);
+  });
 });
 
 describe("active skill state", () => {
@@ -69,6 +130,16 @@ describe("active skill state", () => {
     expect(createActiveSkillStates(tree)).toHaveLength(0);
     tree.skills.timeStop.unlocked = true;
     expect(createActiveSkillStates(tree)).toHaveLength(1);
+  });
+
+  it("creates states for all 5 unlocked skills", () => {
+    const tree = defaultSkillTreeState();
+    tree.skills.timeStop.unlocked = true;
+    tree.skills.shadowClone.unlocked = true;
+    tree.skills.reflectShield.unlocked = true;
+    tree.skills.barrage.unlocked = true;
+    tree.skills.lifestealPulse.unlocked = true;
+    expect(createActiveSkillStates(tree)).toHaveLength(5);
   });
 
   it("activateSkill starts the active timer", () => {

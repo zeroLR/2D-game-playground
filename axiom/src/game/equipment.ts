@@ -61,6 +61,17 @@ export function applyEquipment(loadout: EquipmentLoadout, world: World, avatarId
       case "speedMul":
         c.avatar.speedMul *= eff.effectValue;
         break;
+      case "projectilesAdd":
+        c.weapon.projectiles += eff.effectValue;
+        break;
+      case "iframeAdd":
+        // Stored on avatar; consumed by collision system.
+        c.avatar.iframeBonus = (c.avatar.iframeBonus ?? 0) + eff.effectValue;
+        break;
+      case "pickupRadiusMul":
+        // Stored on avatar; consumed by pickup system if present.
+        c.avatar.pickupRadiusMul = (c.avatar.pickupRadiusMul ?? 1) * eff.effectValue;
+        break;
     }
   }
 }

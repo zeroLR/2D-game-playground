@@ -3,7 +3,7 @@
 // one import path and one schema version constant.
 
 /** Global schema version — bump when store shapes change. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 // ── Player Profile ──────────────────────────────────────────────────────────
 
@@ -78,13 +78,16 @@ export function defaultEquipmentLoadout(): EquipmentLoadout {
 
 // ── Skill Tree ──────────────────────────────────────────────────────────────
 
-export type PrimalSkillId = "timeStop" | "shadowClone";
+export type PrimalSkillId = "timeStop" | "shadowClone" | "reflectShield" | "barrage" | "lifestealPulse";
 
 export interface SkillLevel {
   unlocked: boolean;
   /** Upgrade level (0 = base, each level improves duration / cooldown). */
   level: number;
 }
+
+/** Maximum upgrade level for any primal skill. */
+export const MAX_SKILL_LEVEL = 10;
 
 export interface SkillTreeState {
   /** Primal skill core currency — dropped by bosses. */
@@ -101,6 +104,9 @@ export function defaultSkillTreeState(): SkillTreeState {
     skills: {
       timeStop: { unlocked: false, level: 0 },
       shadowClone: { unlocked: false, level: 0 },
+      reflectShield: { unlocked: false, level: 0 },
+      barrage: { unlocked: false, level: 0 },
+      lifestealPulse: { unlocked: false, level: 0 },
     },
   };
 }
@@ -108,10 +114,26 @@ export function defaultSkillTreeState(): SkillTreeState {
 // ── Achievements ────────────────────────────────────────────────────────────
 
 export type AchievementId =
+  // ── Progress ──
   | "firstBossKill"
   | "firstPrimalSkill"
+  | "kill100"
+  | "kill1000"
+  | "clear3Stages"
+  // ── Difficulty ──
   | "noPowerNormalClear"
-  | "noPowerSurvival16";
+  | "noPowerSurvival16"
+  | "survival32"
+  | "clearStage3"
+  // ── Style ──
+  | "allWeapons"
+  | "fullEquipment"
+  | "maxSkillLevel"
+  | "own5Skins"
+  // ── Speed ──
+  | "speedStage1"
+  | "speed5Waves"
+  | "bossRush3";
 
 export interface AchievementEntry {
   unlocked: boolean;
@@ -122,10 +144,26 @@ export type AchievementState = Record<AchievementId, AchievementEntry>;
 
 export function defaultAchievementState(): AchievementState {
   return {
+    // Progress
     firstBossKill:       { unlocked: false, unlockedAt: null },
     firstPrimalSkill:    { unlocked: false, unlockedAt: null },
+    kill100:             { unlocked: false, unlockedAt: null },
+    kill1000:            { unlocked: false, unlockedAt: null },
+    clear3Stages:        { unlocked: false, unlockedAt: null },
+    // Difficulty
     noPowerNormalClear:  { unlocked: false, unlockedAt: null },
     noPowerSurvival16:   { unlocked: false, unlockedAt: null },
+    survival32:          { unlocked: false, unlockedAt: null },
+    clearStage3:         { unlocked: false, unlockedAt: null },
+    // Style
+    allWeapons:          { unlocked: false, unlockedAt: null },
+    fullEquipment:       { unlocked: false, unlockedAt: null },
+    maxSkillLevel:       { unlocked: false, unlockedAt: null },
+    own5Skins:           { unlocked: false, unlockedAt: null },
+    // Speed
+    speedStage1:         { unlocked: false, unlockedAt: null },
+    speed5Waves:         { unlocked: false, unlockedAt: null },
+    bossRush3:           { unlocked: false, unlockedAt: null },
   };
 }
 

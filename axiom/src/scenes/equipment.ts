@@ -33,11 +33,14 @@ export class EquipmentScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "equipment";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     // Tab row
     const tabRow = document.createElement("div");
@@ -46,12 +49,12 @@ export class EquipmentScene implements Scene {
     const enhTab = this.createTab(iconEnhance, "Enhance", "enhance", tabRow);
     if (this.activeTab === "skin") skinTab.classList.add("tab-active");
     else enhTab.classList.add("tab-active");
-    inner.appendChild(tabRow);
+    content.appendChild(tabRow);
 
     if (this.activeTab === "skin") {
-      this.renderSkinTab(inner);
+      this.renderSkinTab(content);
     } else {
-      this.renderEnhanceTab(inner);
+      this.renderEnhanceTab(content);
     }
 
     const back = document.createElement("button");

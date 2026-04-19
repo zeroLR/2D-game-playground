@@ -3,7 +3,10 @@
 // from Primal Cores (boss drops) and upgraded with skill points.
 
 import type { PrimalSkillId, SkillTreeState } from "./data/types";
+import { MAX_SKILL_LEVEL } from "./data/types";
 import type { Rng } from "./rng";
+
+export { MAX_SKILL_LEVEL };
 
 // ── Skill metadata ──────────────────────────────────────────────────────────
 
@@ -41,10 +44,41 @@ export const PRIMAL_SKILLS: Record<PrimalSkillId, PrimalSkillDef> = {
     durationPerLevel: 0.5,
     cooldownPerLevel: 2,
   },
+  reflectShield: {
+    id: "reflectShield",
+    name: "Reflect Shield",
+    glyph: "🛡",
+    description: "Blocks all damage and reflects enemy projectiles back.",
+    baseDuration: 3,
+    baseCooldown: 35,
+    durationPerLevel: 0.4,
+    cooldownPerLevel: 2,
+  },
+  barrage: {
+    id: "barrage",
+    name: "Barrage",
+    glyph: "⁂",
+    description: "Fires a burst of projectiles in all directions.",
+    baseDuration: 2,
+    baseCooldown: 25,
+    durationPerLevel: 0.3,
+    cooldownPerLevel: 1.5,
+  },
+  lifestealPulse: {
+    id: "lifestealPulse",
+    name: "Lifesteal Pulse",
+    glyph: "♥",
+    description: "Emits a pulse that damages nearby enemies and heals you.",
+    baseDuration: 4,
+    baseCooldown: 40,
+    durationPerLevel: 0.5,
+    cooldownPerLevel: 2.5,
+  },
 };
 
-/** Upgrade cost in skill points for the next level. */
+/** Upgrade cost in skill points for the next level. Returns Infinity if already at max. */
 export function upgradeCost(currentLevel: number): number {
+  if (currentLevel >= MAX_SKILL_LEVEL) return Infinity;
   return 20 + currentLevel * 15;
 }
 
@@ -64,7 +98,7 @@ export type DrawResult =
   | { type: "new"; skillId: PrimalSkillId }
   | { type: "duplicate"; skillId: PrimalSkillId; pointsAwarded: number };
 
-const SKILL_IDS: PrimalSkillId[] = ["timeStop", "shadowClone"];
+const SKILL_IDS: PrimalSkillId[] = ["timeStop", "shadowClone", "reflectShield", "barrage", "lifestealPulse"];
 
 /** Spend one core to draw a random primal skill. Returns null if 0 cores. */
 export function drawPrimalSkill(state: SkillTreeState, rng: Rng): DrawResult | null {
@@ -86,6 +120,8 @@ export function drawPrimalSkill(state: SkillTreeState, rng: Rng): DrawResult | n
 
 export interface ActiveSkillState {
   id: PrimalSkillId;
+  /** Skill upgrade level (affects scaling). */
+  level: number;
   /** Remaining cooldown (0 = ready). */
   cooldown: number;
   /** Remaining active duration (0 = inactive). */
@@ -103,6 +139,7 @@ export function createActiveSkillStates(tree: SkillTreeState): ActiveSkillState[
     const def = PRIMAL_SKILLS[id];
     result.push({
       id,
+      level: entry.level,
       cooldown: 0,
       active: 0,
       duration: skillDuration(def, entry.level),
@@ -139,4 +176,34 @@ export function cloneInheritRatio(level: number): number {
 /** Time-stop speed multiplier applied to enemies/enemy-shots. */
 export function timeStopSpeedMul(_level: number): number {
   return 0.05; // near-zero; can be improved by level if desired later
+}
+
+/** Number of barrage projectiles emitted. */
+export function barrageProjectiles(level: number): number {
+  return 12 + level * 2;
+}
+
+/** Barrage damage per projectile. */
+export function barrageDamage(level: number): number {
+  return 2 + level;
+}
+
+/** Lifesteal pulse radius (pixels). */
+export function lifestealRadius(level: number): number {
+  return 80 + level * 10;
+}
+
+/** Lifesteal pulse damage per tick. */
+export function lifestealDamage(level: number): number {
+  return 1 + Math.floor(level * 0.5);
+}
+
+/** Lifesteal heal amount per tick (every ~1s while active). */
+export function lifestealHeal(_level: number): number {
+  return 1;
+}
+
+/** Reflect shield reflects enemy projectiles and blocks all damage. */
+export function reflectDamageRatio(level: number): number {
+  return 1 + level * 0.15;
 }

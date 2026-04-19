@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultEquipmentLoadout } from "../src/game/data/types";
 import { canEquip, equipCard, unequipCard, MAX_SAME_CARD } from "../src/game/equipment";
+import { SHOP_ITEMS, EQUIP_EFFECTS } from "../src/game/data/shop";
 
 describe("equipment system", () => {
   it("allows equipping owned cards up to slot limit", () => {
@@ -42,5 +43,30 @@ describe("equipment system", () => {
     expect(loadout.equipped).toHaveLength(2);
     unequipCard(loadout, "eq-toughness");
     expect(loadout.equipped).toEqual(["eq-swiftness"]);
+  });
+
+  it("has 10 equipment cards in shop", () => {
+    const equipCards = SHOP_ITEMS.filter((i) => i.category === "equipCard");
+    expect(equipCards).toHaveLength(10);
+  });
+
+  it("has 3 slot expansions in shop", () => {
+    const slots = SHOP_ITEMS.filter((i) => i.category === "slotExpand");
+    expect(slots).toHaveLength(3);
+    expect(slots.map((s) => s.id)).toContain("slot-6");
+  });
+
+  it("all equipment cards have matching effects", () => {
+    const equipCards = SHOP_ITEMS.filter((i) => i.category === "equipCard");
+    for (const card of equipCards) {
+      expect(EQUIP_EFFECTS[card.id]).toBeDefined();
+    }
+  });
+
+  it("new equipment effects are properly defined", () => {
+    expect(EQUIP_EFFECTS["eq-resilience"]).toEqual({ effectKind: "iframeAdd", effectValue: 0.3 });
+    expect(EQUIP_EFFECTS["eq-magnet"]).toEqual({ effectKind: "pickupRadiusMul", effectValue: 1.2 });
+    expect(EQUIP_EFFECTS["eq-piercing"]).toEqual({ effectKind: "pierceAdd", effectValue: 1 });
+    expect(EQUIP_EFFECTS["eq-multishot"]).toEqual({ effectKind: "projectilesAdd", effectValue: 1 });
   });
 });

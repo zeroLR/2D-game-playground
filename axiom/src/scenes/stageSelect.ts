@@ -1,6 +1,7 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import { STAGE_THEMES } from "../game/stageThemes";
+import { STAGE_WAVES } from "../game/stageWaves";
 import { iconBack, iconSpan } from "../icons";
 
 // ── Stage select (Normal mode) ──────────────────────────────────────────────
@@ -21,11 +22,14 @@ export class StageSelectScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "select stage";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     const list = document.createElement("div");
     list.className = "card-list";
@@ -47,7 +51,7 @@ export class StageSelectScene implements Scene {
       name.textContent = theme.name;
       const desc = document.createElement("span");
       desc.className = "card-text";
-      desc.textContent = `Stage ${i + 1} · 8 waves`;
+      desc.textContent = `Stage ${i + 1} · ${STAGE_WAVES[i]?.length ?? 0} waves`;
       body.appendChild(name);
       body.appendChild(desc);
       btn.appendChild(body);
@@ -64,7 +68,7 @@ export class StageSelectScene implements Scene {
       btn.addEventListener("click", () => this.onSelect(i));
       list.appendChild(btn);
     });
-    inner.appendChild(list);
+    content.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

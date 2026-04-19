@@ -24,6 +24,9 @@ export class StartShapeSelectScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const profile = this.cb.getProfile();
     const selected = resolveSelectedStartingShape(profile);
@@ -31,13 +34,13 @@ export class StartShapeSelectScene implements Scene {
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "starting shape";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     const sub = document.createElement("div");
     sub.className = "overlay-sub";
     sub.appendChild(iconSpan(iconSkins));
     sub.append(` total points: ${profile.stats.totalPointsEarned}`);
-    inner.appendChild(sub);
+    content.appendChild(sub);
 
     const list = document.createElement("div");
     list.className = "card-list";
@@ -89,7 +92,7 @@ export class StartShapeSelectScene implements Scene {
       list.appendChild(btn);
     }
 
-    inner.appendChild(list);
+    content.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";
@@ -112,4 +115,3 @@ export class StartShapeSelectScene implements Scene {
   update(_dt: number): void {}
   render(_alpha: number): void {}
 }
-

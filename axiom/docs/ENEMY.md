@@ -4,19 +4,21 @@
 
 ## 敵人種類與基礎強度
 
-| 種類 (`EnemyKind`) | HP | 移動速度 (`maxSpeed`) | 接觸傷害 (`contactDamage`) | 半徑 (`radius`) |
-| --- | ---: | ---: | ---: | ---: |
-| `circle` | 3 | 72 | 1 | 8 |
-| `square` | 5 | 98 | 1 | 9 |
-| `star` | 8 | 88 | 1 | 11 |
-| `boss` | 80 | 52 | 1 | 22 |
-| `pentagon` | 6 | 68 | 1 | 10 |
-| `hexagon` | 7 | 62 | 1 | 10 |
-| `diamond` | 4 | 112 | 1 | 8 |
-| `cross` | 7 | 58 | 1 | 10 |
-| `crescent` | 5 | 78 | 1 | 9 |
+| 種類 (`EnemyKind`) | HP | 移動速度 (`maxSpeed`) | 接觸傷害 (`contactDamage`) | 半徑 (`radius`) | 基礎點數 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `circle` | 3 | 72 | 1 | 8 | 1 |
+| `square` | 5 | 98 | 1 | 9 | 2 |
+| `star` | 8 | 88 | 1 | 11 | 3 |
+| `boss` | 80 | 52 | 1 | 22 | 50 |
+| `pentagon` | 6 | 68 | 1 | 10 | 3 |
+| `hexagon` | 7 | 62 | 1 | 10 | 4 |
+| `diamond` | 4 | 112 | 1 | 8 | 3 |
+| `cross` | 7 | 58 | 1 | 10 | 4 |
+| `crescent` | 5 | 78 | 1 | 9 | 3 |
 
 > 補充：`star`、`pentagon`、`hexagon`、`cross` 出生時會被標記為 Elite，HP 乘上 1.5（無條件進位）。
+>
+> 點數倍率（Normal 模式）：Stage 1 = 1x、Stage 2 = 2x、Stage 3 = 3x，實得擊殺點數 = 基礎點數 × 關卡倍率（無條件進位）。
 
 ## 描述與攻擊行為
 

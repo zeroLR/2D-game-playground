@@ -106,14 +106,24 @@ export async function saveEquipment(e: EquipmentLoadout): Promise<void> {
 }
 
 export async function loadSkillTree(): Promise<SkillTreeState> {
-  return getStore("skillTree", defaultSkillTreeState());
+  const raw = await getStore("skillTree", defaultSkillTreeState());
+  // Migrate: ensure all skill IDs exist (handles v1 → v2 upgrade).
+  const base = defaultSkillTreeState();
+  return {
+    cores: raw.cores ?? base.cores,
+    skillPoints: raw.skillPoints ?? base.skillPoints,
+    skills: { ...base.skills, ...raw.skills },
+  };
 }
 export async function saveSkillTree(s: SkillTreeState): Promise<void> {
   return putStore("skillTree", s);
 }
 
 export async function loadAchievements(): Promise<AchievementState> {
-  return getStore("achievements", defaultAchievementState());
+  const raw = await getStore("achievements", defaultAchievementState());
+  // Migrate: ensure all achievement IDs exist (handles v1 → v2 upgrade).
+  const base = defaultAchievementState();
+  return { ...base, ...raw };
 }
 export async function saveAchievements(a: AchievementState): Promise<void> {
   return putStore("achievements", a);

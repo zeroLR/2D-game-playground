@@ -118,6 +118,11 @@ export interface Avatar {
   dodgeCharges?: number;
   dodgePeriod?: number;
   dodgeCooldown?: number;
+  // --- Equipment bonuses ---
+  /** Bonus iframe duration from equipment (added to base on-hit iframes). */
+  iframeBonus?: number;
+  /** Multiplier for pickup radius from equipment. */
+  pickupRadiusMul?: number;
   // --- Weapon-class cards: secondary weapons that fire alongside the primary. ---
   /** Extra weapons added by Weapon-class draft picks. Each ticks its own cooldown. */
   extraWeapons?: WeaponState[];

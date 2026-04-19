@@ -14,8 +14,8 @@ export interface DraftHandlers {
   onSkip: () => void;
   /** Current token balance, read each render. */
   getTokens: () => number;
-  /** Cost of a reroll (for label rendering). */
-  rerollCost: number;
+  /** Cost of the next reroll (for label rendering). */
+  getRerollCost: () => number;
 }
 
 export class DraftScene implements Scene {
@@ -134,11 +134,12 @@ export class DraftScene implements Scene {
     const actionRow = document.createElement("div");
     actionRow.className = "draft-actions";
 
+    const rerollCost = this.handlers.getRerollCost();
     const rerollBtn = document.createElement("button");
     rerollBtn.type = "button";
     rerollBtn.className = "secondary-btn";
-    rerollBtn.textContent = `reroll (${this.handlers.rerollCost})`;
-    rerollBtn.disabled = tokens < this.handlers.rerollCost;
+    rerollBtn.textContent = `reroll (${rerollCost})`;
+    rerollBtn.disabled = tokens < rerollCost;
     rerollBtn.addEventListener("click", () => {
       if (this.handlers.onReroll()) {
         // setOffer re-renders; no further action here.

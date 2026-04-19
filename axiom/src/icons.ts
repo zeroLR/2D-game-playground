@@ -87,6 +87,21 @@ export const iconClone = wrap(
   `<rect x="2" y="6" width="12" height="12" rx="1"/><rect x="10" y="2" width="12" height="12" rx="1"/>`,
 );
 
+/** Reflect Shield: curved shield with arrow. */
+export const iconReflect = wrap(
+  `<path d="M12,2 C6,2 2,6 2,12 C2,18 12,22 12,22 C12,22 22,18 22,12 C22,6 18,2 12,2Z"/><polyline points="8,12 12,8 16,12"/>`,
+);
+
+/** Barrage: radiating lines from center. */
+export const iconBarrage = wrap(
+  `<circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7.8" y2="7.8"/><line x1="16.2" y1="16.2" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7.8" y2="16.2"/><line x1="16.2" y1="7.8" x2="19.1" y2="4.9"/>`,
+);
+
+/** Lifesteal Pulse: heart with rings. */
+export const iconLifesteal = wrap(
+  `<path d="M12,21 L4,13 C2,10 2,6 5,4 C8,2 10,4 12,7 C14,4 16,2 19,4 C22,6 22,10 20,13Z"/><circle cx="12" cy="12" r="9" stroke-dasharray="3,3"/>`,
+);
+
 // ── Card / item glyph icons ──────────────────────────────────────────────────
 // These map to the `glyph` field in data structures. Rendered in `.card-glyph`.
 
@@ -230,6 +245,26 @@ export const glyphLucky = glyphFill(
   `<polygon points="12,2 20,12 12,22 4,12"/>`,
 );
 
+/** ✚  Resilience: plus/cross (hit recovery). */
+export const glyphResilience = glyphWrap(
+  `<line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/>`,
+);
+
+/** ⊕  Magnet: circle with cross (pickup radius). */
+export const glyphMagnet = glyphWrap(
+  `<circle cx="12" cy="12" r="10"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/>`,
+);
+
+/** ⟐  Piercing Shot: arrow through. */
+export const glyphPiercingShot = glyphWrap(
+  `<line x1="5" y1="12" x2="19" y2="12"/><polyline points="14,7 19,12 14,17"/><line x1="9" y1="7" x2="9" y2="17"/>`,
+);
+
+/** ⋮  Multi Shot: three dots vertical. */
+export const glyphMultiShot = glyphWrap(
+  `<circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/>`,
+);
+
 // ── Slot expansion glyphs ───────────────────────────────────────────────────
 
 /** ④  4th Slot: number 4 inside a circle. */
@@ -240,6 +275,11 @@ export const glyphSlot4 = glyphWrap(
 /** ⑤  5th Slot: number 5 inside a circle. */
 export const glyphSlot5 = glyphWrap(
   `<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor" stroke="none">5</text>`,
+);
+
+/** ⑥  6th Slot: number 6 inside a circle. */
+export const glyphSlot6 = glyphWrap(
+  `<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor" stroke="none">6</text>`,
 );
 
 // ── Achievement glyphs ──────────────────────────────────────────────────────
@@ -262,6 +302,66 @@ export const glyphCircleOutline = glyphWrap(
 /** ◉  Circle with dot (Purist). */
 export const glyphCircleDot = glyphWrap(
   `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/>`,
+);
+
+/** C  Centurion: "C" in circle. */
+export const glyphCenturion = glyphWrap(
+  `<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor" stroke="none">C</text>`,
+);
+
+/** M  Annihilator: "M" in circle. */
+export const glyphAnnihilator = glyphWrap(
+  `<circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor" stroke="none">M</text>`,
+);
+
+/** ★  Trailblazer: filled star. */
+export const glyphFilledStar = glyphFill(
+  `<polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9"/>`,
+);
+
+/** ∞  Endurance: figure-eight / infinity. */
+export const glyphInfinity = glyphWrap(
+  `<path d="M8,12 C8,8 2,8 2,12 C2,16 8,16 12,12 C16,8 22,8 22,12 C22,16 16,16 12,12"/>`,
+);
+
+/** ▲  Stage 3 Victor: filled triangle up. */
+export const glyphTriangleUp = glyphFill(
+  `<polygon points="12,4 22,20 2,20"/>`,
+);
+
+/** ⚙  Arsenal: gear. */
+export const glyphGear = glyphWrap(
+  `<circle cx="12" cy="12" r="4"/><path d="M12,2 L13,6 L11,6Z M12,22 L13,18 L11,18Z M2,12 L6,13 L6,11Z M22,12 L18,13 L18,11Z M4.9,4.9 L7.5,7 L7,7.5Z M19.1,4.9 L17,7.5 L16.5,7Z M4.9,19.1 L7,16.5 L7.5,17Z M19.1,19.1 L16.5,17 L17,16.5Z"/>`,
+);
+
+/** ⬡  Fully Loaded: hexagon outline. */
+export const glyphHexOutline = glyphWrap(
+  `<polygon points="12,2 22,7 22,17 12,22 2,17 2,7"/>`,
+);
+
+/** ⬢  Mastery: filled hexagon. */
+export const glyphHexFilled = glyphFill(
+  `<polygon points="12,2 22,7 22,17 12,22 2,17 2,7"/>`,
+);
+
+/** ◆  Collector: filled diamond. */
+export const glyphDiamondFilled = glyphFill(
+  `<polygon points="12,2 22,12 12,22 2,12"/>`,
+);
+
+/** ⚡  Blitz: lightning bolt. */
+export const glyphLightning = glyphFill(
+  `<polygon points="13,2 6,14 11,14 10,22 18,10 13,10"/>`,
+);
+
+/** »  Quick Start: double chevron. */
+export const glyphDoubleChevron = glyphWrap(
+  `<polyline points="5,6 11,12 5,18"/><polyline points="13,6 19,12 13,18"/>`,
+);
+
+/** ☆  Boss Breaker: star outline. */
+export const glyphStarOutline = glyphWrap(
+  `<polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9"/>`,
 );
 
 // ── Misc glyphs ─────────────────────────────────────────────────────────────
@@ -308,20 +408,44 @@ export const SHOP_GLYPHS: Record<string, string> = {
   "eq-quickdraw": glyphQuickDraw,
   "eq-longrange": glyphLongRange,
   "eq-lucky": glyphLucky,
+  "eq-resilience": glyphResilience,
+  "eq-magnet": glyphMagnet,
+  "eq-piercing": glyphPiercingShot,
+  "eq-multishot": glyphMultiShot,
   "slot-4": glyphSlot4,
   "slot-5": glyphSlot5,
+  "slot-6": glyphSlot6,
 };
 
 export const ACHIEVEMENT_GLYPHS: Record<string, string> = {
+  // Progress
   firstBossKill: glyphCrossedSwords,
   firstPrimalSkill: glyphStar4,
+  kill100: glyphCenturion,
+  kill1000: glyphAnnihilator,
+  clear3Stages: glyphFilledStar,
+  // Difficulty
   noPowerNormalClear: glyphCircleOutline,
   noPowerSurvival16: glyphCircleDot,
+  survival32: glyphInfinity,
+  clearStage3: glyphTriangleUp,
+  // Style
+  allWeapons: glyphGear,
+  fullEquipment: glyphHexOutline,
+  maxSkillLevel: glyphHexFilled,
+  own5Skins: glyphDiamondFilled,
+  // Speed
+  speedStage1: glyphLightning,
+  speed5Waves: glyphDoubleChevron,
+  bossRush3: glyphStarOutline,
 };
 
 export const SKILL_GLYPHS: Record<string, string> = {
   timeStop: iconTimeStop,
   shadowClone: iconClone,
+  reflectShield: iconReflect,
+  barrage: iconBarrage,
+  lifestealPulse: iconLifesteal,
 };
 
 // ── Helper to create a DOM element from SVG string ──────────────────────────

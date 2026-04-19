@@ -1,6 +1,7 @@
 import { Container } from "pixi.js";
 import type { Scene } from "./scene";
 import type { SkillTreeState } from "../game/data/types";
+import { MAX_SKILL_LEVEL } from "../game/data/types";
 import {
   PRIMAL_SKILLS,
   drawPrimalSkill,
@@ -35,19 +36,22 @@ export class SkillTreeScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const state = this.cb.getState();
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "primal skills";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     // Resources bar
     const res = document.createElement("div");
     res.className = "overlay-sub";
     res.textContent = `cores: ${state.cores}  ·  skill pts: ${state.skillPoints}`;
-    inner.appendChild(res);
+    content.appendChild(res);
 
     // Draw button
     if (state.cores > 0) {
@@ -69,7 +73,7 @@ export class SkillTreeScene implements Scene {
           }
         }
       });
-      inner.appendChild(drawBtn);
+      content.appendChild(drawBtn);
     }
 
     // Skill list
@@ -99,7 +103,12 @@ export class SkillTreeScene implements Scene {
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "card-name";
-      nameSpan.textContent = entry.unlocked ? `${def.name} (Lv.${entry.level})` : `${def.name} — locked`;
+      if (entry.unlocked) {
+        const isMaxed = entry.level >= MAX_SKILL_LEVEL;
+        nameSpan.textContent = isMaxed ? `${def.name} (MAX)` : `${def.name} (Lv.${entry.level})`;
+      } else {
+        nameSpan.textContent = `${def.name} — locked`;
+      }
       header.appendChild(nameSpan);
       btn.appendChild(header);
 
@@ -117,7 +126,7 @@ export class SkillTreeScene implements Scene {
       btn.appendChild(desc);
 
       // Upgrade button
-      if (entry.unlocked) {
+      if (entry.unlocked && entry.level < MAX_SKILL_LEVEL) {
         const cost = upgradeCost(entry.level);
         const canUpgrade = state.skillPoints >= cost;
         const upBtn = document.createElement("button");
@@ -141,7 +150,7 @@ export class SkillTreeScene implements Scene {
 
       list.appendChild(btn);
     }
-    inner.appendChild(list);
+    content.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

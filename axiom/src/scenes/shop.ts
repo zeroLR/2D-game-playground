@@ -31,17 +31,20 @@ export class ShopScene implements Scene {
     const inner = document.getElementById("overlay-inner");
     if (!overlay || !inner) return;
     inner.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "overlay-scroll";
+    inner.appendChild(content);
 
     const title = document.createElement("div");
     title.className = "overlay-title";
     title.textContent = "shop";
-    inner.appendChild(title);
+    content.appendChild(title);
 
     const pointsEl = document.createElement("div");
     pointsEl.className = "overlay-sub";
     pointsEl.id = "shop-points";
     this.refreshPoints(pointsEl);
-    inner.appendChild(pointsEl);
+    content.appendChild(pointsEl);
 
     // Tab row
     const tabRow = document.createElement("div");
@@ -50,7 +53,7 @@ export class ShopScene implements Scene {
     const enhTab = this.createTab(iconEnhance, "Enhance", "enhance", tabRow);
     if (this.activeTab === "skin") skinTab.classList.add("tab-active");
     else enhTab.classList.add("tab-active");
-    inner.appendChild(tabRow);
+    content.appendChild(tabRow);
 
     // Item list (filtered by tab)
     const list = document.createElement("div");
@@ -104,7 +107,7 @@ export class ShopScene implements Scene {
 
       list.appendChild(btn);
     }
-    inner.appendChild(list);
+    content.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";
