@@ -76,10 +76,13 @@ export class SkillTreeScene implements Scene {
       content.appendChild(drawBtn);
     }
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     // Skill list
     const list = document.createElement("div");
     list.className = "card-list";
-    list.style.marginTop = "12px";
 
     for (const def of Object.values(PRIMAL_SKILLS) as PrimalSkillDef[]) {
       const entry = state.skills[def.id];
@@ -150,7 +153,7 @@ export class SkillTreeScene implements Scene {
 
       list.appendChild(btn);
     }
-    content.appendChild(list);
+    body.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

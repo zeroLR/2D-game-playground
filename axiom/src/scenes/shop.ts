@@ -55,11 +55,13 @@ export class ShopScene implements Scene {
     else enhTab.classList.add("tab-active");
     content.appendChild(tabRow);
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     // Item list (filtered by tab)
     const list = document.createElement("div");
     list.className = "card-list";
-    list.style.maxHeight = "340px";
-    list.style.overflowY = "auto";
 
     const filteredItems = SHOP_ITEMS.filter((item) => {
       if (this.activeTab === "skin") return item.category === "skin";
@@ -107,7 +109,7 @@ export class ShopScene implements Scene {
 
       list.appendChild(btn);
     }
-    content.appendChild(list);
+    body.appendChild(list);
 
     const back = document.createElement("button");
     back.type = "button";

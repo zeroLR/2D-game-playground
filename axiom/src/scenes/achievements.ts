@@ -54,6 +54,10 @@ export class AchievementsScene implements Scene {
     sub.textContent = `${unlocked}/${total} unlocked`;
     content.appendChild(sub);
 
+    const body = document.createElement("div");
+    body.className = "overlay-body-scroll";
+    content.appendChild(body);
+
     const achMap = new Map<string, AchievementDef>();
     for (const def of ACHIEVEMENTS) achMap.set(def.id, def);
 
@@ -63,7 +67,7 @@ export class AchievementsScene implements Scene {
       catLabel.style.marginTop = "12px";
       catLabel.style.fontWeight = "bold";
       catLabel.textContent = cat.label;
-      content.appendChild(catLabel);
+      body.appendChild(catLabel);
 
       const list = document.createElement("div");
       list.className = "card-list";
@@ -108,7 +112,7 @@ export class AchievementsScene implements Scene {
         btn.appendChild(body);
         list.appendChild(btn);
       }
-      content.appendChild(list);
+      body.appendChild(list);
     }
 
     const back = document.createElement("button");
