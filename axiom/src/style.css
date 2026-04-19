@@ -130,6 +130,11 @@ body {
   padding-right: 2px;
 }
 
+#overlay-inner:has(> .overlay-scroll) {
+  height: 100%;
+  overflow: hidden;
+}
+
 .overlay-title {
   text-align: center;
   font-size: 16px;
@@ -156,7 +161,7 @@ body {
 
 .overlay-body-scroll {
   flex: 1 1 auto;
-  min-height: clamp(320px, 52dvh, 390px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
