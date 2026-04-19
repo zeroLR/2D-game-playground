@@ -18,3 +18,4 @@
   - Added 6th equipment slot expansion (slot-6, 2500 pts).
   - Storage layer now migrates v1 skill tree and achievement states to v2 by merging missing keys from defaults.
   - Export/import handles both v1 and v2 save formats transparently.
+- Drafted Main Story Mode redesign plan at `docs/plans/main-story-redesign.md`: repositions Normal Mode as a 3-stage 主線模式 with Domain / Theorem framing (Axis → Wing → Mirror), keeps Mirror Boss as the final-stage boss while introducing Orthogon (Stage 1) and Jets (Stage 2) via a new boss registry, gates 5 new cards + 2 new primal skills behind boss clears with linear unlock, and phases the work in 3 shippable PRs. No gameplay code changed yet.
