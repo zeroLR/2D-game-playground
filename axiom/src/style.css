@@ -156,7 +156,7 @@ body {
 
 .overlay-body-scroll {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: clamp(320px, 52dvh, 390px);
   display: flex;
   flex-direction: column;
   gap: 12px;
