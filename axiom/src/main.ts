@@ -24,6 +24,7 @@ import { WAVES } from "./game/waves";
 import { survivalWaveSpec } from "./game/survivalWaves";
 import { applyEquipment } from "./game/equipment";
 import { equipCard, unequipCard } from "./game/equipment";
+import { mapEquipmentToRunCardId, listUnmappedEquipmentCards } from "./game/equipment";
 import { createActiveSkillStates } from "./game/skills";
 import { MAX_SKILL_LEVEL } from "./game/data/types";
 import { unlockAchievement } from "./game/achievements";
@@ -33,7 +34,7 @@ import {
   resolveSelectedStartingShape,
   runSkinForStartingShape,
 } from "./game/startingShapes";
-import { iconTimeStop, iconClone, iconReflect, iconBarrage, iconLifesteal, setIconHtml, CARD_GLYPHS } from "./icons";
+import { iconTimeStop, iconClone, iconReflect, iconBarrage, iconLifesteal, setIconHtml, CARD_GLYPHS, SHOP_GLYPHS } from "./icons";
 import {
   loadProfile, saveProfile,
   loadEquipment, saveEquipment,
@@ -298,7 +299,28 @@ async function boot(): Promise<void> {
       container.appendChild(chip);
     }
 
-    container.hidden = runInventory.size === 0;
+    const unmappedEquipment = listUnmappedEquipmentCards(equipment.equipped);
+    for (const eqCard of unmappedEquipment) {
+      const chip = document.createElement("span");
+      chip.className = "card-chip";
+      chip.title = `${eqCard.name} (equipment)`;
+
+      const glyphSpan = document.createElement("span");
+      glyphSpan.className = "card-chip-glyph";
+      const svgGlyph = SHOP_GLYPHS[eqCard.id];
+      if (svgGlyph) setIconHtml(glyphSpan, svgGlyph);
+      else glyphSpan.textContent = eqCard.glyph;
+
+      const lvSpan = document.createElement("span");
+      lvSpan.className = "card-chip-lv";
+      lvSpan.textContent = "E";
+
+      chip.appendChild(glyphSpan);
+      chip.appendChild(lvSpan);
+      container.appendChild(chip);
+    }
+
+    container.hidden = runInventory.size === 0 && unmappedEquipment.length === 0;
   }
 
   function clearCardHud(): void {
@@ -396,8 +418,9 @@ async function boot(): Promise<void> {
 
     // Seed the card inventory with equipped equipment cards (they count as Lv 1).
     for (const cardId of equipment.equipped) {
-      const poolCard = POOL_BY_ID.get(cardId);
-      if (poolCard && !runInventory.has(cardId)) {
+      const runCardId = mapEquipmentToRunCardId(cardId) ?? cardId;
+      const poolCard = POOL_BY_ID.get(runCardId);
+      if (poolCard && !runInventory.has(runCardId)) {
         runInventory.add(poolCard);
       }
     }

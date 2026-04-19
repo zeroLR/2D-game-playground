@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { defaultEquipmentLoadout } from "../src/game/data/types";
-import { canEquip, equipCard, unequipCard, MAX_SAME_CARD } from "../src/game/equipment";
+import {
+  canEquip,
+  equipCard,
+  unequipCard,
+  MAX_SAME_CARD,
+  mapEquipmentToRunCardId,
+  listUnmappedEquipmentCards,
+} from "../src/game/equipment";
 import { SHOP_ITEMS, EQUIP_EFFECTS } from "../src/game/data/shop";
 
 describe("equipment system", () => {
@@ -68,5 +75,16 @@ describe("equipment system", () => {
     expect(EQUIP_EFFECTS["eq-magnet"]).toEqual({ effectKind: "pickupRadiusMul", effectValue: 1.2 });
     expect(EQUIP_EFFECTS["eq-piercing"]).toEqual({ effectKind: "pierceAdd", effectValue: 1 });
     expect(EQUIP_EFFECTS["eq-multishot"]).toEqual({ effectKind: "projectilesAdd", effectValue: 1 });
+  });
+
+  it("maps run-equivalent equipment cards to run card ids", () => {
+    expect(mapEquipmentToRunCardId("eq-toughness")).toBe("plating");
+    expect(mapEquipmentToRunCardId("eq-quickdraw")).toBe("rapid");
+    expect(mapEquipmentToRunCardId("eq-piercing")).toBe("pierce");
+  });
+
+  it("returns unmapped equipment cards for HUD display", () => {
+    const unmapped = listUnmappedEquipmentCards(["eq-sharpshot", "eq-resilience", "eq-magnet"]);
+    expect(unmapped.map((c) => c.id)).toEqual(["eq-resilience", "eq-magnet"]);
   });
 });
