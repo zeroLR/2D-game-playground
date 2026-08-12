@@ -23,12 +23,12 @@ Status: completed
 
 - Extract swipe thresholds and strength mapping from `main.ts`.
 - Convert keyboard and pointer gestures into `PlayerCommand` values.
-- Keep execution of commands in the current runtime temporarily.
+- Keep command execution in the current runtime temporarily.
 - Add unit tests locking existing mobile gesture semantics.
 
 ## R2 — Gameplay Events + FX
 
-Status: completed in `main`
+Status: completed
 
 - Introduce typed gameplay events (`dash-started`, `landed`, `wall-jumped`, `drone-killed`, `crystal-picked`, `player-hit`).
 - Move Dash trail, burst particles, and existing camera impulses behind an FX boundary.
@@ -46,7 +46,7 @@ Status: completed in PR #66
 
 ## R4 — World State / Pixi View Separation
 
-Status: in progress
+Status: completed in PR #67
 
 - Remove `Graphics` references from gameplay entity state.
 - Give entities stable IDs.
@@ -55,10 +55,28 @@ Status: in progress
 
 ## R5 — GameRuntime + Systems
 
+Status: in progress
+
 - Make `main.ts` bootstrap-only.
 - Introduce orchestration through `GameRuntime`.
-- Extract Movement, Collision, Camera, and WorldGeneration systems.
+- Extract Movement, Collision, Camera, and World lifecycle systems.
 - Keep Domain independent from PixiJS.
+
+### R5 target flow
+
+```mermaid
+flowchart TD
+  Main[main.ts] --> Runtime[GameRuntime]
+  Runtime --> Input[SwipeInterpreter]
+  Runtime --> Movement[MovementSystem]
+  Runtime --> Collision[CollisionSystem]
+  Runtime --> Camera[CameraSystem]
+  Runtime --> World[WorldLifecycleSystem]
+  Runtime --> Renderer[WorldRenderer / HUD / Player]
+  Movement --> Domain[GameState]
+  Collision --> Domain
+  World --> WorldState[WorldState]
+```
 
 ## Guardrails
 
