@@ -14,6 +14,8 @@ export const DASH_DURATION = 0.13;
 export const DASH_DRAG = 10;
 export const MIN_DASH_STRENGTH = 0.35;
 export const LANDING_DELAY = 0.06;
+export const DRONE_BOUNCE_VELOCITY = -360;
+export const CRYSTAL_LIFT_VELOCITY = -250;
 export const MAX_AUTO_JUMP_RISE = (AUTO_JUMP_VELOCITY * AUTO_JUMP_VELOCITY) / (2 * RISE_GRAVITY);
 
 export type GameState = {
@@ -22,6 +24,7 @@ export type GameState = {
   velocityX: number;
   velocityY: number;
   dashTime: number;
+  dashReady: boolean;
   landingTime: number;
   score: number;
   flow: number;
@@ -37,6 +40,7 @@ export const createInitialState = (): GameState => ({
   velocityX: 0,
   velocityY: AUTO_JUMP_VELOCITY,
   dashTime: 0,
+  dashReady: true,
   landingTime: 0,
   score: 0,
   flow: 1,
@@ -95,20 +99,44 @@ export function applyLanding(state: GameState, platformY: number): GameState {
     playerY: platformY - PLAYER_FEET_OFFSET,
     velocityY: 0,
     landingTime: LANDING_DELAY,
+    dashReady: true,
     flow: Math.min(12, state.flow + 0.25),
   };
 }
 
 export function applyDash(state: GameState, direction: -1 | 1, strength = 1): GameState {
-  if (state.gameOver) return state;
+  if (state.gameOver || !state.dashReady) return state;
   const clampedStrength = Math.max(MIN_DASH_STRENGTH, Math.min(1, strength));
   const dashSpeed = MIN_DASH_SPEED + (MAX_DASH_SPEED - MIN_DASH_SPEED) * clampedStrength;
   return {
     ...state,
     velocityX: direction * dashSpeed,
     dashTime: DASH_DURATION,
+    dashReady: false,
     velocityY: Math.min(state.velocityY, 25),
     flow: Math.min(12, state.flow + 0.6),
+  };
+}
+
+export function applyCrystalPickup(state: GameState): GameState {
+  if (state.gameOver) return state;
+  return {
+    ...state,
+    dashReady: true,
+    velocityY: Math.min(state.velocityY, CRYSTAL_LIFT_VELOCITY),
+    score: state.score + 250,
+    flow: Math.min(12, state.flow + 1.4),
+  };
+}
+
+export function applyDroneKill(state: GameState): GameState {
+  if (state.gameOver) return state;
+  return {
+    ...state,
+    dashReady: true,
+    velocityY: Math.min(state.velocityY, DRONE_BOUNCE_VELOCITY),
+    score: state.score + 400,
+    flow: Math.min(12, state.flow + 1.8),
   };
 }
 
