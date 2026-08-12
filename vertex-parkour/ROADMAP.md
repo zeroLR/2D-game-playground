@@ -16,62 +16,59 @@ The key validation question is:
 
 Goal: runtime gameplay should clearly resemble the approved concept direction even in a static screenshot.
 
-Scope:
-- muted teal / cream / magenta palette
-- layered foggy architecture with depth separation
-- stronger foreground silhouettes framing the playfield
-- platforms integrated into world architecture instead of looking like isolated UI bars
-- larger, more readable hooded player silhouette
-- scarf / cloak motion cue and dash afterimages
-- hazards and crystals restyled as world objects rather than flat icons
-- Abyss rendered as animated energy / fog instead of a flat rectangle
-- restrained ambient particles
-- HUD spacing and hierarchy closer to the concept sheet
-
 Definition of done:
 - a runtime screenshot is recognizably the same game as the visual concept
 - important gameplay objects remain readable on a phone-sized viewport
 - visual effects remain restrained enough to avoid fatigue
 
-Status: passed mobile screenshot review on 2026-08-12. Remaining art polish is non-blocking for MVP progression.
+Status: passed mobile screenshot review on 2026-08-12.
 
-### M2 — Parkour Feel 🚧
+### M2 — Parkour Feel ✅
 
 Goal: movement itself becomes the primary source of fun.
 
-Scope:
-- vertical velocity and gravity
-- platform collision
-- auto jump
-- forgiving landing tolerance for the auto-jump control model
-- dash state and aerial momentum correction
-- landing response and squash/stretch
-- upward-only camera follow with look-ahead behavior
-- impact shake
-
-Implementation notes:
-- the player now owns a real world-space Y position and vertical velocity
-- platforms remain in world coordinates; camera offset converts world positions into screen positions
-- camera follows upward progress but does not follow falls downward, so missed landings remain threatening
-- auto jump happens immediately on landing; manual-jump coyote time is therefore deferred until/if a manual jump input exists
+Delivered:
+- world-space vertical velocity and gravity
+- reachable procedural platform spacing
+- auto jump with short landing compression
+- asymmetric rise/apex/fall gravity
+- variable-strength velocity Dash controlled by swipe distance
+- forgiving platform landing tolerance
+- spring camera with upward dead-zone follow
+- restrained landing / impact feedback
 
 Definition of done:
 - the game feels like vertical parkour rather than lane switching over a scrolling background
-- with hazards, Flow, and rewards mentally ignored, jumping between platforms and dashing remains enjoyable for at least ~30 seconds
+- short, medium, and long swipe Dash strengths are predictable and useful for landing correction
+- camera naturally communicates upward progress
 
-### M3 — Gameplay Objects
+Status: passed mobile playtest feedback on 2026-08-12.
+
+### M3 — Gameplay Objects 🚧
 
 Goal: world objects create traversal decisions instead of only dealing damage.
 
-Scope:
-- platform
+#### M3.1 — Traversal resources 🚧
+- Dash becomes a single airborne resource instead of unlimited repeat input
+- landing restores Dash
+- Crystal restores Dash and adds a small upward lift
+- Drone can be destroyed only while actively dashing
+- destroying a Drone restores Dash and gives an upward bounce
+- non-dashing Drone contact damages the player
+- HUD communicates whether Dash is currently ready
+
+Validation chain:
+
+> jump → dash → drone/crystal → reset → dash → land
+
+The player should intentionally route through a Drone or Crystal because it extends traversal, not merely because it adds score.
+
+#### Remaining M3 scope
 - wall / wall jump
-- spikes
-- dash-kill drone
-- crystal that contributes to Flow or mobility reset
+- spikes as static terrain hazard
 - breakable dash-through object
 - moving platform
-- Abyss pressure
+- stronger Abyss pressure behavior
 
 Key rule:
 - enemies should become movement resources, not only hazards
@@ -123,5 +120,6 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
-- M2 Parkour Feel: in progress
-- M3–M6: not started
+- M2 Parkour Feel: complete
+- M3 Gameplay Objects: in progress (M3.1 traversal resources)
+- M4–M6: not started
