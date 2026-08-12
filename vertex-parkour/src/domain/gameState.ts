@@ -2,8 +2,9 @@ export type Vec2 = { x: number; y: number };
 
 export const PLAYER_FEET_OFFSET = 24;
 export const GRAVITY = 1220;
-export const AUTO_JUMP_VELOCITY = -470;
+export const AUTO_JUMP_VELOCITY = -540;
 export const MAX_FALL_SPEED = 760;
+export const MAX_AUTO_JUMP_RISE = (AUTO_JUMP_VELOCITY * AUTO_JUMP_VELOCITY) / (2 * GRAVITY);
 
 export type GameState = {
   playerX: number;
@@ -19,7 +20,7 @@ export type GameState = {
 
 export const createInitialState = (): GameState => ({
   playerX: 180,
-  playerY: 568,
+  playerY: 578,
   velocityY: AUTO_JUMP_VELOCITY,
   score: 0,
   flow: 1,
