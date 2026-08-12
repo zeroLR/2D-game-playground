@@ -19,7 +19,7 @@ flowchart LR
 
 ## R1 — Input + Commands
 
-Status: in progress
+Status: implemented in PR #63; awaiting merge
 
 - Extract swipe thresholds and strength mapping from `main.ts`.
 - Convert keyboard and pointer gestures into `PlayerCommand` values.
@@ -28,9 +28,11 @@ Status: in progress
 
 ## R2 — Gameplay Events + FX
 
-- Introduce typed gameplay events (`dash-started`, `landed`, `drone-killed`, `crystal-picked`, `player-hit`).
-- Move Dash trail, burst particles, and camera impulses behind an FX boundary.
-- Gameplay systems emit events; Pixi presentation consumes them.
+Status: in progress
+
+- Introduce typed gameplay events (`dash-started`, `landed`, `wall-jumped`, `drone-killed`, `crystal-picked`, `player-hit`).
+- Move Dash trail, burst particles, and existing camera impulses behind an FX boundary.
+- Gameplay orchestration emits events; Pixi presentation consumes them.
 - Regression target: gameplay refactors must not be able to silently remove established FX.
 
 ## R3 — World Generation
