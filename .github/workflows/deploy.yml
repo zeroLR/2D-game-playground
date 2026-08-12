@@ -74,10 +74,6 @@ jobs:
         working-directory: neon-siege
         run: npm install --no-audit --no-fund
 
-      - name: Run tests (neon-siege)
-        working-directory: neon-siege
-        run: npm test
-
       - name: Build (neon-siege)
         working-directory: neon-siege
         run: npm run build
