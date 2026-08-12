@@ -12,7 +12,7 @@ The key validation question is:
 
 ## Milestones
 
-### M1 — Visual Foundation
+### M1 — Visual Foundation ✅
 
 Goal: runtime gameplay should clearly resemble the approved concept direction even in a static screenshot.
 
@@ -33,7 +33,9 @@ Definition of done:
 - important gameplay objects remain readable on a phone-sized viewport
 - visual effects remain restrained enough to avoid fatigue
 
-### M2 — Parkour Feel
+Status: passed mobile screenshot review on 2026-08-12. Remaining art polish is non-blocking for MVP progression.
+
+### M2 — Parkour Feel 🚧
 
 Goal: movement itself becomes the primary source of fun.
 
@@ -41,13 +43,21 @@ Scope:
 - vertical velocity and gravity
 - platform collision
 - auto jump
-- coyote time
-- dash state and cooldown/reset
+- forgiving landing tolerance for the auto-jump control model
+- dash state and aerial momentum correction
 - landing response and squash/stretch
-- camera follow, look-ahead, dash offset, and impact shake
+- upward-only camera follow with look-ahead behavior
+- impact shake
+
+Implementation notes:
+- the player now owns a real world-space Y position and vertical velocity
+- platforms remain in world coordinates; camera offset converts world positions into screen positions
+- camera follows upward progress but does not follow falls downward, so missed landings remain threatening
+- auto jump happens immediately on landing; manual-jump coyote time is therefore deferred until/if a manual jump input exists
 
 Definition of done:
 - the game feels like vertical parkour rather than lane switching over a scrolling background
+- with hazards, Flow, and rewards mentally ignored, jumping between platforms and dashing remains enjoyable for at least ~30 seconds
 
 ### M3 — Gameplay Objects
 
@@ -112,5 +122,6 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 ## Current status
 
 - Mechanics prototype: complete
-- M1 Visual Foundation: in progress
-- M2–M6: not started
+- M1 Visual Foundation: complete
+- M2 Parkour Feel: in progress
+- M3–M6: not started
