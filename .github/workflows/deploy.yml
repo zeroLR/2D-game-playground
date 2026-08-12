@@ -7,6 +7,7 @@ on:
       - "simple-roguelike/**"
       - "axiom/**"
       - "vertex-parkour/**"
+      - "neon-siege/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -69,12 +70,25 @@ jobs:
         working-directory: vertex-parkour
         run: npm run build
 
+      - name: Install deps (neon-siege)
+        working-directory: neon-siege
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests (neon-siege)
+        working-directory: neon-siege
+        run: npm test
+
+      - name: Build (neon-siege)
+        working-directory: neon-siege
+        run: npm run build
+
       - name: Assemble Pages artifact
         run: |
-          mkdir -p _site/simple-roguelike _site/axiom _site/vertex-parkour
+          mkdir -p _site/simple-roguelike _site/axiom _site/vertex-parkour _site/neon-siege
           cp -r simple-roguelike/dist/* _site/simple-roguelike/
           cp -r axiom/dist/* _site/axiom/
           cp -r vertex-parkour/dist/* _site/vertex-parkour/
+          cp -r neon-siege/dist/* _site/neon-siege/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">
@@ -103,6 +117,10 @@ jobs:
             <li>
               <a href="./vertex-parkour/">vertex-parkour</a>
               <div class="desc">Mobile-portrait parkour roguelite vertical slice.</div>
+            </li>
+            <li>
+              <a href="./neon-siege/">neon-siege</a>
+              <div class="desc">Cyberpunk horizontal action tower-defense MVP.</div>
             </li>
           </ul>
           HTML
