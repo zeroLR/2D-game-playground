@@ -2,6 +2,7 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { createApplication } from './bootstrap';
 import {
   LANDING_DELAY,
+  MIN_DASH_STRENGTH,
   PLAYER_FEET_OFFSET,
   applyDash,
   applyHit,
@@ -32,6 +33,8 @@ const REGULAR_GAP_MIN = 72;
 const REGULAR_GAP_MAX = 90;
 const REST_GAP_MIN = 88;
 const REST_GAP_MAX = 104;
+const MIN_SWIPE_DISTANCE = 24;
+const MAX_SWIPE_DISTANCE = 120;
 
 async function bootstrap() {
   const app = await createApplication(LOGICAL_W, LOGICAL_H);
@@ -62,10 +65,11 @@ async function bootstrap() {
   function spawnBand() { bandIndex += 1; const restBand = bandIndex % 4 === 0; lastSpawnY -= restBand ? randomGap(REST_GAP_MIN, REST_GAP_MAX) : randomGap(REGULAR_GAP_MIN, REGULAR_GAP_MAX); const lanes = [82, 180, 278] as const; const lane = lanes[Math.floor(Math.random() * lanes.length)]; makePlatform(lane, lastSpawnY, restBand ? 68 + Math.random() * 20 : 74 + Math.random() * 38); if (!restBand && Math.random() < 0.4) { const hazardLanes = lanes.filter((x) => x !== lane); makeHazard(hazardLanes[Math.floor(Math.random() * hazardLanes.length)], lastSpawnY - 30); } if (restBand ? Math.random() < 0.28 : Math.random() < 0.58) makeCrystal(lane, lastSpawnY - 46); }
   function seedWorld() { makePlatform(180, START_PLATFORM_Y, 122); lastSpawnY = START_PLATFORM_Y; bandIndex = 0; for (let i = 0; i < 12; i += 1) spawnBand(); }
   function reset() { state = createInitialState(); cameraOffset = 0; cameraVelocity = 0; lastSpawnY = START_PLATFORM_Y; invulnerable = 0; dashDirection = 0; dashVisualTime = 0; cameraShake = 0; for (const p of platforms) p.view.destroy(); for (const h of hazards) h.view.destroy(); for (const c of crystals) c.view.destroy(); platforms.length = hazards.length = crystals.length = 0; seedWorld(); overText.text = ''; }
-  function dash(direction: -1 | 1) { state = applyDash(state, direction); dashDirection = direction; dashVisualTime = 0.15; const screenY = state.playerY + cameraOffset; for (let i = 0; i < 6; i += 1) { const trail = new Graphics(); const t = i / 6; trail.poly([-9, 7, 0, -12, 9, 7]).fill({ color: Palette.cream, alpha: 0.12 * (1 - t) }); trail.position.set(state.playerX - direction * (12 + i * 10), screenY); particles.addChild(trail); setTimeout(() => trail.destroy(), 90 + i * 18); } }
-  window.addEventListener('keydown', (event) => { if (event.key === 'a' || event.key === 'ArrowLeft') dash(-1); if (event.key === 'd' || event.key === 'ArrowRight') dash(1); if (event.key === 'r' && state.gameOver) reset(); });
+  function dash(direction: -1 | 1, strength = 1) { state = applyDash(state, direction, strength); dashDirection = direction; dashVisualTime = 0.15; const screenY = state.playerY + cameraOffset; const trailLength = 38 + strength * 28; for (let i = 0; i < 6; i += 1) { const trail = new Graphics(); const t = i / 6; trail.poly([-9, 7, 0, -12, 9, 7]).fill({ color: Palette.cream, alpha: (0.08 + strength * 0.04) * (1 - t) }); trail.position.set(state.playerX - direction * (12 + t * trailLength), screenY); particles.addChild(trail); setTimeout(() => trail.destroy(), 90 + i * 18); } }
+  function swipeStrength(distance: number) { const normalized = Math.max(0, Math.min(1, (distance - MIN_SWIPE_DISTANCE) / (MAX_SWIPE_DISTANCE - MIN_SWIPE_DISTANCE))); return MIN_DASH_STRENGTH + normalized * (1 - MIN_DASH_STRENGTH); }
+  window.addEventListener('keydown', (event) => { if (event.key === 'a' || event.key === 'ArrowLeft') dash(-1, 1); if (event.key === 'd' || event.key === 'ArrowRight') dash(1, 1); if (event.key === 'r' && state.gameOver) reset(); });
   app.canvas.addEventListener('pointerdown', (event) => { pointerStartX = event.clientX; pointerStartY = event.clientY; if (state.gameOver) reset(); });
-  app.canvas.addEventListener('pointerup', (event) => { const dx = event.clientX - pointerStartX; const dy = event.clientY - pointerStartY; if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy)) dash(dx < 0 ? -1 : 1); });
+  app.canvas.addEventListener('pointerup', (event) => { const dx = event.clientX - pointerStartX; const dy = event.clientY - pointerStartY; const distance = Math.abs(dx); if (distance >= MIN_SWIPE_DISTANCE && distance > Math.abs(dy)) dash(dx < 0 ? -1 : 1, swipeStrength(distance)); });
   function resize() { const scale = Math.min(innerWidth / LOGICAL_W, innerHeight / LOGICAL_H); app.canvas.style.width = `${LOGICAL_W * scale}px`; app.canvas.style.height = `${LOGICAL_H * scale}px`; }
   window.addEventListener('resize', resize); resize(); seedWorld();
   app.ticker.add((ticker) => {
