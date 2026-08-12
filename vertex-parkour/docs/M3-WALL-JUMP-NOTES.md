@@ -1,0 +1,1 @@
+M3.2 implementation is intentionally scoped to forgiving wall traversal. See M3-WALL-JUMP.md for validation criteria.
