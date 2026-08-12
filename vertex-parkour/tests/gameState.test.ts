@@ -4,6 +4,8 @@ import {
   DASH_SPEED,
   LANDING_DELAY,
   MAX_AUTO_JUMP_RISE,
+  MAX_DASH_SPEED,
+  MIN_DASH_SPEED,
   PLAYER_FEET_OFFSET,
   applyDash,
   applyHit,
@@ -44,6 +46,20 @@ describe('game state', () => {
     const moved = tickState(dashed, 0.05);
     expect(moved.playerX).toBeGreaterThan(initial.playerX);
     expect(moved.playerX).toBeLessThanOrEqual(308);
+  });
+
+  it('scales dash velocity with swipe strength while clamping the range', () => {
+    const initial = createInitialState();
+    const shortDash = applyDash(initial, 1, 0.35);
+    const mediumDash = applyDash(initial, 1, 0.65);
+    const fullDash = applyDash(initial, 1, 1);
+    const overDash = applyDash(initial, 1, 2);
+
+    expect(shortDash.velocityX).toBeGreaterThan(MIN_DASH_SPEED);
+    expect(shortDash.velocityX).toBeLessThan(mediumDash.velocityX);
+    expect(mediumDash.velocityX).toBeLessThan(fullDash.velocityX);
+    expect(fullDash.velocityX).toBe(MAX_DASH_SPEED);
+    expect(overDash.velocityX).toBe(MAX_DASH_SPEED);
   });
 
   it('clamps horizontal movement inside the portrait playfield', () => {

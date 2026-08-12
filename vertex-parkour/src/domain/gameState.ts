@@ -7,9 +7,12 @@ export const FALL_GRAVITY = 1500;
 export const APEX_GRAVITY = 620;
 export const APEX_SPEED = 75;
 export const MAX_FALL_SPEED = 820;
-export const DASH_SPEED = 760;
+export const MIN_DASH_SPEED = 380;
+export const MAX_DASH_SPEED = 760;
+export const DASH_SPEED = MAX_DASH_SPEED;
 export const DASH_DURATION = 0.13;
 export const DASH_DRAG = 10;
+export const MIN_DASH_STRENGTH = 0.35;
 export const LANDING_DELAY = 0.06;
 export const MAX_AUTO_JUMP_RISE = (AUTO_JUMP_VELOCITY * AUTO_JUMP_VELOCITY) / (2 * RISE_GRAVITY);
 
@@ -96,11 +99,13 @@ export function applyLanding(state: GameState, platformY: number): GameState {
   };
 }
 
-export function applyDash(state: GameState, direction: -1 | 1): GameState {
+export function applyDash(state: GameState, direction: -1 | 1, strength = 1): GameState {
   if (state.gameOver) return state;
+  const clampedStrength = Math.max(MIN_DASH_STRENGTH, Math.min(1, strength));
+  const dashSpeed = MIN_DASH_SPEED + (MAX_DASH_SPEED - MIN_DASH_SPEED) * clampedStrength;
   return {
     ...state,
-    velocityX: direction * DASH_SPEED,
+    velocityX: direction * dashSpeed,
     dashTime: DASH_DURATION,
     velocityY: Math.min(state.velocityY, 25),
     flow: Math.min(12, state.flow + 0.6),
