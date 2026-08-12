@@ -1,15 +1,25 @@
 export type Vec2 = { x: number; y: number };
 
 export const PLAYER_FEET_OFFSET = 24;
-export const GRAVITY = 1220;
 export const AUTO_JUMP_VELOCITY = -540;
-export const MAX_FALL_SPEED = 760;
-export const MAX_AUTO_JUMP_RISE = (AUTO_JUMP_VELOCITY * AUTO_JUMP_VELOCITY) / (2 * GRAVITY);
+export const RISE_GRAVITY = 1080;
+export const FALL_GRAVITY = 1500;
+export const APEX_GRAVITY = 620;
+export const APEX_SPEED = 75;
+export const MAX_FALL_SPEED = 820;
+export const DASH_SPEED = 760;
+export const DASH_DURATION = 0.13;
+export const DASH_DRAG = 10;
+export const LANDING_DELAY = 0.06;
+export const MAX_AUTO_JUMP_RISE = (AUTO_JUMP_VELOCITY * AUTO_JUMP_VELOCITY) / (2 * RISE_GRAVITY);
 
 export type GameState = {
   playerX: number;
   playerY: number;
+  velocityX: number;
   velocityY: number;
+  dashTime: number;
+  landingTime: number;
   score: number;
   flow: number;
   hp: number;
@@ -21,7 +31,10 @@ export type GameState = {
 export const createInitialState = (): GameState => ({
   playerX: 180,
   playerY: 578,
+  velocityX: 0,
   velocityY: AUTO_JUMP_VELOCITY,
+  dashTime: 0,
+  landingTime: 0,
   score: 0,
   flow: 1,
   hp: 3,
@@ -34,16 +47,40 @@ export function tickState(state: GameState, deltaSeconds: number): GameState {
   if (state.gameOver) return state;
 
   const elapsed = state.elapsed + deltaSeconds;
-  const velocityY = Math.min(MAX_FALL_SPEED, state.velocityY + GRAVITY * deltaSeconds);
-  const playerY = state.playerY + velocityY * deltaSeconds;
+  const landingTime = Math.max(0, state.landingTime - deltaSeconds);
+  let velocityY = state.velocityY;
+  let playerY = state.playerY;
+
+  if (state.landingTime > 0) {
+    if (landingTime <= 0) velocityY = AUTO_JUMP_VELOCITY;
+    else velocityY = 0;
+  } else {
+    const gravity = Math.abs(velocityY) <= APEX_SPEED
+      ? APEX_GRAVITY
+      : velocityY < 0
+        ? RISE_GRAVITY
+        : FALL_GRAVITY;
+    velocityY = Math.min(MAX_FALL_SPEED, velocityY + gravity * deltaSeconds);
+    playerY += velocityY * deltaSeconds;
+  }
+
+  const dashTime = Math.max(0, state.dashTime - deltaSeconds);
+  const velocityX = dashTime > 0
+    ? state.velocityX
+    : state.velocityX * Math.max(0, 1 - DASH_DRAG * deltaSeconds);
+  const playerX = Math.max(52, Math.min(308, state.playerX + velocityX * deltaSeconds));
   const climbed = Math.max(0, state.playerY - playerY);
 
   return {
     ...state,
     elapsed,
+    playerX,
     playerY,
+    velocityX,
     velocityY,
-    speed: Math.abs(velocityY),
+    dashTime,
+    landingTime,
+    speed: Math.hypot(velocityX, velocityY),
     score: state.score + climbed * Math.max(1, state.flow),
   };
 }
@@ -53,7 +90,8 @@ export function applyLanding(state: GameState, platformY: number): GameState {
   return {
     ...state,
     playerY: platformY - PLAYER_FEET_OFFSET,
-    velocityY: AUTO_JUMP_VELOCITY,
+    velocityY: 0,
+    landingTime: LANDING_DELAY,
     flow: Math.min(12, state.flow + 0.25),
   };
 }
@@ -62,8 +100,9 @@ export function applyDash(state: GameState, direction: -1 | 1): GameState {
   if (state.gameOver) return state;
   return {
     ...state,
-    playerX: Math.max(52, Math.min(308, state.playerX + direction * 92)),
-    velocityY: Math.min(state.velocityY, 40),
+    velocityX: direction * DASH_SPEED,
+    dashTime: DASH_DURATION,
+    velocityY: Math.min(state.velocityY, 25),
     flow: Math.min(12, state.flow + 0.6),
   };
 }
