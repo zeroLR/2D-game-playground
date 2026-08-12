@@ -32,7 +32,6 @@ jobs:
           cache-dependency-path: |
             simple-roguelike/package-lock.json
             axiom/package-lock.json
-            vertex-parkour/package-lock.json
 
       - name: Install deps (simple-roguelike)
         working-directory: simple-roguelike
@@ -60,7 +59,7 @@ jobs:
 
       - name: Install deps (vertex-parkour)
         working-directory: vertex-parkour
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Run tests (vertex-parkour)
         working-directory: vertex-parkour
