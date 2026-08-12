@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AUTO_JUMP_VELOCITY,
+  MAX_AUTO_JUMP_RISE,
   PLAYER_FEET_OFFSET,
   applyDash,
   applyHit,
@@ -17,6 +18,11 @@ describe('game state', () => {
     expect(next.velocityY).toBeGreaterThan(initial.velocityY);
     expect(next.playerY).toBeLessThan(initial.playerY);
     expect(next.score).toBeGreaterThan(0);
+  });
+
+  it('keeps the auto-jump rise above the largest generated platform gap', () => {
+    const largestGeneratedGap = 104;
+    expect(MAX_AUTO_JUMP_RISE).toBeGreaterThan(largestGeneratedGap);
   });
 
   it('auto-jumps immediately after landing on a platform', () => {
