@@ -23,7 +23,12 @@ import {
 
 const LOGICAL_W = 360;
 const LOGICAL_H = 720;
-const CAMERA_TARGET_Y = 420;
+const START_PLATFORM_Y = 602;
+const CAMERA_TARGET_Y = 360;
+const REGULAR_GAP_MIN = 72;
+const REGULAR_GAP_MAX = 90;
+const REST_GAP_MIN = 88;
+const REST_GAP_MAX = 104;
 
 async function bootstrap() {
   const app = await createApplication(LOGICAL_W, LOGICAL_H);
@@ -78,7 +83,7 @@ async function bootstrap() {
 
   let state: GameState = createInitialState();
   let cameraOffset = 0;
-  let lastSpawnY = 560;
+  let lastSpawnY = START_PLATFORM_Y;
   let pointerStartX = 0;
   let pointerStartY = 0;
   let invulnerable = 0;
@@ -109,10 +114,16 @@ async function bootstrap() {
     crystals.push({ view, x, y, taken: false });
   }
 
+  function randomGap(min: number, max: number) {
+    return min + Math.random() * (max - min);
+  }
+
   function spawnBand() {
     bandIndex += 1;
     const restBand = bandIndex % 4 === 0;
-    const spacing = restBand ? 122 + Math.random() * 18 : 92 + Math.random() * 24;
+    const spacing = restBand
+      ? randomGap(REST_GAP_MIN, REST_GAP_MAX)
+      : randomGap(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
     lastSpawnY -= spacing;
 
     const lanes = [82, 180, 278] as const;
@@ -127,7 +138,8 @@ async function bootstrap() {
   }
 
   function seedWorld() {
-    makePlatform(180, 602, 122);
+    makePlatform(180, START_PLATFORM_Y, 122);
+    lastSpawnY = START_PLATFORM_Y;
     bandIndex = 0;
     for (let i = 0; i < 12; i += 1) spawnBand();
   }
@@ -135,7 +147,7 @@ async function bootstrap() {
   function reset() {
     state = createInitialState();
     cameraOffset = 0;
-    lastSpawnY = 560;
+    lastSpawnY = START_PLATFORM_Y;
     invulnerable = 0;
     dashDirection = 0;
     dashVisualTime = 0;
@@ -227,7 +239,7 @@ async function bootstrap() {
 
       const desiredCameraOffset = CAMERA_TARGET_Y - state.playerY;
       if (desiredCameraOffset > cameraOffset) {
-        cameraOffset += (desiredCameraOffset - cameraOffset) * Math.min(1, dt * 7.5);
+        cameraOffset += (desiredCameraOffset - cameraOffset) * Math.min(1, dt * 5.5);
       }
 
       updateEnvironment(environment, cameraOffset, state.elapsed, LOGICAL_H);
@@ -284,7 +296,7 @@ async function bootstrap() {
       const t = landingVisualTime / 0.11;
       player.scale.set(1 + (1 - t) * 0.18, 1 - (1 - t) * 0.16);
     } else {
-      const riseStretch = Math.max(-1, Math.min(1, -state.velocityY / 470));
+      const riseStretch = Math.max(-1, Math.min(1, -state.velocityY / 540));
       player.scale.set(1 - riseStretch * 0.035, 1 + riseStretch * 0.06);
     }
     player.alpha = invulnerable > 0 && Math.floor(invulnerable * 12) % 2 === 0 ? 0.35 : 1;
