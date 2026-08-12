@@ -29,10 +29,9 @@ export class FxSystem {
           break;
         case 'drone-killed':
           this.spawnBurst(event.x, event.y, Palette.gold);
-          this.cameraShake = Math.max(this.cameraShake, 3.8);
           break;
         case 'player-hit':
-          this.cameraShake = Math.max(this.cameraShake, 6);
+          // Reserved for future hit FX. Current runtime has no dedicated hit shake.
           break;
       }
     }
