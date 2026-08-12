@@ -1,5 +1,10 @@
 export type Vec2 = { x: number; y: number };
 
+export const PLAYER_FEET_OFFSET = 24;
+export const GRAVITY = 1220;
+export const AUTO_JUMP_VELOCITY = -470;
+export const MAX_FALL_SPEED = 760;
+
 export type GameState = {
   playerX: number;
   playerY: number;
@@ -14,13 +19,13 @@ export type GameState = {
 
 export const createInitialState = (): GameState => ({
   playerX: 180,
-  playerY: 540,
-  velocityY: 0,
+  playerY: 568,
+  velocityY: AUTO_JUMP_VELOCITY,
   score: 0,
   flow: 1,
   hp: 3,
   elapsed: 0,
-  speed: 120,
+  speed: 0,
   gameOver: false,
 });
 
@@ -28,12 +33,27 @@ export function tickState(state: GameState, deltaSeconds: number): GameState {
   if (state.gameOver) return state;
 
   const elapsed = state.elapsed + deltaSeconds;
-  const speed = Math.min(250, 120 + elapsed * 4.2);
+  const velocityY = Math.min(MAX_FALL_SPEED, state.velocityY + GRAVITY * deltaSeconds);
+  const playerY = state.playerY + velocityY * deltaSeconds;
+  const climbed = Math.max(0, state.playerY - playerY);
+
   return {
     ...state,
     elapsed,
-    speed,
-    score: state.score + speed * deltaSeconds * Math.max(1, state.flow),
+    playerY,
+    velocityY,
+    speed: Math.abs(velocityY),
+    score: state.score + climbed * Math.max(1, state.flow),
+  };
+}
+
+export function applyLanding(state: GameState, platformY: number): GameState {
+  if (state.gameOver) return state;
+  return {
+    ...state,
+    playerY: platformY - PLAYER_FEET_OFFSET,
+    velocityY: AUTO_JUMP_VELOCITY,
+    flow: Math.min(12, state.flow + 0.25),
   };
 }
 
@@ -42,6 +62,7 @@ export function applyDash(state: GameState, direction: -1 | 1): GameState {
   return {
     ...state,
     playerX: Math.max(52, Math.min(308, state.playerX + direction * 92)),
+    velocityY: Math.min(state.velocityY, 40),
     flow: Math.min(12, state.flow + 0.6),
   };
 }
