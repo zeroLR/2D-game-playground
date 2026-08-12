@@ -4,7 +4,9 @@ import {
   LANDING_DELAY,
   MIN_DASH_STRENGTH,
   PLAYER_FEET_OFFSET,
+  applyCrystalPickup,
   applyDash,
+  applyDroneKill,
   applyHit,
   applyLanding,
   createInitialState,
@@ -14,6 +16,7 @@ import {
 import {
   Palette,
   createCrystalVisual,
+  createDroneVisual,
   createEnvironment,
   createHazardVisual,
   createPlatformVisual,
@@ -47,56 +50,99 @@ async function bootstrap() {
   const hud = new Container(); root.addChild(hud);
   const player = new Graphics(); world.addChild(player);
   const platforms: Array<{ view: Graphics; x: number; y: number; w: number }> = [];
-  const hazards: Array<{ view: Graphics; x: number; y: number; r: number; hit: boolean }> = [];
+  const hazards: Array<{ view: Graphics; x: number; y: number; hit: boolean }> = [];
   const crystals: Array<{ view: Graphics; x: number; y: number; taken: boolean }> = [];
+  const drones: Array<{ view: Graphics; x: number; y: number; destroyed: boolean; phase: number }> = [];
+
   const title = new Text({ text: 'VERTEX', style: new TextStyle({ fill: '#f3efe7', fontSize: 16, fontWeight: '600', letterSpacing: 6 }) }); title.position.set(22, 20); hud.addChild(title);
   const flowLabel = new Text({ text: 'FLOW', style: new TextStyle({ fill: '#a9c8c4', fontSize: 9, fontWeight: '600', letterSpacing: 2 }) }); flowLabel.position.set(22, 50); hud.addChild(flowLabel);
   const flowText = new Text({ text: '', style: new TextStyle({ fill: '#f0eadf', fontSize: 19, fontWeight: '600' }) }); flowText.position.set(22, 61); hud.addChild(flowText);
   const scoreText = new Text({ text: '', style: new TextStyle({ fill: '#789b99', fontSize: 10, letterSpacing: 0.6 }) }); scoreText.position.set(22, 88); hud.addChild(scoreText);
   const hpText = new Text({ text: '', style: new TextStyle({ fill: '#d8e7e2', fontSize: 13, letterSpacing: 4 }) }); hpText.anchor.set(1, 0); hpText.position.set(LOGICAL_W - 22, 22); hud.addChild(hpText);
+  const dashText = new Text({ text: '', style: new TextStyle({ fill: '#a9c8c4', fontSize: 9, fontWeight: '600', letterSpacing: 1.8 }) }); dashText.anchor.set(1, 0); dashText.position.set(LOGICAL_W - 22, 50); hud.addChild(dashText);
   const helpText = new Text({ text: 'SWIPE  ·  DASH', style: new TextStyle({ fill: '#95b4b1', fontSize: 9, letterSpacing: 2.3 }) }); helpText.anchor.set(0.5); helpText.position.set(LOGICAL_W / 2, LOGICAL_H - 22); hud.addChild(helpText);
   const overText = new Text({ text: '', style: new TextStyle({ fill: '#fff7ee', fontSize: 21, fontWeight: '600', align: 'center', letterSpacing: 1 }) }); overText.anchor.set(0.5); overText.position.set(LOGICAL_W / 2, LOGICAL_H / 2 - 20); hud.addChild(overText);
+
   let state: GameState = createInitialState();
   let cameraOffset = 0; let cameraVelocity = 0; let lastSpawnY = START_PLATFORM_Y; let pointerStartX = 0; let pointerStartY = 0; let invulnerable = 0; let dashDirection: -1 | 0 | 1 = 0; let dashVisualTime = 0; let cameraShake = 0; let bandIndex = 0;
+
   function makePlatform(x: number, y: number, w: number) { const view = createPlatformVisual(w); view.position.set(x, y); world.addChild(view); platforms.push({ view, x, y, w }); }
-  function makeHazard(x: number, y: number) { const view = createHazardVisual(); view.position.set(x, y); world.addChild(view); hazards.push({ view, x, y, r: 16, hit: false }); }
+  function makeHazard(x: number, y: number) { const view = createHazardVisual(); view.position.set(x, y); world.addChild(view); hazards.push({ view, x, y, hit: false }); }
   function makeCrystal(x: number, y: number) { const view = createCrystalVisual(); view.position.set(x, y); world.addChild(view); crystals.push({ view, x, y, taken: false }); }
+  function makeDrone(x: number, y: number) { const view = createDroneVisual(); view.position.set(x, y); world.addChild(view); drones.push({ view, x, y, destroyed: false, phase: Math.random() * Math.PI * 2 }); }
   const randomGap = (min: number, max: number) => min + Math.random() * (max - min);
-  function spawnBand() { bandIndex += 1; const restBand = bandIndex % 4 === 0; lastSpawnY -= restBand ? randomGap(REST_GAP_MIN, REST_GAP_MAX) : randomGap(REGULAR_GAP_MIN, REGULAR_GAP_MAX); const lanes = [82, 180, 278] as const; const lane = lanes[Math.floor(Math.random() * lanes.length)]; makePlatform(lane, lastSpawnY, restBand ? 68 + Math.random() * 20 : 74 + Math.random() * 38); if (!restBand && Math.random() < 0.4) { const hazardLanes = lanes.filter((x) => x !== lane); makeHazard(hazardLanes[Math.floor(Math.random() * hazardLanes.length)], lastSpawnY - 30); } if (restBand ? Math.random() < 0.28 : Math.random() < 0.58) makeCrystal(lane, lastSpawnY - 46); }
+
+  function spawnBand() {
+    bandIndex += 1;
+    const restBand = bandIndex % 4 === 0;
+    lastSpawnY -= restBand ? randomGap(REST_GAP_MIN, REST_GAP_MAX) : randomGap(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
+    const lanes = [82, 180, 278] as const;
+    const platformLane = lanes[Math.floor(Math.random() * lanes.length)];
+    makePlatform(platformLane, lastSpawnY, restBand ? 68 + Math.random() * 20 : 74 + Math.random() * 38);
+    if (restBand) {
+      if (Math.random() < 0.42) makeCrystal(platformLane, lastSpawnY - 46);
+      return;
+    }
+    const otherLanes = lanes.filter((x) => x !== platformLane);
+    const traversalLane = otherLanes[Math.floor(Math.random() * otherLanes.length)];
+    if (Math.random() < 0.34) makeDrone(traversalLane, lastSpawnY - 38);
+    else if (Math.random() < 0.48) makeHazard(traversalLane, lastSpawnY - 30);
+    if (Math.random() < 0.48) makeCrystal(platformLane, lastSpawnY - 46);
+  }
+
   function seedWorld() { makePlatform(180, START_PLATFORM_Y, 122); lastSpawnY = START_PLATFORM_Y; bandIndex = 0; for (let i = 0; i < 12; i += 1) spawnBand(); }
-  function reset() { state = createInitialState(); cameraOffset = 0; cameraVelocity = 0; lastSpawnY = START_PLATFORM_Y; invulnerable = 0; dashDirection = 0; dashVisualTime = 0; cameraShake = 0; for (const p of platforms) p.view.destroy(); for (const h of hazards) h.view.destroy(); for (const c of crystals) c.view.destroy(); platforms.length = hazards.length = crystals.length = 0; seedWorld(); overText.text = ''; }
-  function dash(direction: -1 | 1, strength = 1) { state = applyDash(state, direction, strength); dashDirection = direction; dashVisualTime = 0.15; const screenY = state.playerY + cameraOffset; const trailLength = 38 + strength * 28; for (let i = 0; i < 6; i += 1) { const trail = new Graphics(); const t = i / 6; trail.poly([-9, 7, 0, -12, 9, 7]).fill({ color: Palette.cream, alpha: (0.08 + strength * 0.04) * (1 - t) }); trail.position.set(state.playerX - direction * (12 + t * trailLength), screenY); particles.addChild(trail); setTimeout(() => trail.destroy(), 90 + i * 18); } }
+  function reset() { state = createInitialState(); cameraOffset = 0; cameraVelocity = 0; lastSpawnY = START_PLATFORM_Y; invulnerable = 0; dashDirection = 0; dashVisualTime = 0; cameraShake = 0; for (const item of [...platforms, ...hazards, ...crystals, ...drones]) item.view.destroy(); platforms.length = hazards.length = crystals.length = drones.length = 0; seedWorld(); overText.text = ''; }
+
+  function burst(x: number, y: number, color: number) { for (let i = 0; i < 7; i += 1) { const shard = new Graphics(); const a = (Math.PI * 2 * i) / 7; shard.poly([0, -4, 3, 2, -2, 2]).fill({ color, alpha: 0.7 }); shard.position.set(x + Math.cos(a) * 10, y + Math.sin(a) * 10); shard.rotation = a; particles.addChild(shard); setTimeout(() => shard.destroy(), 180 + i * 12); } }
+
+  function dash(direction: -1 | 1, strength = 1) {
+    if (!state.dashReady || state.gameOver) return;
+    state = applyDash(state, direction, strength);
+    dashDirection = direction; dashVisualTime = 0.15;
+    const screenY = state.playerY + cameraOffset; const trailLength = 38 + strength * 28;
+    for (let i = 0; i < 6; i += 1) { const trail = new Graphics(); const t = i / 6; trail.poly([-9, 7, 0, -12, 9, 7]).fill({ color: Palette.cream, alpha: (0.08 + strength * 0.04) * (1 - t) }); trail.position.set(state.playerX - direction * (12 + t * trailLength), screenY); particles.addChild(trail); setTimeout(() => trail.destroy(), 90 + i * 18); }
+  }
   function swipeStrength(distance: number) { const normalized = Math.max(0, Math.min(1, (distance - MIN_SWIPE_DISTANCE) / (MAX_SWIPE_DISTANCE - MIN_SWIPE_DISTANCE))); return MIN_DASH_STRENGTH + normalized * (1 - MIN_DASH_STRENGTH); }
+
   window.addEventListener('keydown', (event) => { if (event.key === 'a' || event.key === 'ArrowLeft') dash(-1, 1); if (event.key === 'd' || event.key === 'ArrowRight') dash(1, 1); if (event.key === 'r' && state.gameOver) reset(); });
   app.canvas.addEventListener('pointerdown', (event) => { pointerStartX = event.clientX; pointerStartY = event.clientY; if (state.gameOver) reset(); });
   app.canvas.addEventListener('pointerup', (event) => { const dx = event.clientX - pointerStartX; const dy = event.clientY - pointerStartY; const distance = Math.abs(dx); if (distance >= MIN_SWIPE_DISTANCE && distance > Math.abs(dy)) dash(dx < 0 ? -1 : 1, swipeStrength(distance)); });
   function resize() { const scale = Math.min(innerWidth / LOGICAL_W, innerHeight / LOGICAL_H); app.canvas.style.width = `${LOGICAL_W * scale}px`; app.canvas.style.height = `${LOGICAL_H * scale}px`; }
   window.addEventListener('resize', resize); resize(); seedWorld();
+
   app.ticker.add((ticker) => {
     const dt = Math.min(0.033, ticker.deltaMS / 1000);
     if (!state.gameOver) {
-      const previousY = state.playerY; const previousFeet = previousY + PLAYER_FEET_OFFSET; state = tickState(state, dt); invulnerable = Math.max(0, invulnerable - dt); dashVisualTime = Math.max(0, dashVisualTime - dt); cameraShake = Math.max(0, cameraShake - dt * 28); if (dashVisualTime <= 0) dashDirection = 0;
+      const previousY = state.playerY; const previousFeet = previousY + PLAYER_FEET_OFFSET;
+      state = tickState(state, dt); invulnerable = Math.max(0, invulnerable - dt); dashVisualTime = Math.max(0, dashVisualTime - dt); cameraShake = Math.max(0, cameraShake - dt * 28); if (dashVisualTime <= 0) dashDirection = 0;
       if (state.velocityY >= 0 && state.landingTime <= 0) { const nextFeet = state.playerY + PLAYER_FEET_OFFSET; for (const platform of platforms) { const horizontalReach = platform.w / 2 + 10; if (Math.abs(state.playerX - platform.x) <= horizontalReach && previousFeet <= platform.y + 4 && nextFeet >= platform.y - 2) { state = applyLanding(state, platform.y); cameraShake = 2.2; break; } } }
+
       const playerScreenYBeforeCamera = state.playerY + cameraOffset;
       const targetOffset = playerScreenYBeforeCamera < CAMERA_DEAD_ZONE_Y ? CAMERA_DEAD_ZONE_Y - state.playerY : cameraOffset;
       const cameraAcceleration = (targetOffset - cameraOffset) * CAMERA_SPRING - cameraVelocity * CAMERA_DAMPING;
-      cameraVelocity += cameraAcceleration * dt;
-      cameraOffset = Math.max(cameraOffset, cameraOffset + cameraVelocity * dt);
-      if (cameraVelocity < 0) cameraVelocity = 0;
+      cameraVelocity += cameraAcceleration * dt; cameraOffset = Math.max(cameraOffset, cameraOffset + cameraVelocity * dt); if (cameraVelocity < 0) cameraVelocity = 0;
       updateEnvironment(environment, cameraOffset, state.elapsed, LOGICAL_H);
       for (const p of platforms) p.view.y = p.y + cameraOffset;
       for (const h of hazards) { const screenY = h.y + cameraOffset; h.view.y = screenY; h.view.rotation += dt * 0.36; const playerScreenY = state.playerY + cameraOffset; setHazardDanger(h.view, 1 - Math.min(1, Math.hypot(state.playerX - h.x, playerScreenY - screenY) / 150)); }
       for (const c of crystals) { c.view.y = c.y + cameraOffset + Math.sin(state.elapsed * 2.4 + c.x) * 3; c.view.rotation = Math.sin(state.elapsed * 1.3 + c.x) * 0.04; }
+      for (const drone of drones) { if (drone.destroyed) continue; drone.view.y = drone.y + cameraOffset + Math.sin(state.elapsed * 3 + drone.phase) * 5; drone.view.rotation = Math.sin(state.elapsed * 2 + drone.phase) * 0.06; }
       while (lastSpawnY + cameraOffset > -150) spawnBand();
-      for (const crystal of crystals) if (!crystal.taken && Math.abs(state.playerX - crystal.x) < 24 && Math.abs(state.playerY - crystal.y) < 32) { crystal.taken = true; crystal.view.visible = false; state = { ...state, score: state.score + 250, flow: Math.min(12, state.flow + 1.4) }; }
+
+      for (const crystal of crystals) if (!crystal.taken && Math.abs(state.playerX - crystal.x) < 24 && Math.abs(state.playerY - crystal.y) < 32) { crystal.taken = true; crystal.view.visible = false; state = applyCrystalPickup(state); burst(crystal.x, crystal.y + cameraOffset, Palette.tealSoft); }
+      for (const drone of drones) {
+        if (drone.destroyed || Math.hypot(state.playerX - drone.x, state.playerY - drone.y) >= 28) continue;
+        if (state.dashTime > 0) { drone.destroyed = true; drone.view.visible = false; state = applyDroneKill(state); cameraShake = 3.8; burst(drone.x, drone.y + cameraOffset, Palette.gold); }
+        else if (invulnerable <= 0) { invulnerable = 0.9; cameraShake = 6; state = applyHit(state); }
+      }
       if (invulnerable <= 0) for (const hazard of hazards) if (!hazard.hit && Math.hypot(state.playerX - hazard.x, state.playerY - hazard.y) < 25) { hazard.hit = true; invulnerable = 0.9; cameraShake = 6; state = applyHit(state); break; }
       if (state.playerY + cameraOffset > LOGICAL_H + 55) state = { ...state, gameOver: true, hp: 0 };
     }
+
     const shakeX = cameraShake > 0 ? Math.sin(state.elapsed * 68) * cameraShake : 0; const shakeY = cameraShake > 0 ? Math.cos(state.elapsed * 57) * cameraShake * 0.55 : 0; world.position.set(shakeX, shakeY); particles.position.set(shakeX, shakeY);
     const playerScreenY = state.playerY + cameraOffset; redrawPlayer(player, state.playerX, playerScreenY, state.elapsed, dashDirection);
     if (state.landingTime > 0) { const progress = 1 - state.landingTime / LANDING_DELAY; const pulse = Math.sin(progress * Math.PI); player.scale.set(1 + pulse * 0.16, 1 - pulse * 0.14); } else { const riseStretch = Math.max(-1, Math.min(1, -state.velocityY / 540)); player.scale.set(1 - riseStretch * 0.035, 1 + riseStretch * 0.06); }
     player.alpha = invulnerable > 0 && Math.floor(invulnerable * 12) % 2 === 0 ? 0.35 : 1; redrawAbyss(abyss, LOGICAL_W, LOGICAL_H, state.elapsed);
-    flowText.text = `×${state.flow.toFixed(1)}`; scoreText.text = `${Math.floor(state.score).toLocaleString()}   ·   ${state.elapsed.toFixed(1)}s`; hpText.text = '◇'.repeat(state.hp); if (state.gameOver) overText.text = `THE ABYSS CAUGHT YOU\n\n${Math.floor(state.score).toLocaleString()}\n\nTAP TO RETURN`;
+    flowText.text = `×${state.flow.toFixed(1)}`; scoreText.text = `${Math.floor(state.score).toLocaleString()}   ·   ${state.elapsed.toFixed(1)}s`; hpText.text = '◇'.repeat(state.hp); dashText.text = state.dashReady ? 'DASH  ◆' : 'DASH  ·'; dashText.alpha = state.dashReady ? 1 : 0.45; if (state.gameOver) overText.text = `THE ABYSS CAUGHT YOU\n\n${Math.floor(state.score).toLocaleString()}\n\nTAP TO RETURN`;
   });
 }
 
