@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AUTO_JUMP_VELOCITY,
+  DASH_SPEED,
+  LANDING_DELAY,
   MAX_AUTO_JUMP_RISE,
   PLAYER_FEET_OFFSET,
   applyDash,
@@ -21,23 +23,32 @@ describe('game state', () => {
   });
 
   it('keeps the auto-jump rise above the largest generated platform gap', () => {
-    const largestGeneratedGap = 104;
-    expect(MAX_AUTO_JUMP_RISE).toBeGreaterThan(largestGeneratedGap);
+    expect(MAX_AUTO_JUMP_RISE).toBeGreaterThan(104);
   });
 
-  it('auto-jumps immediately after landing on a platform', () => {
-    const landed = applyLanding({ ...createInitialState(), playerY: 500, velocityY: 300 }, 540);
-    expect(landed.playerY).toBe(540 - PLAYER_FEET_OFFSET);
-    expect(landed.velocityY).toBe(AUTO_JUMP_VELOCITY);
+  it('compresses briefly before auto-jumping after landing', () => {
+    let state = applyLanding({ ...createInitialState(), playerY: 500, velocityY: 300 }, 540);
+    expect(state.playerY).toBe(540 - PLAYER_FEET_OFFSET);
+    expect(state.velocityY).toBe(0);
+    expect(state.landingTime).toBe(LANDING_DELAY);
+    state = tickState(state, LANDING_DELAY + 0.001);
+    expect(state.velocityY).toBe(AUTO_JUMP_VELOCITY);
   });
 
-  it('clamps dash inside the portrait playfield and softens downward momentum', () => {
-    let state = { ...createInitialState(), velocityY: 300 };
-    state = applyDash(state, 1);
-    expect(state.velocityY).toBeLessThanOrEqual(40);
-    for (let i = 0; i < 10; i++) state = applyDash(state, -1);
-    expect(state.playerX).toBe(52);
-    for (let i = 0; i < 10; i++) state = applyDash(state, 1);
+  it('uses horizontal velocity for dash instead of teleporting', () => {
+    const initial = { ...createInitialState(), velocityY: 300 };
+    const dashed = applyDash(initial, 1);
+    expect(dashed.playerX).toBe(initial.playerX);
+    expect(dashed.velocityX).toBe(DASH_SPEED);
+    expect(dashed.velocityY).toBeLessThanOrEqual(25);
+    const moved = tickState(dashed, 0.05);
+    expect(moved.playerX).toBeGreaterThan(initial.playerX);
+    expect(moved.playerX).toBeLessThanOrEqual(308);
+  });
+
+  it('clamps horizontal movement inside the portrait playfield', () => {
+    let state = { ...createInitialState(), playerX: 307, velocityX: DASH_SPEED, dashTime: 1 };
+    state = tickState(state, 0.1);
     expect(state.playerX).toBe(308);
   });
 
