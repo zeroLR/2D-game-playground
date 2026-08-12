@@ -37,7 +37,7 @@ Status: completed in `main`
 
 ## R3 — World Generation
 
-Status: in progress
+Status: completed in PR #66
 
 - Extract band generation and spawn policy from `main.ts`.
 - Return data-only world entities/bands.
@@ -45,6 +45,8 @@ Status: in progress
 - Preserve current gap, rest-band, wall, hazard, drone, and crystal probabilities.
 
 ## R4 — World State / Pixi View Separation
+
+Status: in progress
 
 - Remove `Graphics` references from gameplay entity state.
 - Give entities stable IDs.
