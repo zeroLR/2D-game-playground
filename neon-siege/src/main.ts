@@ -42,6 +42,8 @@ const state = {
   vy: 0,
   grounded: true,
   facing: -1 as -1 | 1,
+  playerHp: 100,
+  hitCooldown: 0,
   credits: 300,
   coreHp: 100,
   wave: 1,
@@ -208,6 +210,7 @@ function drawPlayer() {
   const y = state.playerY || groundY();
   const x = state.playerX;
   const d = state.facing;
+  player.alpha = state.hitCooldown > 0 && Math.floor(state.hitCooldown * 18) % 2 === 0 ? 0.45 : 1;
 
   player.clear()
     .poly([x - 12, y - 63, x + 12, y - 63, x + 22, y - 31, x + 14, y - 8, x - 18, y - 8, x - 25, y - 31])
@@ -293,9 +296,12 @@ function tryBuild() {
   const cost = costs[state.towerMode];
   if (state.credits < cost) return flashMessage('CREDITS // INSUFFICIENT', C.red);
 
-  const spot = buildSpots()
-    .filter((x) => !towers.some((t) => Math.abs(t.x - x) < 20))
-    .sort((a, b) => Math.abs(a - state.playerX) - Math.abs(b - state.playerX))[0];
+  const free = buildSpots().filter((x) => !towers.some((t) => Math.abs(t.x - x) < 20));
+  const frontline = free
+    .filter((x) => x < state.playerX - 16)
+    .sort((a, b) => Math.abs(a - state.playerX) - Math.abs(b - state.playerX));
+  const fallback = [...free].sort((a, b) => Math.abs(a - state.playerX) - Math.abs(b - state.playerX));
+  const spot = frontline[0] ?? fallback[0];
   if (spot === undefined) return flashMessage('GRID // OCCUPIED', C.amber);
 
   state.credits -= cost;
@@ -304,7 +310,7 @@ function tryBuild() {
   g.position.set(spot, groundY());
   actors.addChild(g);
   towers.push({ g, x: spot, y: groundY(), type, cooldown: 0 });
-  flashMessage(type === 'turret' ? 'TURRET // ONLINE' : 'TESLA // ONLINE', C.cyan);
+  flashMessage(frontline[0] !== undefined ? 'FRONTLINE // ONLINE' : 'GRID // FALLBACK', C.cyan);
 }
 
 function flashMessage(message: string, color: number) {
@@ -333,6 +339,8 @@ function nearestEnemyTo(x: number) {
 
 function updatePlayer(dt: number) {
   const speed = 260;
+  state.hitCooldown = Math.max(0, state.hitCooldown - dt);
+
   if (keys.has('KeyA') || keys.has('ArrowLeft')) { state.playerX -= speed * dt; state.facing = -1; }
   if (keys.has('KeyD') || keys.has('ArrowRight')) { state.playerX += speed * dt; state.facing = 1; }
   state.playerX = Math.max(55, Math.min(coreX() - 78, state.playerX));
@@ -360,10 +368,27 @@ function updateEnemies(dt: number) {
   const gy = groundY();
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
-    e.x += e.speed * dt; e.g.position.set(e.x, gy);
+    e.x += e.speed * dt;
+
+    const touchingPlayer = Math.abs(e.x - state.playerX) < (e.heavy ? 38 : 28) && state.playerY > gy - 54;
+    if (touchingPlayer && state.hitCooldown <= 0) {
+      state.playerHp = Math.max(0, state.playerHp - (e.heavy ? 22 : 12));
+      state.hitCooldown = 0.65;
+      const knockback: -1 | 1 = e.x < state.playerX ? 1 : -1;
+      state.playerX += knockback * (e.heavy ? 72 : 50);
+      state.playerX = Math.max(55, Math.min(coreX() - 78, state.playerX));
+      e.x -= knockback * 14;
+      flashMessage(e.heavy ? 'ARMOR // HEAVY IMPACT' : 'ARMOR // HIT', C.red);
+    }
+
     if (e.x > coreX() - 58) { state.coreHp -= e.attack * dt; e.x -= 8 * dt; }
+    e.g.position.set(e.x, gy);
+
     if (e.hp <= 0) {
-      state.credits += 28; state.killed++; e.g.destroy(); enemies.splice(i, 1);
+      state.credits += 28;
+      state.killed++;
+      e.g.destroy();
+      enemies.splice(i, 1);
     }
   }
 }
@@ -371,14 +396,20 @@ function updateEnemies(dt: number) {
 function updateBullets(dt: number) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
-    b.x += b.vx * dt; b.g.position.x = b.x;
+    b.x += b.vx * dt;
+    b.g.position.x = b.x;
     let hit = false;
     for (const e of enemies) {
       if (Math.abs(e.x - b.x) < (e.heavy ? 30 : 20) && Math.abs((e.y - 27) - b.y) < 38) {
-        e.hp -= b.damage; hit = true; break;
+        e.hp -= b.damage;
+        hit = true;
+        break;
       }
     }
-    if (hit || b.x > app.renderer.width + 40 || b.x < -40) { b.g.destroy(); bullets.splice(i, 1); }
+    if (hit || b.x > app.renderer.width + 40 || b.x < -40) {
+      b.g.destroy();
+      bullets.splice(i, 1);
+    }
   }
 }
 
@@ -388,24 +419,31 @@ function updateTowers(dt: number) {
     tower.g.position.y = tower.y;
     tower.cooldown -= dt;
 
-    const range = tower.type === 'turret' ? 360 : 230;
-    const target = enemies
-      .filter((e) => e.x <= tower.x && tower.x - e.x <= range)
+    const primaryRange = tower.type === 'turret' ? 360 : 230;
+    const emergencyRange = tower.type === 'turret' ? 120 : 100;
+    const primary = enemies
+      .filter((e) => e.x <= tower.x && tower.x - e.x <= primaryRange)
       .sort((a, b) => b.x - a.x)[0];
+    const emergency = enemies
+      .filter((e) => e.x > tower.x && e.x - tower.x <= emergencyRange)
+      .sort((a, b) => a.x - b.x)[0];
+    const target = primary ?? emergency;
     if (!target || tower.cooldown > 0) continue;
 
+    const direction: -1 | 1 = target.x <= tower.x ? -1 : 1;
     if (tower.type === 'turret') {
-      shoot(tower.x - 50, tower.y - 40, 17, 760, -1);
-      tower.cooldown = 0.52;
+      tower.g.scale.x = direction < 0 ? 1 : -1;
+      shoot(tower.x + direction * 50, tower.y - 40, 17, 760, direction);
+      tower.cooldown = direction < 0 ? 0.52 : 0.68;
     } else {
-      target.hp -= 28;
+      target.hp -= direction < 0 ? 28 : 20;
       const arc = new Graphics().moveTo(tower.x, tower.y - 48)
         .lineTo((tower.x + target.x) / 2, tower.y - 92)
         .lineTo(target.x, target.y - 30)
-        .stroke({ color: C.cyan, width: 3, alpha: 0.9 });
+        .stroke({ color: C.cyan, width: 3, alpha: direction < 0 ? 0.9 : 0.62 });
       fx.addChild(arc);
       setTimeout(() => arc.destroy(), 90);
-      tower.cooldown = 0.85;
+      tower.cooldown = direction < 0 ? 0.85 : 1.05;
     }
   }
 }
@@ -414,7 +452,8 @@ function updateWave(dt: number) {
   if (state.gameOver) return;
   state.spawnTimer -= dt;
   if (state.spawned < state.waveSize && state.spawnTimer <= 0) {
-    spawnEnemy(); state.spawnTimer = Math.max(0.42, 1.25 - state.wave * 0.08);
+    spawnEnemy();
+    state.spawnTimer = Math.max(0.42, 1.25 - state.wave * 0.08);
   }
   if (state.spawned >= state.waveSize && enemies.length === 0) {
     state.wave++;
@@ -425,7 +464,11 @@ function updateWave(dt: number) {
     state.spawnTimer = 2;
     flashMessage(`WAVE ${state.wave} // INCOMING`, C.pink);
   }
-  if (state.coreHp <= 0) {
+  if (state.playerHp <= 0) {
+    state.playerHp = 0;
+    state.gameOver = true;
+    flashMessage('OPERATOR // DOWN // PRESS R', C.red);
+  } else if (state.coreHp <= 0) {
     state.coreHp = 0;
     state.gameOver = true;
     flashMessage('CORE // BREACHED // PRESS R', C.red);
@@ -441,32 +484,41 @@ function drawHud() {
   const w = app.renderer.width;
   const compact = isTouchLayout();
   const margin = compact ? 10 : 18;
-  const topH = compact ? 52 : 60;
+  const topH = compact ? 60 : 68;
   hud.addChild(panel(margin, margin, w - margin * 2, topH));
 
   const title = new Text({ text: compact ? 'NEON//SIEGE' : 'NEON // SIEGE', style: new TextStyle({ fill: C.white, fontSize: compact ? 16 : 22, fontWeight: '900', letterSpacing: 2 }) });
-  title.position.set(margin + 16, margin + 10); hud.addChild(title);
+  title.position.set(margin + 16, margin + 10);
+  hud.addChild(title);
 
   const wave = new Text({ text: `W${state.wave}  HOSTILES ${Math.max(0, state.waveSize - state.killed)}`, style: new TextStyle({ fill: C.white, fontSize: compact ? 10 : 12, fontWeight: '800' }) });
-  wave.position.set(compact ? w * 0.38 : 250, margin + 10); hud.addChild(wave);
+  wave.position.set(compact ? w * 0.38 : 250, margin + 10);
+  hud.addChild(wave);
 
   const barX = compact ? w * 0.38 : 250;
   const barY = margin + 34;
   const barW = compact ? Math.max(100, w * 0.28) : 320;
-  const hp = Math.max(0, state.coreHp / 100);
-  const bar = new Graphics().roundRect(barX, barY, barW, 6, 3).fill(0x252d35)
-    .roundRect(barX, barY, barW * hp, 6, 3).fill(state.coreHp < 35 ? C.red : C.cyan);
-  hud.addChild(bar);
+  const coreRatio = Math.max(0, state.coreHp / 100);
+  const playerRatio = Math.max(0, state.playerHp / 100);
+  const bars = new Graphics()
+    .roundRect(barX, barY, barW, 6, 3).fill(0x252d35)
+    .roundRect(barX, barY, barW * coreRatio, 6, 3).fill(state.coreHp < 35 ? C.red : C.cyan)
+    .roundRect(barX, barY + 11, barW, 3, 2).fill(0x252d35)
+    .roundRect(barX, barY + 11, barW * playerRatio, 3, 2).fill(state.playerHp < 35 ? C.red : C.pink);
+  hud.addChild(bars);
 
   const cash = new Text({ text: `$${Math.floor(state.credits)}`, style: new TextStyle({ fill: C.amber, fontSize: compact ? 16 : 20, fontWeight: '900' }) });
-  cash.anchor.set(1, 0); cash.position.set(w - margin - 15, margin + 10); hud.addChild(cash);
+  cash.anchor.set(1, 0);
+  cash.position.set(w - margin - 15, margin + 10);
+  hud.addChild(cash);
 
   if (!compact) {
     const y = app.renderer.height - 56;
-    hud.addChild(panel(18, y, 535, 38));
+    hud.addChild(panel(18, y, 565, 38));
     const tower = state.towerMode === 0 ? '1  TURRET $120' : '2  TESLA $180';
-    const txt = new Text({ text: `${tower}    B BUILD NEAREST     A/D MOVE   SPACE JUMP   J FIRE`, style: new TextStyle({ fill: C.muted, fontSize: 11, fontWeight: '800' }) });
-    txt.position.set(32, y + 13); hud.addChild(txt);
+    const txt = new Text({ text: `${tower}    B BUILD FRONTLINE     A/D MOVE   SPACE JUMP   J FIRE`, style: new TextStyle({ fill: C.muted, fontSize: 11, fontWeight: '800' }) });
+    txt.position.set(32, y + 13);
+    hud.addChild(txt);
   }
 }
 
