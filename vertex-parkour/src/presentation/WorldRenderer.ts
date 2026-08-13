@@ -1,9 +1,10 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, WorldEntity } from '../world/WorldState';
-import { createBreakableVisual, createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
+import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
 export class WorldRenderer {
   private readonly views = new Map<EntityId, Graphics>();
+
   constructor(private readonly container: Container) {}
 
   mount(entity: WorldEntity) {
@@ -14,7 +15,6 @@ export class WorldRenderer {
       case 'drone': view = createDroneVisual(); break;
       case 'hazard': view = createHazardVisual(); break;
       case 'spike': view = createSpikeVisual(entity.width); break;
-      case 'breakable': view = createBreakableVisual(entity.width, entity.height); break;
       case 'wall': view = createWallVisual(entity.height, entity.side); break;
     }
     view.position.set(entity.x, entity.y);
@@ -27,9 +27,6 @@ export class WorldRenderer {
       const view = this.views.get(entity.id);
       if (!view) continue;
       if (entity.type === 'platform' || entity.type === 'wall' || entity.type === 'spike') {
-        view.y = entity.y + cameraOffset;
-      } else if (entity.type === 'breakable') {
-        view.visible = !entity.destroyed;
         view.y = entity.y + cameraOffset;
       } else if (entity.type === 'crystal') {
         view.visible = !entity.taken;
@@ -49,5 +46,8 @@ export class WorldRenderer {
     }
   }
 
-  clear() { for (const view of this.views.values()) view.destroy(); this.views.clear(); }
+  clear() {
+    for (const view of this.views.values()) view.destroy();
+    this.views.clear();
+  }
 }
