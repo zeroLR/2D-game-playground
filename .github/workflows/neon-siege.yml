@@ -1,0 +1,25 @@
+name: neon-siege CI
+
+on:
+  pull_request:
+    paths:
+      - "neon-siege/**"
+  push:
+    branches: [main]
+    paths:
+      - "neon-siege/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: neon-siege
+      install-command: npm install --no-audit --no-fund
+      run-tests: false
+      deploy: ${{ github.event_name != 'pull_request' }}
