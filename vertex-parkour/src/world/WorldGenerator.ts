@@ -10,8 +10,9 @@ export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: num
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
 export type DroneSpawn = { type: 'drone'; x: number; y: number; phase: number };
 export type HazardSpawn = { type: 'hazard'; x: number; y: number };
+export type SpikeSpawn = { type: 'spike'; x: number; y: number; width: number };
 export type WallSpawn = { type: 'wall'; side: -1 | 1; y: number; height: number };
-export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | WallSpawn;
+export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | SpikeSpawn | WallSpawn;
 
 export type WorldBand = {
   index: number;
@@ -66,11 +67,12 @@ export class WorldGenerator {
       : this.between(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
 
     const platformLane = this.pick(LANES);
+    const platformWidth = rest ? 68 + this.random.next() * 20 : 74 + this.random.next() * 38;
     const spawns: WorldSpawn[] = [{
       type: 'platform',
       x: platformLane,
       y: this.lastY,
-      width: rest ? 68 + this.random.next() * 20 : 74 + this.random.next() * 38,
+      width: platformWidth,
     }];
 
     if (rest) {
@@ -89,6 +91,13 @@ export class WorldGenerator {
       spawns.push({ type: 'drone', x: routeLane, y: this.lastY - 38, phase: this.random.next() * Math.PI * 2 });
     } else if (this.random.next() < 0.48) {
       spawns.push({ type: 'hazard', x: routeLane, y: this.lastY - 30 });
+    }
+
+    // Spikes turn a platform into a landing decision without removing the safe route.
+    // Keep them off rest bands and away from wall bands so rescue beats stay readable.
+    if (this.bandIndex % 5 !== 0 && platformWidth >= 88 && this.random.next() < 0.28) {
+      const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
+      spawns.push({ type: 'spike', x: platformLane + side * (platformWidth * 0.27), y: this.lastY - 10, width: 26 });
     }
 
     if (this.random.next() < 0.48) {
