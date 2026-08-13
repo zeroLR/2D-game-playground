@@ -119,6 +119,9 @@ export class GameRuntime {
       this.frame = this.movement.update(this.frame, dt);
       this.invulnerable = Math.max(0, this.invulnerable - dt);
 
+      // Update moving platform state before collision so visuals and landing geometry share the same x.
+      this.worldLifecycle.updateMotion(this.frame.state.elapsed);
+
       const collisionResult = this.collision.update(
         this.frame.state,
         previousY,

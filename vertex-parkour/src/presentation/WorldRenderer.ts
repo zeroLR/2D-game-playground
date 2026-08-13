@@ -26,7 +26,10 @@ export class WorldRenderer {
     for (const entity of entities) {
       const view = this.views.get(entity.id);
       if (!view) continue;
-      if (entity.type === 'platform' || entity.type === 'wall' || entity.type === 'spike') {
+      if (entity.type === 'platform') {
+        view.x = entity.x;
+        view.y = entity.y + cameraOffset;
+      } else if (entity.type === 'wall' || entity.type === 'spike') {
         view.y = entity.y + cameraOffset;
       } else if (entity.type === 'crystal') {
         view.visible = !entity.taken;

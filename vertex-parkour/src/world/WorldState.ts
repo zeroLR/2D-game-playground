@@ -1,9 +1,9 @@
-import type { WorldSpawn } from './WorldGenerator';
+import type { PlatformMotion, WorldSpawn } from './WorldGenerator';
 
 export type EntityId = number;
 
 type BaseEntity = { id: EntityId; x: number; y: number };
-export type PlatformEntity = BaseEntity & { type: 'platform'; width: number };
+export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion };
 export type CrystalEntity = BaseEntity & { type: 'crystal'; taken: boolean };
 export type DroneEntity = BaseEntity & { type: 'drone'; destroyed: boolean; phase: number };
 export type HazardEntity = BaseEntity & { type: 'hazard'; hit: boolean };
@@ -24,7 +24,7 @@ export class WorldState {
     const id = this.nextId++;
     switch (spawn.type) {
       case 'platform': {
-        const entity: PlatformEntity = { id, type: 'platform', x: spawn.x, y: spawn.y, width: spawn.width };
+        const entity: PlatformEntity = { id, type: 'platform', x: spawn.x, y: spawn.y, width: spawn.width, motion: spawn.motion };
         this.platforms.push(entity); return entity;
       }
       case 'crystal': {
