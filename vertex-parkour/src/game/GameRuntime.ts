@@ -3,9 +3,10 @@ import { GameEventQueue } from '../domain/events';
 import { LANDING_DELAY, createInitialState, type GameState } from '../domain/gameState';
 import { interpretKey, interpretSwipe } from '../input/SwipeInterpreter';
 import type { PlayerCommand } from '../input/commands';
+import { redrawAbyssLiquid } from '../presentation/AbyssRenderer';
 import { WorldRenderer } from '../presentation/WorldRenderer';
 import { FxSystem } from '../presentation/fx/FxSystem';
-import { createEnvironment, redrawAbyss, redrawPlayer, updateEnvironment } from '../presentation/visuals';
+import { createEnvironment, redrawPlayer, updateEnvironment } from '../presentation/visuals';
 import { AbyssPressureSystem } from '../systems/AbyssPressureSystem';
 import { CameraSystem } from '../systems/CameraSystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
@@ -166,8 +167,8 @@ export class GameRuntime {
     }
     this.player.alpha = this.invulnerable > 0 && Math.floor(this.invulnerable * 12) % 2 === 0 ? 0.35 : 1;
 
-    redrawAbyss(this.abyss, LOGICAL_W, LOGICAL_H, state.elapsed);
-    this.abyss.y = this.abyssPressure.getScreenY(cameraOffset) - (LOGICAL_H - 70);
+    redrawAbyssLiquid(this.abyss, LOGICAL_W, state.elapsed);
+    this.abyss.position.set(0, this.abyssPressure.getScreenY(cameraOffset));
     this.flowText.text = `×${state.flow.toFixed(1)}`;
     this.scoreText.text = `${Math.floor(state.score).toLocaleString()} · ${state.elapsed.toFixed(1)}s`;
     this.hpText.text = '◇'.repeat(state.hp);
