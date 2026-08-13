@@ -71,6 +71,18 @@ export class CollisionSystem {
     }
 
     if (nextInvulnerable <= 0) {
+      for (const spike of world.spikes) {
+        const feet = next.playerY + PLAYER_FEET_OFFSET;
+        if (Math.abs(next.playerX - spike.x) <= spike.width / 2 + 7 && feet >= spike.y - 13 && feet <= spike.y + 9) {
+          nextInvulnerable = 0.9;
+          next = applyHit(next);
+          events.emit({ type: 'player-hit', x: next.playerX, y: next.playerY + cameraOffset });
+          break;
+        }
+      }
+    }
+
+    if (nextInvulnerable <= 0) {
       for (const hazard of world.hazards) {
         if (!hazard.hit && Math.hypot(next.playerX - hazard.x, next.playerY - hazard.y) < 25) {
           hazard.hit = true;

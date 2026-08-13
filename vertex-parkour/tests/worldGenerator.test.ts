@@ -50,4 +50,27 @@ describe('WorldGenerator', () => {
       }
     }
   });
+
+  it('keeps spikes out of rest and wall-rescue bands', () => {
+    const generator = new WorldGenerator(20260813);
+    const bands = Array.from({ length: 120 }, () => generator.nextBand());
+    expect(bands.some((band) => band.spawns.some((spawn) => spawn.type === 'spike'))).toBe(true);
+    for (const band of bands) {
+      if (band.rest || band.index % 5 === 0) {
+        expect(band.spawns.some((spawn) => spawn.type === 'spike')).toBe(false);
+      }
+    }
+  });
+
+  it('only places spikes on wide platforms and leaves landing space', () => {
+    const generator = new WorldGenerator(314159);
+    const bands = Array.from({ length: 160 }, () => generator.nextBand());
+    for (const band of bands) {
+      const platform = band.spawns.find((spawn) => spawn.type === 'platform');
+      const spike = band.spawns.find((spawn) => spawn.type === 'spike');
+      if (!platform || platform.type !== 'platform' || !spike || spike.type !== 'spike') continue;
+      expect(platform.width).toBeGreaterThanOrEqual(88);
+      expect(Math.abs(spike.x - platform.x) + spike.width / 2).toBeLessThan(platform.width / 2);
+    }
+  });
 });
