@@ -2,17 +2,214 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#080a0f" />
     <title>NEON SIEGE MVP</title>
     <style>
-      html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080a0f; }
-      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-      canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+      :root {
+        color-scheme: dark;
+        --cyan: #37e6d4;
+        --pink: #ff2c7d;
+        --yellow: #ffc928;
+        --panel: rgba(12, 16, 23, 0.88);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html, body, #app {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #080a0f;
+      }
+
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        overscroll-behavior: none;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        touch-action: none;
+      }
+
+      #touch-controls {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        pointer-events: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .touch-cluster,
+      .tower-selector {
+        pointer-events: auto;
+      }
+
+      .touch-cluster {
+        position: absolute;
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        display: flex;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .touch-left { left: calc(14px + env(safe-area-inset-left)); }
+      .touch-right { right: calc(14px + env(safe-area-inset-right)); }
+
+      .touch-btn,
+      .tower-btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,.22);
+        background: var(--panel);
+        color: #f4f7fa;
+        font: 800 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .04em;
+        box-shadow: 0 4px 18px rgba(0,0,0,.35);
+        touch-action: none;
+      }
+
+      .touch-btn {
+        width: 62px;
+        height: 62px;
+        border-radius: 16px;
+      }
+
+      .touch-btn:active,
+      .touch-btn.is-active {
+        transform: translateY(1px) scale(.97);
+        border-color: var(--cyan);
+        box-shadow: 0 0 0 2px rgba(55,230,212,.18), 0 0 18px rgba(55,230,212,.22);
+      }
+
+      .touch-btn.shoot { border-color: rgba(255,44,125,.7); }
+      .touch-btn.build { border-color: rgba(255,201,40,.7); }
+
+      .tower-selector {
+        position: absolute;
+        right: calc(14px + env(safe-area-inset-right));
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        display: flex;
+        gap: 8px;
+      }
+
+      .tower-btn {
+        min-width: 92px;
+        height: 38px;
+        padding: 0 12px;
+        border-radius: 10px;
+        font-size: 11px;
+      }
+
+      .tower-btn.is-selected {
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+
+      #rotate-hint {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        place-items: center;
+        padding: 24px;
+        background: #080a0f;
+        color: #f4f7fa;
+        text-align: center;
+        font: 800 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      @media (pointer: coarse), (max-width: 1024px) {
+        #touch-controls { display: block; }
+      }
+
+      @media (pointer: coarse) and (orientation: portrait) and (max-width: 700px) {
+        #rotate-hint { display: grid; }
+      }
+
+      @media (max-height: 520px) {
+        .touch-btn { width: 54px; height: 54px; border-radius: 14px; }
+        .tower-selector { bottom: calc(76px + env(safe-area-inset-bottom)); }
+        .tower-btn { min-width: 82px; height: 34px; }
+      }
     </style>
     <script type="module" crossorigin src="./assets/index-DWTaJa91.js"></script>
   </head>
   <body>
     <div id="app"></div>
+
+    <div id="touch-controls" aria-label="Mobile game controls">
+      <div class="touch-cluster touch-left">
+        <button class="touch-btn" data-hold-key="ArrowLeft" aria-label="Move left">◀</button>
+        <button class="touch-btn" data-hold-key="ArrowRight" aria-label="Move right">▶</button>
+        <button class="touch-btn" data-tap-key="Space" aria-label="Jump">JUMP</button>
+      </div>
+
+      <div class="tower-selector" aria-label="Tower selector">
+        <button class="tower-btn is-selected" data-tower="0" data-tap-key="Digit1">TURRET $120</button>
+        <button class="tower-btn" data-tower="1" data-tap-key="Digit2">TESLA $180</button>
+      </div>
+
+      <div class="touch-cluster touch-right">
+        <button class="touch-btn shoot" data-hold-key="KeyJ" aria-label="Shoot">FIRE</button>
+        <button class="touch-btn build" data-tap-key="KeyB" aria-label="Build selected tower">BUILD</button>
+      </div>
+    </div>
+
+    <div id="rotate-hint">ROTATE DEVICE<br />NEON SIEGE PLAYS IN LANDSCAPE</div>
+
+    <script>
+      (() => {
+        const send = (type, code) => {
+          window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true }));
+        };
+
+        const release = (button) => {
+          const code = button.dataset.holdKey;
+          if (!code || !button.classList.contains('is-active')) return;
+          button.classList.remove('is-active');
+          send('keyup', code);
+        };
+
+        document.querySelectorAll('[data-hold-key]').forEach((button) => {
+          button.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            button.setPointerCapture?.(event.pointerId);
+            button.classList.add('is-active');
+            send('keydown', button.dataset.holdKey);
+          });
+          button.addEventListener('pointerup', () => release(button));
+          button.addEventListener('pointercancel', () => release(button));
+          button.addEventListener('lostpointercapture', () => release(button));
+        });
+
+        document.querySelectorAll('[data-tap-key]').forEach((button) => {
+          button.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            const code = button.dataset.tapKey;
+            send('keydown', code);
+            requestAnimationFrame(() => send('keyup', code));
+
+            if (button.dataset.tower !== undefined) {
+              document.querySelectorAll('[data-tower]').forEach((item) => item.classList.remove('is-selected'));
+              button.classList.add('is-selected');
+            }
+          });
+        });
+
+        window.addEventListener('blur', () => {
+          document.querySelectorAll('[data-hold-key]').forEach(release);
+        });
+      })();
+    </script>
   </body>
 </html>
