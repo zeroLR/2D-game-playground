@@ -1,34 +1,27 @@
-export const ABYSS_BASE_Y = 650;
-export const ABYSS_MAX_RISE = 150;
+export const ABYSS_START_WORLD_Y = 650;
 export const ABYSS_APPROACH_SPEED = 18;
-export const ABYSS_RECOVERY_SPEED = 34;
-export const ABYSS_PROGRESS_EPSILON = 2;
 
 export class AbyssPressureSystem {
-  private rise = 0;
-  private bestPlayerY = Number.POSITIVE_INFINITY;
+  private worldY = ABYSS_START_WORLD_Y;
 
   reset() {
-    this.rise = 0;
-    this.bestPlayerY = Number.POSITIVE_INFINITY;
+    this.worldY = ABYSS_START_WORLD_Y;
   }
 
-  update(playerY: number, dt: number) {
-    const madeProgress = playerY < this.bestPlayerY - ABYSS_PROGRESS_EPSILON;
-    if (madeProgress) {
-      this.bestPlayerY = playerY;
-      this.rise = Math.max(0, this.rise - ABYSS_RECOVERY_SPEED * dt);
-    } else {
-      this.rise = Math.min(ABYSS_MAX_RISE, this.rise + ABYSS_APPROACH_SPEED * dt);
-    }
-    return this.getBoundaryY();
+  update(dt: number) {
+    this.worldY -= ABYSS_APPROACH_SPEED * dt;
+    return this.worldY;
   }
 
-  getBoundaryY() {
-    return ABYSS_BASE_Y - this.rise;
+  getWorldY() {
+    return this.worldY;
   }
 
-  isCaught(screenPlayerY: number) {
-    return screenPlayerY >= this.getBoundaryY();
+  getScreenY(cameraOffset: number) {
+    return this.worldY + cameraOffset;
+  }
+
+  isCaught(playerWorldY: number) {
+    return playerWorldY >= this.worldY;
   }
 }
