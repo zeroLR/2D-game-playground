@@ -1,54 +1,48 @@
 import { describe, expect, it } from 'vitest';
 import {
   ABYSS_APPROACH_SPEED,
-  ABYSS_BASE_Y,
-  ABYSS_MAX_RISE,
-  ABYSS_RECOVERY_SPEED,
+  ABYSS_START_WORLD_Y,
   AbyssPressureSystem,
 } from '../src/systems/AbyssPressureSystem';
 
 describe('AbyssPressureSystem', () => {
-  it('starts at the baseline boundary', () => {
+  it('starts at the configured world-space boundary', () => {
     const abyss = new AbyssPressureSystem();
-    expect(abyss.getBoundaryY()).toBe(ABYSS_BASE_Y);
+    expect(abyss.getWorldY()).toBe(ABYSS_START_WORLD_Y);
   });
 
-  it('approaches while the player is not making new upward progress', () => {
+  it('moves upward continuously in world space', () => {
     const abyss = new AbyssPressureSystem();
-    abyss.update(500, 0.1);
-    const before = abyss.getBoundaryY();
-    abyss.update(500, 1);
-    expect(abyss.getBoundaryY()).toBeCloseTo(before - ABYSS_APPROACH_SPEED);
+    abyss.update(1);
+    expect(abyss.getWorldY()).toBeCloseTo(ABYSS_START_WORLD_Y - ABYSS_APPROACH_SPEED);
   });
 
-  it('recovers faster when the player reaches a new height', () => {
+  it('projects the same world boundary through the camera offset', () => {
     const abyss = new AbyssPressureSystem();
-    abyss.update(500, 0.1);
-    abyss.update(500, 2);
-    const pressured = abyss.getBoundaryY();
-    abyss.update(450, 0.5);
-    expect(abyss.getBoundaryY()).toBeCloseTo(Math.min(ABYSS_BASE_Y, pressured + ABYSS_RECOVERY_SPEED * 0.5));
+    abyss.update(2);
+    expect(abyss.getScreenY(120)).toBeCloseTo(abyss.getWorldY() + 120);
   });
 
-  it('caps pressure at the configured maximum rise', () => {
+  it('does not recover just because the player reaches a new height', () => {
     const abyss = new AbyssPressureSystem();
-    abyss.update(500, 0.1);
-    abyss.update(500, 100);
-    expect(abyss.getBoundaryY()).toBe(ABYSS_BASE_Y - ABYSS_MAX_RISE);
+    abyss.update(1);
+    const before = abyss.getWorldY();
+    abyss.update(1);
+    expect(abyss.getWorldY()).toBeCloseTo(before - ABYSS_APPROACH_SPEED);
   });
 
-  it('catches the player at or below the visible boundary', () => {
+  it('catches the player when their world position reaches the boundary', () => {
     const abyss = new AbyssPressureSystem();
-    expect(abyss.isCaught(ABYSS_BASE_Y - 1)).toBe(false);
-    expect(abyss.isCaught(ABYSS_BASE_Y)).toBe(true);
-    expect(abyss.isCaught(ABYSS_BASE_Y + 20)).toBe(true);
+    const boundary = abyss.getWorldY();
+    expect(abyss.isCaught(boundary - 1)).toBe(false);
+    expect(abyss.isCaught(boundary)).toBe(true);
+    expect(abyss.isCaught(boundary + 20)).toBe(true);
   });
 
-  it('reset clears accumulated pressure', () => {
+  it('reset restores the initial world-space boundary', () => {
     const abyss = new AbyssPressureSystem();
-    abyss.update(500, 0.1);
-    abyss.update(500, 5);
+    abyss.update(5);
     abyss.reset();
-    expect(abyss.getBoundaryY()).toBe(ABYSS_BASE_Y);
+    expect(abyss.getWorldY()).toBe(ABYSS_START_WORLD_Y);
   });
 });
