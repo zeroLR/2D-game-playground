@@ -80,7 +80,7 @@ Validation chain:
 
 Status: mobile playtest accepted the higher-tolerance edge-hazard revision.
 
-#### M3.4 — Encounter Pattern Generator 🚧
+#### M3.4 — Encounter Pattern Generator ✅
 
 Goal: stop assembling unrelated obstacles band-by-band and generate short authored traversal sequences with explicit intent.
 
@@ -98,14 +98,47 @@ Generation rules:
 - every band retains a safe landing platform
 - run seed still deterministically reproduces the same encounter sequence
 
+Status: mobile playtest confirmed that short traversal patterns are readable as intentional route ideas.
+
+#### M3.5 — Moving Platform Encounter ✅
+
+- Moving Platform is an optional shortcut/reward route, never the only required landing surface
+- motion state drives both collision and rendering from the same entity x
+- each moving-window encounter preserves a static safe route
+
+Status: mobile playtest confirmed the moving platform reads as an optional route, but encounter frequency/pacing needs a dedicated composition pass.
+
+#### M3.6 — Abyss Pressure 🚧
+
+Goal: add persistent forward pressure without turning the run into a full chase sequence yet.
+
+Rules:
+- the Abyss starts near the bottom of the viewport
+- when the player stops creating new height, the boundary slowly rises
+- creating new height pushes the boundary back down faster than it approaches
+- pressure is capped so normal traversal remains readable
+- touching the visible Abyss boundary ends the run
+
 Validation target:
-- players should begin recognizing short route ideas instead of perceiving a random obstacle soup
-- objects should appear to explain or support the next movement decision
-- the safe route must remain readable without requiring precision movement
+- conservative correction remains possible, but indefinite stalling should feel unsafe
+- sustained upward movement should naturally create breathing room
+- pressure should read as pacing, not as another precision obstacle
+
+#### Level Pacing / Encounter Composition — queued
+
+Goal: control encounter density and sequence over time instead of relying on flat encounter-family probabilities.
+
+Known issue:
+- Moving Platform currently appears too sparsely in practical playtests, often only after more than ten platform jumps.
+
+Future scope:
+- encounter decks / weighted phases
+- minimum and maximum spacing per encounter family
+- tutorial → variety → pressure pacing
+- deterministic composition for reproducible playtests
 
 #### Remaining M3 scope
-- moving platform, only after encounter sequencing is validated
-- stronger Abyss pressure behavior
+- validate Abyss pressure behavior
 - reconsider Breakable only if a future encounter pattern gives it a clear route-level purpose
 
 Key rule:
@@ -159,5 +192,5 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
-- M3 Gameplay Objects: in progress (M3.4 encounter pattern generator)
+- M3 Gameplay Objects: in progress (M3.6 Abyss Pressure)
 - M4–M6: not started
