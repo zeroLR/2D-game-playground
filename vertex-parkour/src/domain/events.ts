@@ -6,20 +6,12 @@ export type GameEvent =
   | { type: 'wall-jumped'; x: number; y: number; direction: Direction }
   | { type: 'crystal-picked'; x: number; y: number }
   | { type: 'drone-killed'; x: number; y: number }
+  | { type: 'breakable-smashed'; x: number; y: number }
   | { type: 'player-hit'; x: number; y: number };
 
 export class GameEventQueue {
   private readonly events: GameEvent[] = [];
-
-  emit(event: GameEvent) {
-    this.events.push(event);
-  }
-
-  drain(): GameEvent[] {
-    return this.events.splice(0, this.events.length);
-  }
-
-  clear() {
-    this.events.length = 0;
-  }
+  emit(event: GameEvent) { this.events.push(event); }
+  drain(): GameEvent[] { return this.events.splice(0, this.events.length); }
+  clear() { this.events.length = 0; }
 }
