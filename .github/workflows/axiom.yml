@@ -1,0 +1,25 @@
+name: axiom CI
+
+on:
+  pull_request:
+    paths:
+      - "axiom/**"
+  push:
+    branches: [main]
+    paths:
+      - "axiom/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: axiom
+      install-command: npm ci
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}

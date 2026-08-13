@@ -1,0 +1,25 @@
+name: vertex-parkour CI
+
+on:
+  pull_request:
+    paths:
+      - "vertex-parkour/**"
+  push:
+    branches: [main]
+    paths:
+      - "vertex-parkour/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: vertex-parkour
+      install-command: npm install --no-audit --no-fund
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}

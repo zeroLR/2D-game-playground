@@ -1,0 +1,25 @@
+name: simple-roguelike CI
+
+on:
+  pull_request:
+    paths:
+      - "simple-roguelike/**"
+  push:
+    branches: [main]
+    paths:
+      - "simple-roguelike/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: simple-roguelike
+      install-command: npm ci
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
