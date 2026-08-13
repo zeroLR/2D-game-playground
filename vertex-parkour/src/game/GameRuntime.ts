@@ -6,6 +6,7 @@ import type { PlayerCommand } from '../input/commands';
 import { WorldRenderer } from '../presentation/WorldRenderer';
 import { FxSystem } from '../presentation/fx/FxSystem';
 import { createEnvironment, redrawAbyss, redrawPlayer, updateEnvironment } from '../presentation/visuals';
+import { ABYSS_BASE_Y, AbyssPressureSystem } from '../systems/AbyssPressureSystem';
 import { CameraSystem } from '../systems/CameraSystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
 import { MovementSystem, type MovementFrameState } from '../systems/MovementSystem';
@@ -29,6 +30,7 @@ export class GameRuntime {
   private readonly movement = new MovementSystem();
   private readonly collision = new CollisionSystem();
   private readonly camera = new CameraSystem();
+  private readonly abyssPressure = new AbyssPressureSystem();
 
   private readonly flowText = new Text({ text: '', style: new TextStyle({ fill: '#f0eadf', fontSize: 19, fontWeight: '600' }) });
   private readonly scoreText = new Text({ text: '', style: new TextStyle({ fill: '#789b99', fontSize: 10 }) });
@@ -104,6 +106,7 @@ export class GameRuntime {
     this.frame = { state: createInitialState(), dashDirection: 0, dashVisualTime: 0, restartRequested: false };
     this.invulnerable = 0;
     this.camera.reset();
+    this.abyssPressure.reset();
     this.events.clear();
     this.fx.reset();
     this.worldLifecycle.reset();
@@ -138,7 +141,8 @@ export class GameRuntime {
       this.worldLifecycle.update(cameraOffset);
       this.worldRenderer.update(this.worldLifecycle.state.all(), cameraOffset, this.frame.state.elapsed, this.frame.state.playerX, this.frame.state.playerY, dt);
 
-      if (this.frame.state.playerY + cameraOffset > LOGICAL_H + 55) {
+      this.abyssPressure.update(this.frame.state.playerY, dt);
+      if (this.abyssPressure.isCaught(this.frame.state.playerY + cameraOffset)) {
         this.frame = { ...this.frame, state: { ...this.frame.state, gameOver: true, hp: 0 } };
       }
     }
@@ -164,6 +168,7 @@ export class GameRuntime {
     this.player.alpha = this.invulnerable > 0 && Math.floor(this.invulnerable * 12) % 2 === 0 ? 0.35 : 1;
 
     redrawAbyss(this.abyss, LOGICAL_W, LOGICAL_H, state.elapsed);
+    this.abyss.y = this.abyssPressure.getBoundaryY() - ABYSS_BASE_Y;
     this.flowText.text = `×${state.flow.toFixed(1)}`;
     this.scoreText.text = `${Math.floor(state.score).toLocaleString()} · ${state.elapsed.toFixed(1)}s`;
     this.hpText.text = '◇'.repeat(state.hp);
