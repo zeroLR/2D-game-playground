@@ -53,7 +53,7 @@ describe('WorldGenerator', () => {
 
   it('keeps spikes out of rest and wall-rescue bands', () => {
     const generator = new WorldGenerator(20260813);
-    const bands = Array.from({ length: 120 }, () => generator.nextBand());
+    const bands = Array.from({ length: 160 }, () => generator.nextBand());
     expect(bands.some((band) => band.spawns.some((spawn) => spawn.type === 'spike'))).toBe(true);
     for (const band of bands) {
       if (band.rest || band.index % 5 === 0) {
@@ -62,15 +62,36 @@ describe('WorldGenerator', () => {
     }
   });
 
-  it('only places spikes on wide platforms and leaves landing space', () => {
+  it('keeps spike platforms broad and reserves a large central landing zone', () => {
     const generator = new WorldGenerator(314159);
-    const bands = Array.from({ length: 160 }, () => generator.nextBand());
+    const bands = Array.from({ length: 240 }, () => generator.nextBand());
     for (const band of bands) {
       const platform = band.spawns.find((spawn) => spawn.type === 'platform');
       const spike = band.spawns.find((spawn) => spawn.type === 'spike');
       if (!platform || platform.type !== 'platform' || !spike || spike.type !== 'spike') continue;
-      expect(platform.width).toBeGreaterThanOrEqual(88);
-      expect(Math.abs(spike.x - platform.x) + spike.width / 2).toBeLessThan(platform.width / 2);
+      expect(platform.width).toBeGreaterThanOrEqual(102);
+      expect(spike.width).toBe(18);
+      expect(Math.abs(spike.x - platform.x)).toBeGreaterThan(platform.width * 0.3);
+      const innerSpikeEdge = Math.abs(spike.x - platform.x) - spike.width / 2;
+      expect(innerSpikeEdge).toBeGreaterThanOrEqual(28);
     }
+  });
+
+  it('places spikes on the far edge from a directional approach', () => {
+    const generator = new WorldGenerator(271828);
+    const bands = Array.from({ length: 260 }, () => generator.nextBand());
+    let previousPlatformX = 180;
+    let directionalSpikeCount = 0;
+    for (const band of bands) {
+      const platform = band.spawns.find((spawn) => spawn.type === 'platform');
+      const spike = band.spawns.find((spawn) => spawn.type === 'spike');
+      if (!platform || platform.type !== 'platform') continue;
+      if (spike?.type === 'spike' && platform.x !== previousPlatformX) {
+        directionalSpikeCount += 1;
+        expect(Math.sign(spike.x - platform.x)).toBe(Math.sign(platform.x - previousPlatformX));
+      }
+      previousPlatformX = platform.x;
+    }
+    expect(directionalSpikeCount).toBeGreaterThan(0);
   });
 });
