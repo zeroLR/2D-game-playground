@@ -6,10 +6,6 @@ document.querySelector('#app')!.appendChild(app.canvas);
 
 const C = {
   bg: 0x05070b,
-  ink: 0x0a0e14,
-  deep: 0x0c151c,
-  steel: 0x202832,
-  steel2: 0x303a46,
   cyan: 0x39e3d2,
   cyanDim: 0x174f50,
   pink: 0xff357f,
@@ -26,8 +22,9 @@ const ground = new Graphics();
 const actors = new Container();
 const fx = new Container();
 const hud = new Container();
+const alerts = new Container();
 world.addChild(far, mid, ground, actors);
-app.stage.addChild(world, fx, hud);
+app.stage.addChild(world, fx, hud, alerts);
 
 const core = new Graphics();
 const player = new Graphics();
@@ -44,6 +41,7 @@ const state = {
   playerY: 0,
   vy: 0,
   grounded: true,
+  facing: -1 as -1 | 1,
   credits: 300,
   coreHp: 100,
   wave: 1,
@@ -56,18 +54,18 @@ const state = {
   gameOver: false,
 };
 
-const groundY = () => app.renderer.height - (isTouchLayout() ? 42 : 78);
-const coreX = () => app.renderer.width - Math.max(110, app.renderer.width * 0.105);
 const isTouchLayout = () => matchMedia('(pointer: coarse), (max-width: 1024px)').matches;
+const groundY = () => app.renderer.height - (isTouchLayout() ? 42 : 78);
+const coreX = () => app.renderer.width - Math.max(96, app.renderer.width * 0.09);
 
 function buildSpots() {
   const w = app.renderer.width;
-  const start = Math.max(190, w * 0.29);
-  const end = Math.max(start + 180, coreX() - 175);
+  const start = Math.max(170, w * 0.22);
+  const end = Math.max(start + 220, coreX() - Math.max(180, w * 0.16));
   return Array.from({ length: 4 }, (_, i) => start + ((end - start) * i) / 3);
 }
 
-state.playerX = Math.max(90, app.renderer.width * 0.16);
+state.playerX = Math.max(110, app.renderer.width * 0.52);
 
 const keys = new Set<string>();
 window.addEventListener('keydown', (e) => {
@@ -156,7 +154,6 @@ function drawEnvironment() {
     }
   }
 
-  // cables and rails break up the rectangular skyline
   mid.moveTo(0, gy - 150).lineTo(w * 0.35, gy - 126).lineTo(w * 0.62, gy - 158).lineTo(w, gy - 132)
     .stroke({ color: 0x27333a, width: 3, alpha: 0.72 });
   mid.moveTo(w * 0.12, 0).lineTo(w * 0.16, gy - 80).stroke({ color: 0x1e2930, width: 5, alpha: 0.4 });
@@ -192,46 +189,51 @@ function drawCore() {
   const danger = state.coreHp < 35;
   const energy = danger ? C.red : C.cyan;
   core.clear()
-    .poly([x - 70, gy, x - 56, gy - 145, x - 37, gy - 166, x + 38, gy - 166, x + 58, gy - 145, x + 72, gy])
+    .poly([x - 56, gy, x - 45, gy - 117, x - 30, gy - 134, x + 31, gy - 134, x + 47, gy - 117, x + 58, gy])
     .fill(0x171e27)
     .stroke({ color: 0x38434d, width: 3 })
-    .rect(x - 45, gy - 149, 90, 8).fill(C.amber)
-    .rect(x - 38, gy - 128, 76, 93).fill(0x091116)
-    .circle(x, gy - 83, 36).stroke({ color: energy, width: 8, alpha: 0.95 })
-    .circle(x, gy - 83, 19).fill({ color: energy, alpha: 0.16 })
-    .circle(x, gy - 83, 7).fill(energy)
-    .rect(x - 31, gy - 25, 62, 5).fill({ color: energy, alpha: 0.36 });
+    .rect(x - 36, gy - 120, 72, 7).fill(C.amber)
+    .rect(x - 31, gy - 103, 62, 74).fill(0x091116)
+    .circle(x, gy - 67, 29).stroke({ color: energy, width: 7, alpha: 0.95 })
+    .circle(x, gy - 67, 15).fill({ color: energy, alpha: 0.16 })
+    .circle(x, gy - 67, 6).fill(energy)
+    .rect(x - 25, gy - 20, 50, 4).fill({ color: energy, alpha: 0.36 });
 
-  const hpWidth = 88 * (state.coreHp / 100);
-  core.rect(x - 44, gy - 184, 88, 5).fill(0x222a31).rect(x - 44, gy - 184, hpWidth, 5).fill(energy);
-  coreTag.position.set(x - 42, gy - 202);
+  const hpWidth = 72 * (state.coreHp / 100);
+  core.rect(x - 36, gy - 149, 72, 4).fill(0x222a31).rect(x - 36, gy - 149, hpWidth, 4).fill(energy);
+  coreTag.position.set(x - 34, gy - 166);
 }
 
 function drawPlayer() {
-  const gy = groundY();
-  const y = state.playerY || gy;
+  const y = state.playerY || groundY();
   const x = state.playerX;
+  const d = state.facing;
+
   player.clear()
-    // coat silhouette
     .poly([x - 12, y - 63, x + 12, y - 63, x + 22, y - 31, x + 14, y - 8, x - 18, y - 8, x - 25, y - 31])
     .fill(0x1d2530)
     .poly([x - 24, y - 31, x + 14, y - 28, x + 9, y - 10, x - 20, y - 8])
     .fill(C.pink)
-    // head + visor
     .poly([x - 11, y - 78, x + 8, y - 80, x + 14, y - 69, x + 7, y - 58, x - 12, y - 60, x - 17, y - 69])
     .fill(0xe3e9eb)
     .rect(x - 11, y - 71, 24, 5).fill(C.cyan)
-    .rect(x + 7, y - 69, 7, 3).fill(C.pink)
-    // weapon arm / rifle
-    .rect(x + 10, y - 43, 26, 6).fill(0x323d47)
-    .rect(x + 34, y - 42, 25, 4).fill(0x525d66)
-    .rect(x + 55, y - 41, 10, 2).fill(C.pink)
-    .rect(x - 30, y - 42, 16, 5).fill(C.cyan)
-    // legs
+    .rect(d > 0 ? x + 7 : x - 15, y - 69, 7, 3).fill(C.pink)
     .rect(x - 15, y - 9, 9, 13).fill(0x313944)
     .rect(x + 5, y - 9, 9, 13).fill(0x313944)
     .rect(x - 19, y + 2, 13, 4).fill(0x111820)
     .rect(x + 5, y + 2, 15, 4).fill(0x111820);
+
+  if (d > 0) {
+    player.rect(x + 10, y - 43, 26, 6).fill(0x323d47)
+      .rect(x + 34, y - 42, 25, 4).fill(0x525d66)
+      .rect(x + 55, y - 41, 10, 2).fill(C.pink)
+      .rect(x - 30, y - 42, 16, 5).fill(C.cyan);
+  } else {
+    player.rect(x - 36, y - 43, 26, 6).fill(0x323d47)
+      .rect(x - 59, y - 42, 25, 4).fill(0x525d66)
+      .rect(x - 65, y - 41, 10, 2).fill(C.pink)
+      .rect(x + 14, y - 42, 16, 5).fill(C.cyan);
+  }
 }
 
 function spawnEnemy() {
@@ -257,11 +259,12 @@ function spawnEnemy() {
   state.spawned++;
 }
 
-function shoot(x: number, y: number, damage = 22, speed = 640) {
+function shoot(x: number, y: number, damage = 22, speed = 640, direction: -1 | 1 = 1) {
   const g = new Graphics().rect(-7, -2, 18, 4).fill(C.pink).rect(-4, -1, 12, 2).fill(C.white);
   g.position.set(x, y);
+  if (direction < 0) g.scale.x = -1;
   fx.addChild(g);
-  bullets.push({ g, x, y, vx: speed, damage });
+  bullets.push({ g, x, y, vx: speed * direction, damage });
 }
 
 function drawTower(g: Graphics, type: Tower['type']) {
@@ -269,9 +272,9 @@ function drawTower(g: Graphics, type: Tower['type']) {
   if (type === 'turret') {
     g.poly([-28, -8, 28, -8, 20, 0, -20, 0]).fill(0x161d24)
       .rect(-19, -38, 38, 30).fill(0x25303a)
-      .poly([-14, -47, 11, -47, 19, -38, -19, -38]).fill(C.cyan)
-      .rect(4, -43, 34, 7).fill(0x48545f)
-      .rect(35, -42, 18, 4).fill(0x707983)
+      .poly([-11, -47, 14, -47, 19, -38, -19, -38]).fill(C.cyan)
+      .rect(-38, -43, 34, 7).fill(0x48545f)
+      .rect(-53, -42, 18, 4).fill(0x707983)
       .rect(-12, -17, 24, 4).fill(C.amber);
   } else {
     g.poly([-29, -8, 29, -8, 20, 0, -20, 0]).fill(0x161d24)
@@ -289,8 +292,12 @@ function tryBuild() {
   const type = types[state.towerMode];
   const cost = costs[state.towerMode];
   if (state.credits < cost) return flashMessage('CREDITS // INSUFFICIENT', C.red);
-  const spot = buildSpots().find((x) => !towers.some((t) => Math.abs(t.x - x) < 20));
-  if (!spot) return flashMessage('GRID // OCCUPIED', C.amber);
+
+  const spot = buildSpots()
+    .filter((x) => !towers.some((t) => Math.abs(t.x - x) < 20))
+    .sort((a, b) => Math.abs(a - state.playerX) - Math.abs(b - state.playerX))[0];
+  if (spot === undefined) return flashMessage('GRID // OCCUPIED', C.amber);
+
   state.credits -= cost;
   const g = new Graphics();
   drawTower(g, type);
@@ -304,20 +311,32 @@ function flashMessage(message: string, color: number) {
   const t = new Text({ text: message, style: new TextStyle({ fill: color, fontSize: 14, fontWeight: '900', letterSpacing: 2 }) });
   t.anchor.set(0.5);
   t.position.set(app.renderer.width / 2, 92);
-  hud.addChild(t);
+  alerts.addChild(t);
   let life = 1.1;
   app.ticker.add(function fade(ticker) {
     life -= ticker.deltaMS / 1000;
     t.alpha = Math.min(1, Math.max(0, life / 0.3));
+    t.position.x = app.renderer.width / 2;
     if (life <= 0) { t.destroy(); app.ticker.remove(fade); }
   });
 }
 
+function nearestEnemyTo(x: number) {
+  let best: Enemy | undefined;
+  let bestDistance = Infinity;
+  for (const enemy of enemies) {
+    const distance = Math.abs(enemy.x - x);
+    if (distance < bestDistance) { best = enemy; bestDistance = distance; }
+  }
+  return best;
+}
+
 function updatePlayer(dt: number) {
   const speed = 260;
-  if (keys.has('KeyA') || keys.has('ArrowLeft')) state.playerX -= speed * dt;
-  if (keys.has('KeyD') || keys.has('ArrowRight')) state.playerX += speed * dt;
-  state.playerX = Math.max(55, Math.min(coreX() - 95, state.playerX));
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) { state.playerX -= speed * dt; state.facing = -1; }
+  if (keys.has('KeyD') || keys.has('ArrowRight')) { state.playerX += speed * dt; state.facing = 1; }
+  state.playerX = Math.max(55, Math.min(coreX() - 78, state.playerX));
+
   const gy = groundY();
   if ((keys.has('KeyW') || keys.has('ArrowUp') || keys.has('Space')) && state.grounded) {
     state.vy = -420; state.grounded = false;
@@ -326,8 +345,13 @@ function updatePlayer(dt: number) {
     state.vy += 980 * dt; state.playerY += state.vy * dt;
     if (state.playerY >= gy) { state.playerY = gy; state.vy = 0; state.grounded = true; }
   } else state.playerY = gy;
+
   if ((keys.has('KeyJ') || keys.has('KeyK')) && state.shootTimer <= 0) {
-    shoot(state.playerX + 62, state.playerY - 40, 24); state.shootTimer = 0.16;
+    const target = nearestEnemyTo(state.playerX);
+    if (target) state.facing = target.x < state.playerX ? -1 : 1;
+    const muzzleX = state.playerX + state.facing * 62;
+    shoot(muzzleX, state.playerY - 40, 24, 640, state.facing);
+    state.shootTimer = 0.16;
   }
   state.shootTimer -= dt;
 }
@@ -337,7 +361,7 @@ function updateEnemies(dt: number) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     e.x += e.speed * dt; e.g.position.set(e.x, gy);
-    if (e.x > coreX() - 72) { state.coreHp -= e.attack * dt; e.x -= 8 * dt; }
+    if (e.x > coreX() - 58) { state.coreHp -= e.attack * dt; e.x -= 8 * dt; }
     if (e.hp <= 0) {
       state.credits += 28; state.killed++; e.g.destroy(); enemies.splice(i, 1);
     }
@@ -350,26 +374,38 @@ function updateBullets(dt: number) {
     b.x += b.vx * dt; b.g.position.x = b.x;
     let hit = false;
     for (const e of enemies) {
-      if (Math.abs(e.x - b.x) < (e.heavy ? 30 : 20) && Math.abs((e.y - 27) - b.y) < 38) { e.hp -= b.damage; hit = true; break; }
+      if (Math.abs(e.x - b.x) < (e.heavy ? 30 : 20) && Math.abs((e.y - 27) - b.y) < 38) {
+        e.hp -= b.damage; hit = true; break;
+      }
     }
-    if (hit || b.x > app.renderer.width + 40) { b.g.destroy(); bullets.splice(i, 1); }
+    if (hit || b.x > app.renderer.width + 40 || b.x < -40) { b.g.destroy(); bullets.splice(i, 1); }
   }
 }
 
 function updateTowers(dt: number) {
   for (const tower of towers) {
-    tower.y = groundY(); tower.g.position.y = tower.y; tower.cooldown -= dt;
-    const target = enemies.find((e) => e.x > tower.x && e.x - tower.x < (tower.type === 'turret' ? 360 : 230));
+    tower.y = groundY();
+    tower.g.position.y = tower.y;
+    tower.cooldown -= dt;
+
+    const range = tower.type === 'turret' ? 360 : 230;
+    const target = enemies
+      .filter((e) => e.x <= tower.x && tower.x - e.x <= range)
+      .sort((a, b) => b.x - a.x)[0];
     if (!target || tower.cooldown > 0) continue;
+
     if (tower.type === 'turret') {
-      shoot(tower.x + 50, tower.y - 40, 17, 760); tower.cooldown = 0.52;
+      shoot(tower.x - 50, tower.y - 40, 17, 760, -1);
+      tower.cooldown = 0.52;
     } else {
       target.hp -= 28;
       const arc = new Graphics().moveTo(tower.x, tower.y - 48)
         .lineTo((tower.x + target.x) / 2, tower.y - 92)
         .lineTo(target.x, target.y - 30)
         .stroke({ color: C.cyan, width: 3, alpha: 0.9 });
-      fx.addChild(arc); setTimeout(() => arc.destroy(), 90); tower.cooldown = 0.85;
+      fx.addChild(arc);
+      setTimeout(() => arc.destroy(), 90);
+      tower.cooldown = 0.85;
     }
   }
 }
@@ -381,10 +417,19 @@ function updateWave(dt: number) {
     spawnEnemy(); state.spawnTimer = Math.max(0.42, 1.25 - state.wave * 0.08);
   }
   if (state.spawned >= state.waveSize && enemies.length === 0) {
-    state.wave++; state.waveSize = Math.min(18, 7 + state.wave * 2); state.spawned = 0; state.killed = 0;
-    state.credits += 100; state.spawnTimer = 2; flashMessage(`WAVE ${state.wave} // INCOMING`, C.pink);
+    state.wave++;
+    state.waveSize = Math.min(18, 7 + state.wave * 2);
+    state.spawned = 0;
+    state.killed = 0;
+    state.credits += 100;
+    state.spawnTimer = 2;
+    flashMessage(`WAVE ${state.wave} // INCOMING`, C.pink);
   }
-  if (state.coreHp <= 0) { state.coreHp = 0; state.gameOver = true; flashMessage('CORE // BREACHED // PRESS R', C.red); }
+  if (state.coreHp <= 0) {
+    state.coreHp = 0;
+    state.gameOver = true;
+    flashMessage('CORE // BREACHED // PRESS R', C.red);
+  }
 }
 
 function panel(x: number, y: number, w: number, h: number) {
@@ -418,9 +463,9 @@ function drawHud() {
 
   if (!compact) {
     const y = app.renderer.height - 56;
-    const strip = panel(18, y, 510, 38); hud.addChild(strip);
+    hud.addChild(panel(18, y, 535, 38));
     const tower = state.towerMode === 0 ? '1  TURRET $120' : '2  TESLA $180';
-    const txt = new Text({ text: `${tower}    B BUILD     A/D MOVE   SPACE JUMP   J FIRE`, style: new TextStyle({ fill: C.muted, fontSize: 11, fontWeight: '800' }) });
+    const txt = new Text({ text: `${tower}    B BUILD NEAREST     A/D MOVE   SPACE JUMP   J FIRE`, style: new TextStyle({ fill: C.muted, fontSize: 11, fontWeight: '800' }) });
     txt.position.set(32, y + 13); hud.addChild(txt);
   }
 }
@@ -428,13 +473,18 @@ function drawHud() {
 app.ticker.add((ticker) => {
   const dt = Math.min(0.033, ticker.deltaMS / 1000);
   if (!state.gameOver) {
-    updatePlayer(dt); updateEnemies(dt); updateBullets(dt); updateTowers(dt); updateWave(dt);
+    updatePlayer(dt);
+    updateEnemies(dt);
+    updateBullets(dt);
+    updateTowers(dt);
+    updateWave(dt);
   }
-  drawEnvironment(); drawHud();
+  drawEnvironment();
+  drawHud();
 });
 
 window.addEventListener('resize', () => {
-  state.playerX = Math.min(state.playerX, coreX() - 95);
+  state.playerX = Math.min(state.playerX, coreX() - 78);
 });
 
 drawEnvironment();
