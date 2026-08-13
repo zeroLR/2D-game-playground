@@ -7,6 +7,7 @@ export const REST_GAP_MAX = 104;
 const LANES = [82, 180, 278] as const;
 const SPIKE_WIDTH = 18;
 const SPIKE_EDGE_INSET = 5;
+const MIN_SPIKE_PLATFORM_WIDTH = 102;
 
 export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
@@ -100,8 +101,8 @@ export class WorldGenerator {
     }
 
     // Spikes are edge hazards: normal approach should naturally target the broad safe center.
-    // When the approach has a horizontal direction, put the spike on the far edge from that approach.
-    if (this.bandIndex % 5 !== 0 && platformWidth >= 94 && this.random.next() < 0.24) {
+    // The minimum platform width is derived from the 28px central safe-zone invariant.
+    if (this.bandIndex % 5 !== 0 && platformWidth >= MIN_SPIKE_PLATFORM_WIDTH && this.random.next() < 0.24) {
       const approachDirection = Math.sign(platformLane - previousLane);
       const side: -1 | 1 = approachDirection === 0
         ? (this.random.next() < 0.5 ? -1 : 1)
