@@ -48,7 +48,7 @@ Status: passed mobile playtest feedback on 2026-08-12.
 
 Goal: world objects create traversal decisions instead of only dealing damage.
 
-#### M3.1 — Traversal resources 🚧
+#### M3.1 — Traversal resources ✅
 - Dash becomes a single airborne resource instead of unlimited repeat input
 - landing restores Dash
 - Crystal restores Dash and adds a small upward lift
@@ -56,22 +56,40 @@ Goal: world objects create traversal decisions instead of only dealing damage.
 - destroying a Drone restores Dash and gives an upward bounce
 - non-dashing Drone contact damages the player
 - HUD communicates whether Dash is currently ready
+- Air Nudge provides repeatable fine correction without consuming Dash
 
 Validation chain:
 
-> jump → dash → drone/crystal → reset → dash → land
+> jump → nudge → dash → drone/crystal → reset → dash → land
 
-The player should intentionally route through a Drone or Crystal because it extends traversal, not merely because it adds score.
+#### M3.2 — Wall traversal ✅
+- periodic walls act as rescue/traversal nodes
+- wall contact slows falling and restores Dash
+- swipe away performs a wall jump
+- wall jump preserves Dash for the next routing decision
+
+Validation chain:
+
+> missed platform → wall catch → wall jump → dash → recover route
+
+#### M3.3 — Spike terrain 🚧
+- spikes are static terrain hazards attached to sufficiently wide platforms
+- spikes damage on contact but do not consume the whole platform width
+- rest bands and wall-rescue bands remain spike-free
+- generation remains deterministic from the run seed
+
+Validation target:
+- a spike platform should read as “choose the safe landing side” rather than “avoid this platform entirely”
+- short Air Nudge should be useful for correcting toward the safe half
+- spikes must not undermine the forgiving wall-rescue rhythm
 
 #### Remaining M3 scope
-- wall / wall jump
-- spikes as static terrain hazard
 - breakable dash-through object
 - moving platform
 - stronger Abyss pressure behavior
 
 Key rule:
-- enemies should become movement resources, not only hazards
+- enemies and objects should create movement decisions, not only subtract HP
 
 ### M4 — Flow System
 
@@ -121,5 +139,5 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
-- M3 Gameplay Objects: in progress (M3.1 traversal resources)
+- M3 Gameplay Objects: in progress (M3.3 spike terrain)
 - M4–M6: not started
