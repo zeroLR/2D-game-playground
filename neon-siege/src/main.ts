@@ -162,7 +162,7 @@ function drawPlayer() {
   player.clear()
     .circle(state.playerX, y - 45, 12).fill(COLORS.white)
     .rect(state.playerX - 9, y - 34, 18, 28).fill(0x22252c)
-    .polygon([state.playerX - 12, y - 31, state.playerX + 16, y - 28, state.playerX + 11, y - 8, state.playerX - 14, y - 6]).fill(COLORS.pink)
+    .poly([state.playerX - 12, y - 31, state.playerX + 16, y - 28, state.playerX + 11, y - 8, state.playerX - 14, y - 6]).fill(COLORS.pink)
     .rect(state.playerX - 22, y - 29, 15, 5).fill(COLORS.cyan)
     .rect(state.playerX + 6, y - 25, 29, 6).fill(0x444b56)
     .rect(state.playerX + 29, y - 24, 10, 3).fill(COLORS.pink)
