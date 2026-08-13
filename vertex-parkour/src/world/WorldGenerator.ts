@@ -5,6 +5,8 @@ export const REST_GAP_MIN = 88;
 export const REST_GAP_MAX = 104;
 
 const LANES = [82, 180, 278] as const;
+const SPIKE_WIDTH = 18;
+const SPIKE_EDGE_INSET = 5;
 
 export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
@@ -44,6 +46,7 @@ export class SeededRandom {
 export class WorldGenerator {
   private bandIndex = 0;
   private lastY = START_PLATFORM_Y;
+  private previousPlatformLane = 180;
   private readonly random: SeededRandom;
 
   constructor(readonly seed: number) {
@@ -57,6 +60,7 @@ export class WorldGenerator {
   reset() {
     this.bandIndex = 0;
     this.lastY = START_PLATFORM_Y;
+    this.previousPlatformLane = 180;
   }
 
   nextBand(): WorldBand {
@@ -66,7 +70,9 @@ export class WorldGenerator {
       ? this.between(REST_GAP_MIN, REST_GAP_MAX)
       : this.between(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
 
+    const previousLane = this.previousPlatformLane;
     const platformLane = this.pick(LANES);
+    this.previousPlatformLane = platformLane;
     const platformWidth = rest ? 68 + this.random.next() * 20 : 74 + this.random.next() * 38;
     const spawns: WorldSpawn[] = [{
       type: 'platform',
@@ -93,11 +99,15 @@ export class WorldGenerator {
       spawns.push({ type: 'hazard', x: routeLane, y: this.lastY - 30 });
     }
 
-    // Spikes turn a platform into a landing decision without removing the safe route.
-    // Keep them off rest bands and away from wall bands so rescue beats stay readable.
-    if (this.bandIndex % 5 !== 0 && platformWidth >= 88 && this.random.next() < 0.28) {
-      const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
-      spawns.push({ type: 'spike', x: platformLane + side * (platformWidth * 0.27), y: this.lastY - 10, width: 26 });
+    // Spikes are edge hazards: normal approach should naturally target the broad safe center.
+    // When the approach has a horizontal direction, put the spike on the far edge from that approach.
+    if (this.bandIndex % 5 !== 0 && platformWidth >= 94 && this.random.next() < 0.24) {
+      const approachDirection = Math.sign(platformLane - previousLane);
+      const side: -1 | 1 = approachDirection === 0
+        ? (this.random.next() < 0.5 ? -1 : 1)
+        : (approachDirection as -1 | 1);
+      const edgeOffset = platformWidth / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET;
+      spawns.push({ type: 'spike', x: platformLane + side * edgeOffset, y: this.lastY - 10, width: SPIKE_WIDTH });
     }
 
     if (this.random.next() < 0.48) {
