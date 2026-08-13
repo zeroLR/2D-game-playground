@@ -72,21 +72,41 @@ Validation chain:
 
 > missed platform → wall catch → wall jump → dash → recover route
 
-#### M3.3 — Spike terrain 🚧
-- spikes are static terrain hazards attached to sufficiently wide platforms
-- spikes damage on contact but do not consume the whole platform width
-- rest bands and wall-rescue bands remain spike-free
-- generation remains deterministic from the run seed
+#### M3.3 — Spike terrain ✅
+- spikes are edge hazards attached only to sufficiently wide platforms
+- the broad central landing zone remains the default safe target
+- directional approaches place the Spike on the far edge
+- Air Nudge is recovery rather than mandatory precision input
+
+Status: mobile playtest accepted the higher-tolerance edge-hazard revision.
+
+#### M3.4 — Encounter Pattern Generator 🚧
+
+Goal: stop assembling unrelated obstacles band-by-band and generate short authored traversal sequences with explicit intent.
+
+Initial encounter families:
+- **Recovery** — readable platforms + Crystal + rest beat
+- **Dash Chain** — route setup → Drone Dash opportunity → resource landing
+- **Edge Read** — forgiving Spike edge → route naturally moves away from danger
+- **Wall Rescue** — outer route exposes a wall catch → Crystal recovery → rest beat
+
+Generation rules:
+- one Encounter spans four bands
+- the first three bands define the traversal idea
+- the fourth band is always a safe rest/recovery beat
+- randomization selects encounter family and mirrors it left/right; it does not independently sprinkle obstacles
+- every band retains a safe landing platform
+- run seed still deterministically reproduces the same encounter sequence
 
 Validation target:
-- a spike platform should read as “choose the safe landing side” rather than “avoid this platform entirely”
-- short Air Nudge should be useful for correcting toward the safe half
-- spikes must not undermine the forgiving wall-rescue rhythm
+- players should begin recognizing short route ideas instead of perceiving a random obstacle soup
+- objects should appear to explain or support the next movement decision
+- the safe route must remain readable without requiring precision movement
 
 #### Remaining M3 scope
-- breakable dash-through object
-- moving platform
+- moving platform, only after encounter sequencing is validated
 - stronger Abyss pressure behavior
+- reconsider Breakable only if a future encounter pattern gives it a clear route-level purpose
 
 Key rule:
 - enemies and objects should create movement decisions, not only subtract HP
@@ -139,5 +159,5 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
-- M3 Gameplay Objects: in progress (M3.3 spike terrain)
+- M3 Gameplay Objects: in progress (M3.4 encounter pattern generator)
 - M4–M6: not started
