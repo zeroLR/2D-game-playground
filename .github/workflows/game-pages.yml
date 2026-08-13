@@ -69,34 +69,17 @@ jobs:
           name: ${{ inputs.game }}-dist
           path: _game_dist
 
-      - name: Restore published site state
+      - name: Restore complete site state
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-
-          if git ls-remote --exit-code "$remote" refs/heads/pages-state >/dev/null 2>&1; then
-            git clone --depth 1 --branch pages-state "$remote" _pages_state
-          else
-            mkdir -p _pages_state/site
-            git -C _pages_state init
-            git -C _pages_state checkout --orphan pages-state
-            git -C _pages_state remote add origin "$remote"
-
-            # One-time bootstrap: preserve the currently published games before
-            # the incremental pages-state branch exists.
-            repo_name="${GITHUB_REPOSITORY#*/}"
-            site_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/"
-            mkdir -p _bootstrap
-            wget --quiet --recursive --no-parent --no-host-directories \
-              --cut-dirs=1 --page-requisites "$site_url" \
-              --directory-prefix _bootstrap || true
-            if [ -n "$(find _bootstrap -mindepth 1 -print -quit)" ]; then
-              cp -a _bootstrap/. _pages_state/site/
-            fi
+          if ! git ls-remote --exit-code "$remote" refs/heads/pages-state >/dev/null 2>&1; then
+            echo "pages-state does not exist. Run the Bootstrap full GitHub Pages site workflow first."
+            exit 1
           fi
+          git clone --depth 1 --branch pages-state "$remote" _pages_state
 
       - name: Replace changed game in site state
         env:
@@ -107,6 +90,23 @@ jobs:
           mkdir -p "_pages_state/site/${GAME}"
           cp -a _game_dist/. "_pages_state/site/${GAME}/"
 
+      - name: Validate complete site before publish
+        run: |
+          set -euo pipefail
+          missing=0
+          for game in simple-roguelike axiom vertex-parkour neon-siege; do
+            if [ ! -f "_pages_state/site/${game}/index.html" ]; then
+              echo "Missing published game: ${game}"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Refusing partial GitHub Pages deployment. Run the Bootstrap full GitHub Pages site workflow to repair pages-state."
+            exit 1
+          fi
+
+      - name: Refresh landing page
+        run: |
           cat > _pages_state/site/index.html <<'HTML'
           <!doctype html>
           <html lang="en">
