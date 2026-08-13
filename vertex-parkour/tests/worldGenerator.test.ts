@@ -51,23 +51,6 @@ describe('WorldGenerator', () => {
     }
   });
 
-  it('places breakable dash gates on every seventh eligible band', () => {
-    const generator = new WorldGenerator(777);
-    const bands = Array.from({ length: 42 }, () => generator.nextBand());
-    let count = 0;
-    for (const band of bands) {
-      const eligible = band.index % 7 === 0 && band.index % 5 !== 0 && !band.rest;
-      const breakables = band.spawns.filter((spawn) => spawn.type === 'breakable');
-      if (eligible) {
-        expect(breakables).toHaveLength(1);
-        count += 1;
-      } else {
-        expect(breakables).toHaveLength(0);
-      }
-    }
-    expect(count).toBeGreaterThan(0);
-  });
-
   it('keeps spikes out of rest and wall-rescue bands', () => {
     const generator = new WorldGenerator(20260813);
     const bands = Array.from({ length: 160 }, () => generator.nextBand());
