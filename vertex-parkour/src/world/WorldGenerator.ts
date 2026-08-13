@@ -8,6 +8,10 @@ const LANES = [82, 180, 278] as const;
 const SPIKE_WIDTH = 18;
 const SPIKE_EDGE_INSET = 5;
 const MIN_SPIKE_PLATFORM_WIDTH = 102;
+const ENCOUNTER_LENGTH = 4;
+
+type Lane = (typeof LANES)[number];
+export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue';
 
 export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
@@ -21,7 +25,16 @@ export type WorldBand = {
   index: number;
   y: number;
   rest: boolean;
+  encounter: EncounterType;
+  encounterStep: number;
   spawns: WorldSpawn[];
+};
+
+type BandPlan = {
+  rest?: boolean;
+  lane: Lane;
+  width: number;
+  decorate?: (y: number) => WorldSpawn[];
 };
 
 export function createRunSeed(): number {
@@ -47,7 +60,10 @@ export class SeededRandom {
 export class WorldGenerator {
   private bandIndex = 0;
   private lastY = START_PLATFORM_Y;
-  private previousPlatformLane = 180;
+  private previousPlatformLane: Lane = 180;
+  private encounterType: EncounterType = 'recovery';
+  private encounterStep = ENCOUNTER_LENGTH;
+  private encounterPlans: BandPlan[] = [];
   private readonly random: SeededRandom;
 
   constructor(readonly seed: number) {
@@ -62,60 +78,127 @@ export class WorldGenerator {
     this.bandIndex = 0;
     this.lastY = START_PLATFORM_Y;
     this.previousPlatformLane = 180;
+    this.encounterType = 'recovery';
+    this.encounterStep = ENCOUNTER_LENGTH;
+    this.encounterPlans = [];
   }
 
   nextBand(): WorldBand {
+    if (this.encounterStep >= this.encounterPlans.length) {
+      this.startEncounter();
+    }
+
+    const plan = this.encounterPlans[this.encounterStep];
+    const step = this.encounterStep;
+    this.encounterStep += 1;
     this.bandIndex += 1;
-    const rest = this.bandIndex % 4 === 0;
+
+    const rest = plan.rest === true;
     this.lastY -= rest
       ? this.between(REST_GAP_MIN, REST_GAP_MAX)
       : this.between(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
 
-    const previousLane = this.previousPlatformLane;
-    const platformLane = this.pick(LANES);
-    this.previousPlatformLane = platformLane;
-    const platformWidth = rest ? 68 + this.random.next() * 20 : 74 + this.random.next() * 38;
-    const spawns: WorldSpawn[] = [{
-      type: 'platform',
-      x: platformLane,
+    const spawns: WorldSpawn[] = [{ type: 'platform', x: plan.lane, y: this.lastY, width: plan.width }];
+    if (plan.decorate) spawns.push(...plan.decorate(this.lastY));
+    this.previousPlatformLane = plan.lane;
+
+    return {
+      index: this.bandIndex,
       y: this.lastY,
-      width: platformWidth,
-    }];
+      rest,
+      encounter: this.encounterType,
+      encounterStep: step,
+      spawns,
+    };
+  }
 
-    if (rest) {
-      if (this.random.next() < 0.42) {
-        spawns.push({ type: 'crystal', x: platformLane, y: this.lastY - 46 });
-      }
-      return { index: this.bandIndex, y: this.lastY, rest, spawns };
+  private startEncounter() {
+    const roll = this.random.next();
+    this.encounterType = roll < 0.28
+      ? 'recovery'
+      : roll < 0.54
+        ? 'dash-chain'
+        : roll < 0.78
+          ? 'edge-read'
+          : 'wall-rescue';
+    this.encounterPlans = this.buildEncounter(this.encounterType);
+    this.encounterStep = 0;
+  }
+
+  private buildEncounter(type: EncounterType): BandPlan[] {
+    switch (type) {
+      case 'recovery': return this.buildRecovery();
+      case 'dash-chain': return this.buildDashChain();
+      case 'edge-read': return this.buildEdgeRead();
+      case 'wall-rescue': return this.buildWallRescue();
     }
+  }
 
-    const otherLanes = LANES.filter((lane) => lane !== platformLane);
-    const routeLane = this.pick(otherLanes);
+  private buildRecovery(): BandPlan[] {
+    const entry = this.previousPlatformLane;
+    const adjacent = this.towardCenterOrAdjacent(entry);
+    return [
+      { lane: adjacent, width: 102 },
+      { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
+      { lane: this.pick([82, 278] as const), width: 104 },
+      { lane: 180, width: 112, rest: true },
+    ];
+  }
 
-    if (this.bandIndex % 5 === 0) {
-      spawns.push({ type: 'wall', side: routeLane < 180 ? -1 : 1, y: this.lastY - 42, height: 116 });
-    } else if (this.random.next() < 0.34) {
-      spawns.push({ type: 'drone', x: routeLane, y: this.lastY - 38, phase: this.random.next() * Math.PI * 2 });
-    } else if (this.random.next() < 0.48) {
-      spawns.push({ type: 'hazard', x: routeLane, y: this.lastY - 30 });
-    }
+  private buildDashChain(): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
+    const entry: Lane = side === -1 ? 82 : 278;
+    const exit: Lane = side === -1 ? 278 : 82;
+    return [
+      { lane: entry, width: 106 },
+      {
+        lane: 180,
+        width: 100,
+        decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }],
+      },
+      { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] },
+      { lane: 180, width: 112, rest: true },
+    ];
+  }
 
-    // Spikes are edge hazards: normal approach should naturally target the broad safe center.
-    // The minimum platform width is derived from the 28px central safe-zone invariant.
-    if (this.bandIndex % 5 !== 0 && platformWidth >= MIN_SPIKE_PLATFORM_WIDTH && this.random.next() < 0.24) {
-      const approachDirection = Math.sign(platformLane - previousLane);
-      const side: -1 | 1 = approachDirection === 0
-        ? (this.random.next() < 0.5 ? -1 : 1)
-        : (approachDirection as -1 | 1);
-      const edgeOffset = platformWidth / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET;
-      spawns.push({ type: 'spike', x: platformLane + side * edgeOffset, y: this.lastY - 10, width: SPIKE_WIDTH });
-    }
+  private buildEdgeRead(): BandPlan[] {
+    const approach = this.previousPlatformLane;
+    const target: Lane = approach === 82 ? 180 : approach === 278 ? 180 : this.pick([82, 278] as const);
+    const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1);
+    const width = 110;
+    const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET;
+    const safeExit: Lane = direction > 0 ? 82 : 278;
+    return [
+      {
+        lane: target,
+        width,
+        decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }],
+      },
+      { lane: safeExit, width: 104 },
+      { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
+      { lane: 180, width: 112, rest: true },
+    ];
+  }
 
-    if (this.random.next() < 0.48) {
-      spawns.push({ type: 'crystal', x: platformLane, y: this.lastY - 46 });
-    }
+  private buildWallRescue(): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
+    const outer: Lane = side === -1 ? 82 : 278;
+    const opposite: Lane = side === -1 ? 278 : 82;
+    return [
+      { lane: outer, width: 102 },
+      {
+        lane: opposite,
+        width: 102,
+        decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }],
+      },
+      { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
+      { lane: 180, width: 112, rest: true },
+    ];
+  }
 
-    return { index: this.bandIndex, y: this.lastY, rest, spawns };
+  private towardCenterOrAdjacent(lane: Lane): Lane {
+    if (lane === 180) return this.pick([82, 278] as const);
+    return 180;
   }
 
   private between(min: number, max: number) {
