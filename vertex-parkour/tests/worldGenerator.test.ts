@@ -69,7 +69,7 @@ describe('WorldGenerator', () => {
       const platform = band.spawns.find((spawn) => spawn.type === 'platform');
       const spike = band.spawns.find((spawn) => spawn.type === 'spike');
       if (!platform || platform.type !== 'platform' || !spike || spike.type !== 'spike') continue;
-      expect(platform.width).toBeGreaterThanOrEqual(94);
+      expect(platform.width).toBeGreaterThanOrEqual(102);
       expect(spike.width).toBe(18);
       expect(Math.abs(spike.x - platform.x)).toBeGreaterThan(platform.width * 0.3);
       const innerSpikeEdge = Math.abs(spike.x - platform.x) - spike.width / 2;
