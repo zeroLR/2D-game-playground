@@ -7,13 +7,13 @@ export const REST_GAP_MAX = 104;
 const LANES = [82, 180, 278] as const;
 const SPIKE_WIDTH = 18;
 const SPIKE_EDGE_INSET = 5;
-const MIN_SPIKE_PLATFORM_WIDTH = 102;
 const ENCOUNTER_LENGTH = 4;
 
 type Lane = (typeof LANES)[number];
-export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue';
+export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue' | 'moving-window';
+export type PlatformMotion = { axis: 'x'; amplitude: number; speed: number; phase: number; originX: number };
 
-export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number };
+export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number; motion?: PlatformMotion };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
 export type DroneSpawn = { type: 'drone'; x: number; y: number; phase: number };
 export type HazardSpawn = { type: 'hazard'; x: number; y: number };
@@ -70,9 +70,7 @@ export class WorldGenerator {
     this.random = new SeededRandom(seed);
   }
 
-  getLastY() {
-    return this.lastY;
-  }
+  getLastY() { return this.lastY; }
 
   reset() {
     this.bandIndex = 0;
@@ -84,43 +82,31 @@ export class WorldGenerator {
   }
 
   nextBand(): WorldBand {
-    if (this.encounterStep >= this.encounterPlans.length) {
-      this.startEncounter();
-    }
-
+    if (this.encounterStep >= this.encounterPlans.length) this.startEncounter();
     const plan = this.encounterPlans[this.encounterStep];
     const step = this.encounterStep;
     this.encounterStep += 1;
     this.bandIndex += 1;
 
     const rest = plan.rest === true;
-    this.lastY -= rest
-      ? this.between(REST_GAP_MIN, REST_GAP_MAX)
-      : this.between(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
-
+    this.lastY -= rest ? this.between(REST_GAP_MIN, REST_GAP_MAX) : this.between(REGULAR_GAP_MIN, REGULAR_GAP_MAX);
     const spawns: WorldSpawn[] = [{ type: 'platform', x: plan.lane, y: this.lastY, width: plan.width }];
     if (plan.decorate) spawns.push(...plan.decorate(this.lastY));
     this.previousPlatformLane = plan.lane;
-
-    return {
-      index: this.bandIndex,
-      y: this.lastY,
-      rest,
-      encounter: this.encounterType,
-      encounterStep: step,
-      spawns,
-    };
+    return { index: this.bandIndex, y: this.lastY, rest, encounter: this.encounterType, encounterStep: step, spawns };
   }
 
   private startEncounter() {
     const roll = this.random.next();
-    this.encounterType = roll < 0.28
+    this.encounterType = roll < 0.23
       ? 'recovery'
-      : roll < 0.54
+      : roll < 0.45
         ? 'dash-chain'
-        : roll < 0.78
+        : roll < 0.65
           ? 'edge-read'
-          : 'wall-rescue';
+          : roll < 0.83
+            ? 'wall-rescue'
+            : 'moving-window';
     this.encounterPlans = this.buildEncounter(this.encounterType);
     this.encounterStep = 0;
   }
@@ -131,12 +117,12 @@ export class WorldGenerator {
       case 'dash-chain': return this.buildDashChain();
       case 'edge-read': return this.buildEdgeRead();
       case 'wall-rescue': return this.buildWallRescue();
+      case 'moving-window': return this.buildMovingWindow();
     }
   }
 
   private buildRecovery(): BandPlan[] {
-    const entry = this.previousPlatformLane;
-    const adjacent = this.towardCenterOrAdjacent(entry);
+    const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane);
     return [
       { lane: adjacent, width: 102 },
       { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
@@ -151,11 +137,7 @@ export class WorldGenerator {
     const exit: Lane = side === -1 ? 278 : 82;
     return [
       { lane: entry, width: 106 },
-      {
-        lane: 180,
-        width: 100,
-        decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }],
-      },
+      { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] },
       { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] },
       { lane: 180, width: 112, rest: true },
     ];
@@ -169,11 +151,7 @@ export class WorldGenerator {
     const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET;
     const safeExit: Lane = direction > 0 ? 82 : 278;
     return [
-      {
-        lane: target,
-        width,
-        decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }],
-      },
+      { lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] },
       { lane: safeExit, width: 104 },
       { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
       { lane: 180, width: 112, rest: true },
@@ -186,12 +164,34 @@ export class WorldGenerator {
     const opposite: Lane = side === -1 ? 278 : 82;
     return [
       { lane: outer, width: 102 },
-      {
-        lane: opposite,
-        width: 102,
-        decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }],
-      },
+      { lane: opposite, width: 102, decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }] },
       { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
+      { lane: 180, width: 112, rest: true },
+    ];
+  }
+
+  private buildMovingWindow(): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
+    const safeLane: Lane = side === -1 ? 82 : 278;
+    const rewardLane: Lane = side === -1 ? 278 : 82;
+    const phase = this.random.next() * Math.PI * 2;
+    return [
+      { lane: 180, width: 108 },
+      {
+        lane: safeLane,
+        width: 106,
+        decorate: (y) => [
+          {
+            type: 'platform',
+            x: 180,
+            y,
+            width: 118,
+            motion: { axis: 'x', amplitude: 46, speed: 0.9, phase, originX: 180 },
+          },
+          { type: 'crystal', x: rewardLane, y: y - 46 },
+        ],
+      },
+      { lane: rewardLane, width: 108 },
       { lane: 180, width: 112, rest: true },
     ];
   }
@@ -201,11 +201,6 @@ export class WorldGenerator {
     return 180;
   }
 
-  private between(min: number, max: number) {
-    return min + this.random.next() * (max - min);
-  }
-
-  private pick<T>(items: readonly T[]): T {
-    return items[Math.floor(this.random.next() * items.length)];
-  }
+  private between(min: number, max: number) { return min + this.random.next() * (max - min); }
+  private pick<T>(items: readonly T[]): T { return items[Math.floor(this.random.next() * items.length)]; }
 }
