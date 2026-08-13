@@ -13,6 +13,14 @@ export class WorldLifecycleSystem {
     for (let i = 0; i < 12; i += 1) this.spawnBand();
   }
 
+  updateMotion(elapsed: number) {
+    for (const platform of this.state.platforms) {
+      const motion = platform.motion;
+      if (!motion) continue;
+      platform.x = motion.originX + Math.sin(elapsed * motion.speed + motion.phase) * motion.amplitude;
+    }
+  }
+
   update(cameraOffset: number) {
     while (this.generator.getLastY() + cameraOffset > -150) this.spawnBand();
   }
