@@ -48,6 +48,16 @@ describe('FlowSystem', () => {
     expect(frame.state.flow).toBeCloseTo(4 - FLOW_DECAY_PER_SECOND);
   });
 
+  it('only decays the portion of a frame beyond the grace boundary', () => {
+    const system = new FlowSystem();
+    let state = { ...createInitialState(), flow: 4 };
+    state = system.update(state, 0.016).state;
+    const overflow = 0.4;
+    const frame = system.update(state, FLOW_GRACE_SECONDS + overflow);
+    expect(frame.state.flow).toBeCloseTo(4 - FLOW_DECAY_PER_SECOND * overflow);
+    expect(frame.graceRemaining).toBe(0);
+  });
+
   it('never decays below the baseline', () => {
     const system = new FlowSystem();
     let state = { ...createInitialState(), flow: 1.2 };
