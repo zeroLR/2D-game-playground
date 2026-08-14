@@ -31,7 +31,10 @@ export class FxSystem {
           this.spawnBurst(event.x, event.y, Palette.gold);
           break;
         case 'player-hit':
-          // Reserved for future hit FX. Current runtime has no dedicated hit shake.
+          break;
+        case 'flow-tier-entered':
+          this.spawnFlowPulse(event.x, event.y, event.tier);
+          this.cameraShake = Math.max(this.cameraShake, event.tier === 'overdrive' ? 2.2 : 1.3);
           break;
       }
     }
@@ -54,10 +57,7 @@ export class FxSystem {
     for (let i = 0; i < 6; i += 1) {
       const trail = new Graphics();
       const t = i / 6;
-      trail.poly([-9, 7, 0, -12, 9, 7]).fill({
-        color: Palette.cream,
-        alpha: (0.08 + strength * 0.04) * (1 - t),
-      });
+      trail.poly([-9, 7, 0, -12, 9, 7]).fill({ color: Palette.cream, alpha: (0.08 + strength * 0.04) * (1 - t) });
       trail.position.set(x - direction * (12 + t * trailLength), y);
       this.particles.addChild(trail);
       setTimeout(() => trail.destroy(), 90 + i * 18);
@@ -73,6 +73,19 @@ export class FxSystem {
       shard.rotation = angle;
       this.particles.addChild(shard);
       setTimeout(() => shard.destroy(), 180 + i * 12);
+    }
+  }
+
+  private spawnFlowPulse(x: number, y: number, tier: 'rush' | 'overdrive') {
+    const rings = tier === 'overdrive' ? 2 : 1;
+    for (let i = 0; i < rings; i += 1) {
+      const ring = new Graphics();
+      const radius = 25 + i * 9;
+      ring.circle(0, 0, radius).stroke({ width: tier === 'overdrive' ? 1.5 : 1.2, color: Palette.tealSoft, alpha: tier === 'overdrive' ? 0.42 : 0.3 });
+      ring.position.set(x, y - 2);
+      ring.scale.set(0.82 + i * 0.08);
+      this.particles.addChild(ring);
+      setTimeout(() => ring.destroy(), 220 + i * 70);
     }
   }
 }
