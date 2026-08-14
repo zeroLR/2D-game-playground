@@ -55,7 +55,7 @@ Goal: route selection determines **what kind of challenge/reward comes next**, n
 - route collision queues the selected content into future world generation
 
 ## M6.2 — Encounter Deck + Pacing Director 🚧
-Implemented first director slice:
+Implemented:
 - deterministic weighted encounter decks
 - **Warmup** phase biases Recovery / Dash Chain and suppresses harder traversal patterns
 - **Flow** phase broadens encounter variety
@@ -63,12 +63,14 @@ Implemented first director slice:
 - core encounter anti-repeat guard prevents three identical encounter families in succession
 - Skill / Route choices remain bounded cadence interrupts rather than random deck draws
 - queued Route content remains authoritative over the director
+- phase-aware family variants make Warmup more forgiving and Pressure more threat-dense without globally increasing vertical gaps
+- **Climax / Pressure Peak** packet recurs after sustained Pressure play, combining Drone routing, Moving Window, Hazard, Wall recovery, and a Crystal rest exit
+- Climax scheduling counts core encounters rather than raw bands, so Skill/Route interruptions do not distort pressure cadence
 
 Remaining M6.2:
-- pressure-aware encounter variants within each family
-- explicit climax packet before biome transition
-- tune special/choice spacing from mobile playtests
-- evaluate gap/width pressure only after encounter composition is readable
+- tune Skill / Route / Climax spacing from mobile playtests
+- evaluate gap/width pressure and Rebound Tier 3 only after the full pacing loop is played end-to-end
+- define how Climax hands off into the first biome transition during M7
 
 ## M6.3 — More Enemies / Traversal Threats
 Threats should primarily force movement decisions. Elite enemies alter route planning rather than becoming stationary HP sponges; combat remains secondary to traversal.
@@ -99,6 +101,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M1–M4: complete
 - M5 Run Build System: mechanics implemented; balance/option weighting deferred until representative content pressure
 - M6.1 Route Node Types: complete
-- M6.2 Encounter Deck + Pacing Director: in progress
+- M6.2 Encounter Deck + Pacing Director: in progress; director, phase variants, and recurring Climax packet implemented
 - M6.3 More Enemies / Traversal Threats: not started
 - M7–M12: not started
