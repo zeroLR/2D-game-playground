@@ -13,355 +13,184 @@ VERTEX is a mobile-portrait parkour roguelite. The product vision is **fast-pace
 ## Core product loop
 
 ```text
-Select Character
-  → Start Climb
-  → Traverse Encounters
-  → Choose Routes
-  → Gain Skills / Relics
-  → Build Synergies
-  → Survive Biome Escalation
-  → Abyss / Run Climax
-  → Run Summary
-  → Meta Progression / Unlocks
-  → Next Climb
+Select Character → Start Climb → Traverse Encounters → Choose Routes → Gain Skills / Relics → Build Synergies → Survive Biome Escalation → Abyss / Run Climax → Run Summary → Meta Progression / Unlocks → Next Climb
 ```
 
 ---
 
 ## M1 — Visual Foundation ✅
-
 Goal: runtime gameplay should clearly resemble the approved concept direction even in a static screenshot.
-
 Status: passed mobile screenshot review on 2026-08-12.
 
 ## M2 — Parkour Feel ✅
-
 Goal: movement itself becomes the primary source of fun.
-
-Delivered:
-- world-space vertical velocity and gravity
-- reachable procedural platform spacing
-- auto jump with short landing compression
-- asymmetric rise / apex / fall gravity
-- variable-strength velocity Dash controlled by swipe distance
-- forgiving platform landing tolerance
-- spring camera with upward dead-zone follow plus downward recovery follow
-- restrained landing / impact feedback
-
-Status: passed mobile playtest feedback on 2026-08-12; downward camera recovery later fixed large-fall visibility without changing normal upward framing.
+Delivered: world-space vertical physics, reachable procedural spacing, auto jump, asymmetric gravity, variable Dash, landing tolerance, spring camera with downward recovery, restrained impact feedback.
+Status: passed mobile playtests.
 
 ## M3 — Gameplay Objects ✅
-
 Goal: world objects create traversal decisions instead of only dealing damage.
-
-Delivered:
-- single airborne Dash resource, restored by landing / Crystal / Drone routing
-- Air Nudge for fine correction
-- Wall Catch / Wall Jump recovery route
-- forgiving edge Spike terrain
-- authored four-band encounter families
-- optional Moving Platform shortcut encounters
-- world-space pursuing Abyss with liquid presentation
-
+Delivered: airborne Dash resource, Air Nudge, Wall Catch / Jump, edge Spikes, authored encounters, Moving Platform shortcuts, pursuing liquid Abyss.
 Status: traversal-object loop validated in mobile playtests.
 
 ## M4 — Flow System ✅
-
 Goal: Flow becomes a felt gameplay state rather than a HUD number.
-
-Delivered:
-- chain grace + decay
-- Calm → Engaged → Rush → Overdrive tiers
-- player wake / aura and environmental speed feedback
-- restrained high-tier palette / momentum transition
-- high-Flow mistake recovery: Rush falls to 3x, Overdrive falls to 5x instead of always resetting to 1x
-- no Flow-dependent movement-physics changes
-
-Status: mobile playtests confirmed that Flow is readable and useful without destabilizing controls.
+Delivered: chain grace + decay, four Flow tiers, wake/environment feedback, restrained high-tier transition, high-Flow mistake recovery.
+Status: mobile playtests confirmed Flow is readable and useful without destabilizing controls.
 
 ---
 
 # M5 — Run Build System 🚧
-
 Goal: each climb develops a distinct build while movement remains uninterrupted.
 
 ## M5.1 — Route Choice Foundation ✅
-
-Current implementation:
-- every bounded interval, generate an in-world upgrade split
-- left / right routes telegraph the upgrade before commitment
-- collecting one option locks the sibling choice
-- both routes safely rejoin
-- no modal or pause screen
+- bounded in-world upgrade splits
+- readable left/right commitment
+- sibling choice locking
+- safe rejoin
+- no modal/pause
 - deterministic generation
 
-Current prototype upgrades:
-- **Impulse / Dash** — Dash velocity increase
-- **Continuity / Flow** — longer Flow grace
+Status: mobile playtest confirmed route-choice UX is intuitive.
 
-Status: mobile playtest confirmed the left Dash / right Flow choice is readable and intuitive.
+## M5.2 — Skill Pool + Level Up ✅
 
-## M5.2 — Skill Pool + Level Up
+Implemented initial run-local pool:
+- **Phase Dash / Dash** — Dash velocity scaling
+- **Rebound / Jump** — landing jump scaling
+- **Kill Refund / Kill** — Drone kill Flow scaling
+- **Continuity / Flow** — Flow grace scaling
+- deterministic two-skill choices
+- distinct archetype glyph/color language
+- Tier 3 cap
 
-Goal: replace repetitive Dash-vs-Flow stacking with a genuine run-local skill build.
+Status: mobile playtest confirmed different choices are readable. Rebound is intentionally flagged as overtuned: at Tier 3 its vertical reach can skip several platform bands and reduce required input in the current low-pressure encounter set. Balance is deferred until M6 enemies/hazards/pacing provide representative pressure.
 
-Planned archetypes:
-- **Dash** — Phase Dash, Dash Refund, Afterimage, stronger resource interactions
-- **Jump** — apex control, landing rebound, recovery-oriented jump mutations
-- **Kill** — Drone interaction, kill refund, kill-triggered mobility effects
-- **Flow** — chain sustain, Flow conversion, high-tier interactions
-- **Special** — rare cross-archetype rule changes
+## M5.3 — Build Synergy + Skill Tiers 🚧
 
-Rules:
-- Skills are **run-local** and disappear when the run ends
-- each Level Up presents a small set of distinct options
-- upgrades should change traversal rules or routing decisions, not only add flat percentages
-- repeated acquisition may upgrade a Skill tier rather than duplicate identical text forever
-- the build should be readable from a compact run HUD / icon strip
+Goal: make combinations form recognizable playstyles rather than four independent stat tracks.
 
-Validation target:
-- two runs with different Skill choices should feel meaningfully different within 30–60 seconds
-- players can identify the build direction without opening an inventory screen
+Current slice:
+- **Momentum Loop** — Phase Dash + Continuity; Dash grants additional Flow
+- **Predator Rhythm** — Kill Refund + Rebound; Drone kill empowers the next landing jump
+- synergy activation is automatic from the run build; no extra menu interaction
+- transient synergy effects reset naturally when consumed / run resets
 
-## M5.3 — Build Synergy + Skill Tiers
+Next validation:
+- synergy should be noticeable during normal traversal without requiring HUD inspection
+- combined effects should create route preferences (Dash chaining vs Drone routing)
+- avoid amplifying Rebound further until M6 pressure exists
 
-Goal: make Skills combine into recognizable playstyles.
-
-Scope:
-- Skill tiers / stacking limits
-- prerequisite or affinity rules where useful
-- archetype synergy bonuses
-- build-aware option weighting
-- avoid dead choices that do not interact with the current run
-
-Example build identities:
-- Dash chaining
-- Flow sustain
-- Drone kill routing
-- recovery / wall mobility
+Remaining M5.3 scope:
+- build-aware option weighting / avoid capped or dead choices
+- compact build/synergy HUD if playtests show memory load is becoming a problem
+- additional synergies only after the first two demonstrate distinct routing behavior
 
 ---
 
 # M6 — Route Content + Level Pacing
-
 Goal: route selection determines **what kind of challenge/reward comes next**, not only which Skill is collected.
 
 ## M6.1 — Route Node Types
-
-Introduce world-readable route content based on the original concept:
-
-- **Treasure** — lower combat pressure, reward currency / items / Skill opportunity
-- **Elite** — harder traversal / enemy pattern, high-value reward
-- **Rest** — recovery-oriented safe section, HP / resource recovery
+- **Treasure** — lower pressure, reward currency/items/Skill opportunity
+- **Elite** — harder traversal/enemy pattern, high-value reward
+- **Rest** — safe recovery section
 - **Skill / Level Up** — build decision route
-- **Special** — rare event or unusual rule set
-
-Key distinction:
+- **Special** — rare event or unusual rules
 
 > Route Choice decides **what happens next**. Level Up decides **how the current build evolves**.
 
-The two systems should coexist instead of being collapsed into one Dash-vs-Flow split.
-
 ## M6.2 — Encounter Deck + Pacing Director
-
-Goal: replace flat random probabilities with controlled run pacing.
-
-Scope:
 - encounter decks / weighted phases
-- minimum and maximum spacing by encounter family
+- min/max spacing by family
 - tutorial → variety → pressure → climax pacing
-- bounded frequency for Moving Platform, Wall Rescue, Elite, Treasure, and choice events
-- deterministic sequence reproduction for playtests
+- bounded Moving Platform / Wall Rescue / Elite / Treasure / choice frequency
+- deterministic reproduction
 
-Known issue addressed here:
-- special encounters such as Moving Platform currently appear too sparsely in practical playtests.
+Known issue: special encounters currently appear too sparsely in practical playtests.
 
 ## M6.3 — More Enemies / Traversal Threats
-
-Expand from the current Drone / Spike / hazard vocabulary.
-
-Direction:
-- threats should primarily force movement decisions
-- Elite enemies should alter route planning rather than become stationary HP sponges
-- combat remains secondary to traversal
+Threats should primarily force movement decisions. Elite enemies alter route planning rather than becoming stationary HP sponges; combat remains secondary to traversal.
 
 ---
 
 # M7 — Environments / Biomes
-
 Goal: a run visibly and mechanically progresses through multiple environments.
 
-Initial biome direction derived from the concept art:
-- **Teal Ruins / Vertical City** — current baseline environment
-- **Sunset / Amber District** — warmer palette, longer silhouette readability, alternate platform patterns
-- **Night / Violet Zone** — darker palette, stronger Flow / hazard contrast
-- **Ice / Pale Heights** — cold palette, sharper geometry and distinct traversal modifiers
+Initial directions:
+- **Teal Ruins / Vertical City** — baseline
+- **Sunset / Amber District** — warm palette and alternate platform patterns
+- **Night / Violet Zone** — stronger Flow/hazard contrast
+- **Ice / Pale Heights** — cold palette, sharper geometry, traversal modifiers
 
-Each biome should provide:
-- unique background composition and palette
-- a small encounter / hazard vocabulary shift
-- its own pacing emphasis
-- clear transition without visual fatigue
-
-Avoid making biomes cosmetic-only recolors.
+Each biome needs unique background composition/palette, encounter or hazard vocabulary shift, pacing emphasis, and readable transition. Avoid cosmetic-only recolors.
 
 ---
 
 # M8 — Relic System
+Goal: rare run-defining rule modifiers distinct from normal Skills.
 
-Goal: add rare run-defining rule modifiers distinct from normal Skills.
-
-Relic principles:
-- **run-local** like Skills, but much rarer
-- lower quantity, higher rule impact
-- often cross-archetype
-- obtained through Elite / Treasure / Special routes rather than normal Level Up cadence
-
-Examples of intended design space:
-- Crystal also refreshes another traversal resource
-- first hit at Overdrive preserves an additional Flow threshold
-- Wall Jump changes the next Dash behavior
-- Drone kills alter nearby platform or Crystal rewards
-
-Relics should not become another list of `+10%` stats.
+Principles: run-local, rare, high-impact, often cross-archetype, acquired through Elite/Treasure/Special routes. Relics should not become another list of `+10%` stats.
 
 ---
 
 # M9 — Meta Progression + Talent Tree
-
-Goal: provide long-term progression without invalidating run skill.
+Goal: long-term progression without invalidating run skill.
 
 ## M9.1 — Talent Tree
-
-Talents persist across runs.
-
-Preferred unlock types:
-- unlock new Skills into the run pool
-- unlock new Relics
-- unlock alternate starting options
-- unlock route / biome variants
-- improve choice quality or information
-- limited quality-of-life progression
-
-Avoid large permanent raw-stat inflation that makes early runs obsolete.
-
-Concept hierarchy:
-
-```text
-Talent Tree (persistent)
-  → unlocks possibilities
-  → Skill / Relic pool expands
-  → individual runs remain build-driven
-```
+Prefer unlocking Skills, Relics, starting options, route/biome variants, choice information, and limited QoL. Avoid large permanent raw-stat inflation.
 
 ## M9.2 — Meta Currency
-
-Scope:
-- one initial persistent resource
-- earned from completed / failed runs via clear rules
-- spent primarily on unlocks rather than mandatory stat grinding
+One initial persistent resource earned from runs and spent primarily on unlocks rather than mandatory stat grinding.
 
 ---
 
 # M10 — Character System
+Goal: characters create distinct starting identities/build biases.
+- **Nova** — Dash
+- **Kai** — Kill/aggressive routing
+- **Lumen** — Flow/control
 
-Goal: multiple characters create distinct starting identities and build biases.
-
-Concept roster:
-- **Nova** — Dash-oriented identity
-- **Kai** — Kill / aggressive routing identity
-- **Lumen** — Flow / control identity
-
-Character design rules:
-- not cosmetic-only skins
-- each character has a small starting rule difference or signature passive
-- characters should bias a build without hard-locking archetypes
-- shared core controls remain identical
-
-Scope:
-- character select screen
-- unlock conditions
-- compact character identity / passive description
-- character-specific visual treatment while preserving overall art direction
+Characters are not cosmetic-only; shared core controls remain identical.
 
 ---
 
 # M11 — Run Summary + Product Loop
+Run Summary: score, duration, Flow peak, enemies defeated, Skills, Relics, biome/route progress, damage taken, persistent reward.
 
-Goal: complete the transition from isolated prototype run to repeatable roguelite product loop.
-
-Run Summary should include:
-- score
-- run duration
-- Flow peak
-- enemies defeated
-- Skills acquired
-- Relics acquired
-- biome / route progress
-- damage taken
-- persistent reward earned
-
-Loop:
-
-```text
-Death / Escape
-  → Run Summary
-  → Meta Reward
-  → Talent / Character Unlock Progress
-  → Character Select / Start Climb
-```
+`Death / Escape → Run Summary → Meta Reward → Talent / Character Unlock Progress → Character Select / Start Climb`
 
 ---
 
 # M12 — MVP Vertical Slice
+Goal: one complete replayable 5–10 minute run demonstrating the full promise.
 
-Goal: one complete, replayable run that demonstrates the full product promise.
-
-Target first complete run: approximately 5–10 minutes.
-
-Suggested pacing:
-- 0:00 movement onboarding
-- 0:45 first Skill / Level Up
-- 1:30 first meaningful route choice
-- 2:00 Elite / Treasure contrast
-- 2:30 second build decision
-- 3:30 high-Flow section
-- 4:00 biome / pacing escalation
-- 4:30 Abyss pressure / chase
-- 5:00+ escape, death, or extended climb depending on final run format
-
-The first climax should remain an **Abyss chase**, not a stationary boss fight.
+Suggested pacing: movement onboarding → first Skill → meaningful route choice → Elite/Treasure contrast → second build decision → high Flow → biome escalation → Abyss chase → escape/death/extended climb.
 
 Definition of done:
 - movement remains fun without progression rewards
 - each run develops a recognizable build
-- route choices visibly alter risk / reward
-- at least two environments are distinguishable mechanically and visually
-- at least one Relic can meaningfully alter a run
-- Run Summary closes the loop into persistent progression
+- route choices alter risk/reward
+- at least two environments differ mechanically and visually
+- at least one Relic meaningfully alters a run
+- Run Summary closes into persistent progression
 
 ---
 
-## Scope boundary
+## Balance debt
+- **Rebound Tier 3 overtuned** — currently allows multi-band auto-climbing in low-pressure sections. Revisit during M6 after representative enemy/hazard density exists; guardrail is that no build should remove the need for sustained player input.
 
-Not required before the first complete vertical slice unless validation shows they are essential:
-- large inventory systems
-- shops with complex economy
-- dozens of characters
-- huge Talent Tree
-- account / cloud progression
-- live-service systems
-- battle pass / monetization
+## Scope boundary
+Not required before the first vertical slice unless validation demands it: large inventory, complex shops/economy, dozens of characters, huge Talent Tree, account/cloud progression, live-service systems, monetization.
 
 ## Current status
-
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
 - M3 Gameplay Objects: complete
 - M4 Flow System: complete
 - M5 Run Build System: in progress
-  - M5.1 Route Choice Foundation: implemented and mobile-validated
-  - M5.2 Skill Pool + Level Up: next
+  - M5.1 Route Choice Foundation: complete
+  - M5.2 Skill Pool + Level Up: implemented and mobile-validated
+  - M5.3 Build Synergy + Skill Tiers: in progress
 - M6 Route Content + Level Pacing: not started
 - M7 Environments / Biomes: not started
 - M8 Relic System: not started
