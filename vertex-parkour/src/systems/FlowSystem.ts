@@ -29,7 +29,7 @@ export function getFlowIntensity(flow: number) {
 }
 
 export function getFlowGraceSeconds(state: GameState) {
-  return FLOW_GRACE_SECONDS + state.flowUpgradeLevel * FLOW_UPGRADE_GRACE_BONUS;
+  return FLOW_GRACE_SECONDS + (state.flowUpgradeLevel + state.skills.continuity) * FLOW_UPGRADE_GRACE_BONUS;
 }
 
 function tierRank(tier: FlowTier) {
