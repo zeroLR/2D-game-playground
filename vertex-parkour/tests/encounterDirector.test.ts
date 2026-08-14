@@ -12,28 +12,19 @@ describe('EncounterDirector', () => {
     expect(pacingPhaseFor(10)).toBe('pressure');
     expect(pacingPhaseFor(50)).toBe('pressure');
   });
-
   it('never emits the same core encounter three times in a row', () => {
     const director = new EncounterDirector();
-    const random = () => 0;
-    const sequence = Array.from({ length: 30 }, () => director.next(random));
-    for (let i = 2; i < sequence.length; i += 1) {
-      expect(sequence[i] === sequence[i - 1] && sequence[i] === sequence[i - 2]).toBe(false);
-    }
+    const sequence = Array.from({ length: 30 }, () => director.next(() => 0));
+    for (let i = 2; i < sequence.length; i += 1) expect(sequence[i] === sequence[i - 1] && sequence[i] === sequence[i - 2]).toBe(false);
   });
-
   it('is deterministic when driven by the same random stream', () => {
-    const a = new EncounterDirector();
-    const b = new EncounterDirector();
-    const values = [0.1, 0.7, 0.35, 0.92, 0.5];
-    expect(Array.from({ length: 20 }, () => a.next(seeded(values)))).toEqual(Array.from({ length: 20 }, () => b.next(seeded(values))));
+    const a = new EncounterDirector(); const b = new EncounterDirector();
+    const values = [0.1, 0.7, 0.35, 0.92, 0.5]; const randomA = seeded(values); const randomB = seeded(values);
+    expect(Array.from({ length: 20 }, () => a.next(randomA))).toEqual(Array.from({ length: 20 }, () => b.next(randomB)));
   });
-
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector();
     for (let i = 0; i < 12; i += 1) director.next(() => 0.5);
-    expect(director.getPhase()).toBe('pressure');
-    director.reset();
-    expect(director.getPhase()).toBe('warmup');
+    expect(director.getPhase()).toBe('pressure'); director.reset(); expect(director.getPhase()).toBe('warmup');
   });
 });
