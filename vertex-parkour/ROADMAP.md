@@ -139,9 +139,8 @@ Future scope:
 Goal: Flow becomes a felt gameplay state rather than a HUD number.
 
 Existing foundation:
-- Dash, landing, Wall Jump, Crystal pickup, and Drone kills already award Flow
-- taking damage resets Flow to baseline
-- score already scales with the current Flow multiplier
+- Dash, landing, Wall Jump, Crystal pickup, and Drone kills award Flow
+- score scales with the current Flow multiplier
 
 #### M4.1 — Chain + visual state ✅
 
@@ -154,26 +153,39 @@ Existing foundation:
 
 Status: mobile playtest confirmed that Flow is perceptible through the character presentation without needing to watch the HUD; perceived extra speed was visual rather than a physics change.
 
-#### M4.2 — Environmental momentum feedback 🚧
+#### M4.2 — Environmental momentum feedback ✅
 
 - high Flow introduces sparse vertical environmental streaks behind gameplay
 - streak density, length, and opacity scale from normalized Flow intensity
 - feedback begins only above low Flow so Calm/Engaged remain visually quiet
 - no movement physics or camera parameters change
 
+Status: mobile playtest confirmed that high Flow gives the scene a subtle sense of entering speed without overpowering gameplay readability.
+
+#### M4.3 — Flow recovery benefit 🚧
+
+Goal: give high Flow a gameplay benefit without changing movement physics.
+
+Rules:
+- below Rush, taking damage still resets Flow to 1x
+- Rush (6x+) falls back to 3x after a hit
+- Overdrive (9x+) falls back to 5x after a hit
+- HP damage is unchanged; this is momentum preservation, not damage mitigation
+- taking a hit still immediately ends the active chain grace window
+
 Validation target:
-- Rush / Overdrive should make the whole scene feel more energetic, not just the player aura
-- the effect must not falsely imply a mechanical speed increase strongly enough to confuse control feel
-- platform, Spike, Drone, Crystal, and Abyss readability must remain dominant
+- building high Flow should make recovery from one mistake feel meaningfully better
+- a hit must still feel costly
+- the aura must not be misread as a literal shield or invulnerability
 
 #### Remaining M4 scope
-- stronger high-tier transition feedback
-- near-miss Flow gain if it can be made readable and deterministic
-- gameplay benefit tied to Flow after visual/decay tuning is validated
+- stronger high-tier transition feedback if still needed after gameplay-benefit validation
+- near-miss Flow gain only if it can be made readable and deterministic
 
 Definition of done:
 - skilled play naturally forms chains such as dash → kill → reset → crystal → jump
 - Flow state changes are readable through motion/visual language, not only HUD text
+- high Flow provides a useful but non-mandatory gameplay advantage without destabilizing movement feel
 
 ### M5 — Roguelite Layer
 
@@ -209,5 +221,5 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
 - M3 Gameplay Objects: complete
-- M4 Flow System: in progress (M4.2 environmental momentum feedback)
+- M4 Flow System: in progress (M4.3 flow recovery benefit)
 - M5–M6: not started
