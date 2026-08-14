@@ -22,6 +22,8 @@ export class WorldLifecycleSystem {
   }
 
   update(cameraOffset: number) {
+    const selectedRoute = this.state.consumePendingRoute();
+    if (selectedRoute) this.generator.queueRoute(selectedRoute);
     while (this.generator.getLastY() + cameraOffset > -150) this.spawnBand();
   }
 
