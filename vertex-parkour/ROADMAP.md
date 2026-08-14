@@ -143,7 +143,7 @@ Existing foundation:
 - taking damage resets Flow to baseline
 - score already scales with the current Flow multiplier
 
-#### M4.1 — Chain + visual state 🚧
+#### M4.1 — Chain + visual state ✅
 
 - successful Flow gains refresh a short chain grace window
 - Flow decays toward baseline when the player stops linking traversal actions
@@ -152,14 +152,21 @@ Existing foundation:
 - HUD communicates the current tier as well as the multiplier
 - this slice does not change movement speed or physics
 
+Status: mobile playtest confirmed that Flow is perceptible through the character presentation without needing to watch the HUD; perceived extra speed was visual rather than a physics change.
+
+#### M4.2 — Environmental momentum feedback 🚧
+
+- high Flow introduces sparse vertical environmental streaks behind gameplay
+- streak density, length, and opacity scale from normalized Flow intensity
+- feedback begins only above low Flow so Calm/Engaged remain visually quiet
+- no movement physics or camera parameters change
+
 Validation target:
-- the player should feel when a chain is building without needing to stare at the number
-- a brief landing correction should not immediately destroy the chain
-- passive/stalled play should visibly cool back down
-- high Flow feedback must remain restrained enough for long mobile sessions
+- Rush / Overdrive should make the whole scene feel more energetic, not just the player aura
+- the effect must not falsely imply a mechanical speed increase strongly enough to confuse control feel
+- platform, Spike, Drone, Crystal, and Abyss readability must remain dominant
 
 #### Remaining M4 scope
-- speed-linked environmental streaks
 - stronger high-tier transition feedback
 - near-miss Flow gain if it can be made readable and deterministic
 - gameplay benefit tied to Flow after visual/decay tuning is validated
@@ -202,5 +209,5 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
 - M3 Gameplay Objects: complete
-- M4 Flow System: in progress (M4.1 chain + visual state)
+- M4 Flow System: in progress (M4.2 environmental momentum feedback)
 - M5–M6: not started
