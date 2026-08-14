@@ -35,6 +35,14 @@ export class CollisionSystem {
     }
     if (!touchingWall) next = clearWallContact(next);
 
+    for (const route of world.routes) {
+      if (route.taken || route.locked) continue;
+      if (Math.abs(next.playerX - route.x) < 30 && Math.abs(next.playerY - route.y) < 36) {
+        world.commitRouteChoice(route.choiceId, route.id);
+        break;
+      }
+    }
+
     for (const upgrade of world.upgrades) {
       if (upgrade.taken || upgrade.locked) continue;
       if (Math.abs(next.playerX - upgrade.x) < 28 && Math.abs(next.playerY - upgrade.y) < 34) {
