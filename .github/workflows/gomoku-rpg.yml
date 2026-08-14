@@ -26,4 +26,4 @@ jobs:
       game: gomoku-rpg
       install-command: npm install --no-audit --no-fund
       run-tests: true
-      deploy: false
+      deploy: ${{ github.event_name != 'pull_request' }}
