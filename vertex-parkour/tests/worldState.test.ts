@@ -14,11 +14,22 @@ describe('WorldState', () => {
     expect('view' in world.drones[0]).toBe(false);
   });
 
+  it('locks the unselected route when an upgrade choice is committed', () => {
+    const world = new WorldState();
+    const dash = world.addSpawn({ type: 'upgrade', x: 82, y: 400, kind: 'dash', choiceId: 1 });
+    const flow = world.addSpawn({ type: 'upgrade', x: 278, y: 400, kind: 'flow', choiceId: 1 });
+    world.commitUpgradeChoice(1, dash.id);
+    expect(world.upgrades.find((item) => item.id === dash.id)).toMatchObject({ taken: true, locked: false });
+    expect(world.upgrades.find((item) => item.id === flow.id)).toMatchObject({ taken: false, locked: true });
+  });
+
   it('resets ids and entity collections on clear', () => {
     const world = new WorldState();
     world.addSpawn({ type: 'hazard', x: 82, y: 400 });
+    world.addSpawn({ type: 'upgrade', x: 82, y: 300, kind: 'dash', choiceId: 1 });
     world.clear();
     expect(world.all()).toEqual([]);
+    expect(world.upgrades).toEqual([]);
     expect(world.addSpawn({ type: 'crystal', x: 180, y: 350 }).id).toBe(1);
   });
 });
