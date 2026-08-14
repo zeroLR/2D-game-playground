@@ -25,7 +25,7 @@
       .tower-selector,.weapon-selector { position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:4px; padding:3px; border:1px solid rgba(255,255,255,.07); border-radius:16px; background:rgba(5,9,13,.42); opacity:.68; }
       .tower-selector { bottom:calc(7px + env(safe-area-inset-bottom)); }
       .weapon-selector { bottom:calc(38px + env(safe-area-inset-bottom)); }
-      .tower-btn { min-width:62px; height:25px; padding:0 7px; border-radius:13px; font-size:8px; }
+      .tower-btn { min-width:54px; height:25px; padding:0 6px; border-radius:13px; font-size:8px; }
       .weapon-btn { min-width:48px; height:22px; padding:0 6px; border-radius:12px; font-size:7px; }
       .tower-btn.is-selected { border-color:var(--cyan); color:var(--cyan); background:rgba(12,39,40,.78); }
       .weapon-btn.is-selected { border-color:var(--pink); color:var(--pink); background:rgba(54,12,31,.78); }
@@ -38,11 +38,11 @@
         .touch-btn.build { width:40px; height:40px; font-size:8px; }
         .tower-selector { bottom:calc(6px + env(safe-area-inset-bottom)); }
         .weapon-selector { bottom:calc(34px + env(safe-area-inset-bottom)); }
-        .tower-btn { min-width:56px; height:23px; font-size:7px; }
+        .tower-btn { min-width:49px; height:23px; font-size:7px; }
         .weapon-btn { min-width:43px; height:20px; font-size:7px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-C196tSgL.js"></script>
+    <script type="module" crossorigin src="./assets/index-DZU_Wxp2.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -60,6 +60,7 @@
       <div class="tower-selector" aria-label="Tower selector">
         <button class="tower-btn is-selected" data-tower="0" data-tap-key="Digit1">TURRET</button>
         <button class="tower-btn" data-tower="1" data-tap-key="Digit2">TESLA</button>
+        <button class="tower-btn" data-tower="2" data-tap-key="Digit3">BARRIER</button>
       </div>
       <div class="touch-cluster touch-right">
         <button class="touch-btn jump" data-tap-key="Space" aria-label="Jump">JMP</button>
