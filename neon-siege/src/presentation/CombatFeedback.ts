@@ -22,11 +22,12 @@ export class CombatFeedback {
     this.fade(flash, 0.07);
   }
 
-  trail(x: number, y: number, direction: -1 | 1) {
+  trail(fromX: number, toX: number, y: number, direction: -1 | 1) {
+    const length = Math.max(8, Math.abs(toX - fromX));
     const trail = new Graphics()
-      .rect(direction > 0 ? -22 : 0, -1, 22, 2)
+      .rect(direction > 0 ? -length : 0, -1, length, 2)
       .fill({ color: COLORS.pink, alpha: 0.55 });
-    trail.position.set(x, y);
+    trail.position.set(toX, y);
     this.fx.addChild(trail);
     this.fade(trail, 0.09);
   }
@@ -81,9 +82,13 @@ export class CombatFeedback {
     this.shakeStrength = Math.max(this.shakeStrength, heavy ? 7 : 4);
   }
 
-  playerHit() {
-    this.shakeTime = Math.max(this.shakeTime, 0.16);
-    this.shakeStrength = Math.max(this.shakeStrength, 6);
+  playerHit(_x?: number, _y?: number, heavy = false) {
+    this.shakeTime = Math.max(this.shakeTime, heavy ? 0.2 : 0.16);
+    this.shakeStrength = Math.max(this.shakeStrength, heavy ? 8 : 6);
+  }
+
+  consumeTime(dt: number) {
+    return this.freezeTime > 0 ? 0 : dt;
   }
 
   update(dt: number) {
@@ -94,11 +99,10 @@ export class CombatFeedback {
       this.world.position.set(0, 0);
       this.shakeStrength = 0;
     }
+
     if (this.freezeTime > 0) {
       this.freezeTime = Math.max(0, this.freezeTime - dt);
-      return true;
     }
-    return false;
   }
 
   private fade(display: Graphics, duration: number) {
