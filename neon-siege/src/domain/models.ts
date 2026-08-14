@@ -1,5 +1,5 @@
 export type Facing = -1 | 1;
-export type TowerType = 'turret' | 'tesla';
+export type TowerType = 'turret' | 'tesla' | 'barrier';
 
 export interface GameState {
   playerX: number;

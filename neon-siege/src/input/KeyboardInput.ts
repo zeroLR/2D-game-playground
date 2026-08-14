@@ -6,7 +6,7 @@ export interface InputActions {
 }
 
 export interface InputCallbacks {
-  selectTower(index: 0 | 1): void;
+  selectTower(index: 0 | 1 | 2): void;
   selectWeapon(index: 0 | 1 | 2 | 3): void;
   build(): void;
   restart(): void;
@@ -39,6 +39,7 @@ export class KeyboardInput {
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(event.code)) event.preventDefault();
     if (event.code === 'Digit1') this.callbacks.selectTower(0);
     if (event.code === 'Digit2') this.callbacks.selectTower(1);
+    if (event.code === 'Digit3') this.callbacks.selectTower(2);
     if (event.code === 'KeyZ') this.callbacks.selectWeapon(0);
     if (event.code === 'KeyX') this.callbacks.selectWeapon(1);
     if (event.code === 'KeyC') this.callbacks.selectWeapon(2);
