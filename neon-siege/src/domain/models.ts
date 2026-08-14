@@ -18,6 +18,7 @@ export interface GameState {
   spawnTimer: number;
   shootTimer: number;
   towerMode: number;
+  weaponIndex: number;
   gameOver: boolean;
 }
 
@@ -61,5 +62,6 @@ export const createInitialGameState = (): GameState => ({
   spawnTimer: 0,
   shootTimer: 0,
   towerMode: 0,
+  weaponIndex: 0,
   gameOver: false,
 });
