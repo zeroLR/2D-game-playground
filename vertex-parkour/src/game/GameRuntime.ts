@@ -4,12 +4,14 @@ import { LANDING_DELAY, createInitialState, type GameState } from '../domain/gam
 import { interpretKey, interpretSwipe } from '../input/SwipeInterpreter';
 import type { PlayerCommand } from '../input/commands';
 import { redrawAbyssLiquid } from '../presentation/AbyssRenderer';
+import { redrawFlowAura } from '../presentation/FlowRenderer';
 import { WorldRenderer } from '../presentation/WorldRenderer';
 import { FxSystem } from '../presentation/fx/FxSystem';
 import { createEnvironment, redrawPlayer, updateEnvironment } from '../presentation/visuals';
 import { AbyssPressureSystem } from '../systems/AbyssPressureSystem';
 import { CameraSystem } from '../systems/CameraSystem';
 import { CollisionSystem } from '../systems/CollisionSystem';
+import { FlowSystem, type FlowTier } from '../systems/FlowSystem';
 import { MovementSystem, type MovementFrameState } from '../systems/MovementSystem';
 import { WorldLifecycleSystem } from '../systems/WorldLifecycleSystem';
 
@@ -22,6 +24,7 @@ export class GameRuntime {
   private readonly particles = new Container();
   private readonly hud = new Container();
   private readonly abyss = new Graphics();
+  private readonly flowAura = new Graphics();
   private readonly player = new Graphics();
   private readonly environment = createEnvironment(LOGICAL_W, LOGICAL_H);
   private readonly events = new GameEventQueue();
@@ -32,6 +35,7 @@ export class GameRuntime {
   private readonly collision = new CollisionSystem();
   private readonly camera = new CameraSystem();
   private readonly abyssPressure = new AbyssPressureSystem();
+  private readonly flow = new FlowSystem();
 
   private readonly flowText = new Text({ text: '', style: new TextStyle({ fill: '#f0eadf', fontSize: 19, fontWeight: '600' }) });
   private readonly scoreText = new Text({ text: '', style: new TextStyle({ fill: '#789b99', fontSize: 10 }) });
@@ -45,6 +49,8 @@ export class GameRuntime {
     dashVisualTime: 0,
     restartRequested: false,
   };
+  private flowTier: FlowTier = 'calm';
+  private flowIntensity = 0;
   private invulnerable = 0;
   private pointerStartX = 0;
   private pointerStartY = 0;
@@ -65,7 +71,7 @@ export class GameRuntime {
     this.app.stage.addChild(this.root);
     this.root.addChild(this.environment.sky, this.environment.far, this.environment.mid);
     this.root.addChild(this.world, this.particles, this.abyss, this.environment.foreground, this.hud);
-    this.world.addChild(this.player);
+    this.world.addChild(this.flowAura, this.player);
 
     const title = new Text({ text: 'VERTEX', style: new TextStyle({ fill: '#f3efe7', fontSize: 16, fontWeight: '600', letterSpacing: 6 }) });
     title.position.set(22, 20);
@@ -105,6 +111,9 @@ export class GameRuntime {
 
   private reset() {
     this.frame = { state: createInitialState(), dashDirection: 0, dashVisualTime: 0, restartRequested: false };
+    this.flow.reset();
+    this.flowTier = 'calm';
+    this.flowIntensity = 0;
     this.invulnerable = 0;
     this.camera.reset();
     this.abyssPressure.reset();
@@ -136,6 +145,11 @@ export class GameRuntime {
       this.frame = { ...this.frame, state: collisionResult.state };
       this.invulnerable = collisionResult.invulnerable;
 
+      const flowFrame = this.flow.update(this.frame.state, dt);
+      this.frame = { ...this.frame, state: flowFrame.state };
+      this.flowTier = flowFrame.tier;
+      this.flowIntensity = flowFrame.intensity;
+
       const cameraOffset = this.camera.update(this.frame.state.playerY, dt);
       updateEnvironment(this.environment, cameraOffset, this.frame.state.elapsed, LOGICAL_H);
       this.worldLifecycle.update(cameraOffset);
@@ -158,6 +172,7 @@ export class GameRuntime {
     this.world.position.set(shake.x, shake.y);
     this.particles.position.set(shake.x, shake.y);
 
+    redrawFlowAura(this.flowAura, state.playerX, state.playerY + cameraOffset, state.elapsed, this.flowIntensity, this.flowTier);
     redrawPlayer(this.player, state.playerX, state.playerY + cameraOffset, state.elapsed, this.frame.dashDirection);
     if (state.landingTime > 0) {
       const pulse = Math.sin((1 - state.landingTime / LANDING_DELAY) * Math.PI);
@@ -169,7 +184,9 @@ export class GameRuntime {
 
     redrawAbyssLiquid(this.abyss, LOGICAL_W, state.elapsed);
     this.abyss.position.set(0, this.abyssPressure.getScreenY(cameraOffset));
-    this.flowText.text = `×${state.flow.toFixed(1)}`;
+    this.flowText.text = `×${state.flow.toFixed(1)}  ${this.flowTier.toUpperCase()}`;
+    this.flowText.alpha = 0.72 + this.flowIntensity * 0.28;
+    this.flowText.scale.set(1 + this.flowIntensity * 0.035);
     this.scoreText.text = `${Math.floor(state.score).toLocaleString()} · ${state.elapsed.toFixed(1)}s`;
     this.hpText.text = '◇'.repeat(state.hp);
     this.dashText.text = state.wallSide !== 0 ? 'WALL  ↗' : state.dashReady ? 'DASH  ◆' : 'DASH  ·';
