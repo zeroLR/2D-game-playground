@@ -16,11 +16,6 @@ The key validation question is:
 
 Goal: runtime gameplay should clearly resemble the approved concept direction even in a static screenshot.
 
-Definition of done:
-- a runtime screenshot is recognizably the same game as the visual concept
-- important gameplay objects remain readable on a phone-sized viewport
-- visual effects remain restrained enough to avoid fatigue
-
 Status: passed mobile screenshot review on 2026-08-12.
 
 ### M2 — Parkour Feel ✅
@@ -34,170 +29,107 @@ Delivered:
 - asymmetric rise/apex/fall gravity
 - variable-strength velocity Dash controlled by swipe distance
 - forgiving platform landing tolerance
-- spring camera with upward dead-zone follow
+- spring camera with upward dead-zone follow plus downward recovery follow
 - restrained landing / impact feedback
 
-Definition of done:
-- the game feels like vertical parkour rather than lane switching over a scrolling background
-- short, medium, and long swipe Dash strengths are predictable and useful for landing correction
-- camera naturally communicates upward progress
-
-Status: passed mobile playtest feedback on 2026-08-12.
+Status: passed mobile playtest feedback on 2026-08-12; downward camera recovery later fixed large-fall visibility without changing normal upward framing.
 
 ### M3 — Gameplay Objects ✅
 
 Goal: world objects create traversal decisions instead of only dealing damage.
 
-#### M3.1 — Traversal resources ✅
-- Dash becomes a single airborne resource instead of unlimited repeat input
-- landing restores Dash
-- Crystal restores Dash and adds a small upward lift
-- Drone can be destroyed only while actively dashing
-- destroying a Drone restores Dash and gives an upward bounce
-- non-dashing Drone contact damages the player
-- HUD communicates whether Dash is currently ready
-- Air Nudge provides repeatable fine correction without consuming Dash
+Delivered:
+- single airborne Dash resource, restored by landing / Crystal / Drone routing
+- Air Nudge for fine correction
+- Wall Catch / Wall Jump recovery route
+- forgiving edge Spike terrain
+- authored four-band encounter families
+- optional Moving Platform shortcut encounters
+- world-space pursuing Abyss with liquid presentation
 
-Validation chain:
+Status: traversal-object loop validated in mobile playtests. Dedicated encounter pacing remains queued because Moving Platform and special encounter frequency is still too sparse.
 
-> jump → nudge → dash → drone/crystal → reset → dash → land
-
-#### M3.2 — Wall traversal ✅
-- periodic walls act as rescue/traversal nodes
-- wall contact slows falling and restores Dash
-- swipe away performs a wall jump
-- wall jump preserves Dash for the next routing decision
-
-Validation chain:
-
-> missed platform → wall catch → wall jump → dash → recover route
-
-#### M3.3 — Spike terrain ✅
-- spikes are edge hazards attached only to sufficiently wide platforms
-- the broad central landing zone remains the default safe target
-- directional approaches place the Spike on the far edge
-- Air Nudge is recovery rather than mandatory precision input
-
-Status: mobile playtest accepted the higher-tolerance edge-hazard revision.
-
-#### M3.4 — Encounter Pattern Generator ✅
-
-Goal: stop assembling unrelated obstacles band-by-band and generate short authored traversal sequences with explicit intent.
-
-Initial encounter families:
-- **Recovery** — readable platforms + Crystal + rest beat
-- **Dash Chain** — route setup → Drone Dash opportunity → resource landing
-- **Edge Read** — forgiving Spike edge → route naturally moves away from danger
-- **Wall Rescue** — outer route exposes a wall catch → Crystal recovery → rest beat
-
-Generation rules:
-- one Encounter spans four bands
-- the first three bands define the traversal idea
-- the fourth band is always a safe rest/recovery beat
-- randomization selects encounter family and mirrors it left/right; it does not independently sprinkle obstacles
-- every band retains a safe landing platform
-- run seed still deterministically reproduces the same encounter sequence
-
-Status: mobile playtest confirmed that short traversal patterns are readable as intentional route ideas.
-
-#### M3.5 — Moving Platform Encounter ✅
-
-- Moving Platform is an optional shortcut/reward route, never the only required landing surface
-- motion state drives both collision and rendering from the same entity x
-- each moving-window encounter preserves a static safe route
-
-Status: mobile playtest confirmed the moving platform reads as an optional route, but encounter frequency/pacing needs a dedicated composition pass.
-
-#### M3.6 — Abyss Pressure ✅
-
-- Abyss is a world-space pursuing boundary rather than a screen-space follower
-- sustained upward movement naturally creates distance because the player can climb faster than the Abyss
-- stopping or losing height allows the Abyss to visibly rise into the viewport
-- the liquid renderer uses a readable surface, layered body, restrained glow, ripples, and motes
-- touching the world-space surface ends the run
-
-Status: mobile playtest accepted both the pursuit behavior and liquid visual presentation.
-
-Key rule:
-- enemies and objects should create movement decisions, not only subtract HP
-
-#### Level Pacing / Encounter Composition — queued
-
-Goal: control encounter density and sequence over time instead of relying on flat encounter-family probabilities.
-
-Known issue:
-- Moving Platform currently appears too sparsely in practical playtests, often only after more than ten platform jumps.
-
-Future scope:
-- encounter decks / weighted phases
-- minimum and maximum spacing per encounter family
-- tutorial → variety → pressure pacing
-- deterministic composition for reproducible playtests
-
-### M4 — Flow System 🚧
+### M4 — Flow System ✅
 
 Goal: Flow becomes a felt gameplay state rather than a HUD number.
 
-Existing foundation:
-- Dash, landing, Wall Jump, Crystal pickup, and Drone kills award Flow
-- score scales with the current Flow multiplier
-
 #### M4.1 — Chain + visual state ✅
+- successful traversal actions refresh a short chain grace window
+- Flow decays toward baseline when chaining stops
+- tiers: Calm → Engaged → Rush → Overdrive
+- player aura / wake and HUD communicate Flow without changing movement physics
 
-- successful Flow gains refresh a short chain grace window
-- Flow decays toward baseline when the player stops linking traversal actions
-- Flow tiers: Calm → Engaged → Rush → Overdrive
-- player aura and restrained streaks increase by Flow tier
-- HUD communicates the current tier as well as the multiplier
-- this slice does not change movement speed or physics
-
-Status: mobile playtest confirmed that Flow is perceptible through the character presentation without needing to watch the HUD; perceived extra speed was visual rather than a physics change.
+Status: mobile playtest confirmed Flow is perceptible without watching the HUD.
 
 #### M4.2 — Environmental momentum feedback ✅
+- high Flow adds restrained environmental speed streaks
+- density / length / opacity scale with Flow intensity
+- Calm / low Engaged remain visually quiet
 
-- high Flow introduces sparse vertical environmental streaks behind gameplay
-- streak density, length, and opacity scale from normalized Flow intensity
-- feedback begins only above low Flow so Calm/Engaged remain visually quiet
-- no movement physics or camera parameters change
+Status: mobile playtest confirmed a subtle scene-wide sense of speed while gameplay objects remain readable.
 
-Status: mobile playtest confirmed that high Flow gives the scene a subtle sense of entering speed without overpowering gameplay readability.
-
-#### M4.3 — Flow recovery benefit 🚧
-
-Goal: give high Flow a gameplay benefit without changing movement physics.
-
-Rules:
-- below Rush, taking damage still resets Flow to 1x
+#### M4.3 — Flow recovery benefit ✅
+- below Rush, damage resets Flow to 1x
 - Rush (6x+) falls back to 3x after a hit
 - Overdrive (9x+) falls back to 5x after a hit
-- HP damage is unchanged; this is momentum preservation, not damage mitigation
-- taking a hit still immediately ends the active chain grace window
+- HP damage remains unchanged
+- taking a hit ends the active chain grace window
 
-Validation target:
-- building high Flow should make recovery from one mistake feel meaningfully better
-- a hit must still feel costly
-- the aura must not be misread as a literal shield or invulnerability
+Status: mobile playtest confirmed a mistake remains costly but no longer erases the entire rhythm at high Flow.
 
-#### Remaining M4 scope
-- stronger high-tier transition feedback if still needed after gameplay-benefit validation
-- near-miss Flow gain only if it can be made readable and deterministic
+#### M4.4 — High-tier momentum transition ✅
+- Rush / Overdrive tier entry is communicated through a short transition boost
+- player downward wake and background streaks temporarily strengthen
+- background receives a restrained teal gradient shift
+- shield-like pulse rings and tier-entry camera shake were removed after mobile feedback
+
+Status: mobile playtest found the revised transition direction appropriate and subtly perceptible. Further amplification is deferred until broader level pacing is established, to avoid over-tuning visual intensity in isolation.
+
+#### Deferred Flow experiments
+- near-miss Flow gain: defer until encounter geometry/pacing makes near-miss detection readable and deterministic
+- additional Flow bonuses: defer until M5 upgrades so Flow does not accumulate unrelated baseline mechanics
 
 Definition of done:
-- skilled play naturally forms chains such as dash → kill → reset → crystal → jump
-- Flow state changes are readable through motion/visual language, not only HUD text
-- high Flow provides a useful but non-mandatory gameplay advantage without destabilizing movement feel
+- skilled play naturally forms traversal chains
+- Flow state changes are readable through motion / visual language, not only HUD text
+- high Flow provides a useful but non-mandatory recovery advantage
+- movement physics remain stable across Flow tiers
 
-### M5 — Roguelite Layer
+### M5 — Roguelite Layer 🚧
 
 Goal: build decisions happen without breaking movement.
 
-Scope:
-- route-based upgrade choices placed directly in the level
-- initial Dash / Jump / Kill / Flow archetypes
-- upgrades that change traversal rules rather than only numeric stats
-
 Design rule:
-- prefer moving through a route to choose an upgrade over pausing for a modal card picker
+
+> Prefer moving through a route to choose an upgrade over pausing for a modal card picker.
+
+#### M5.1 — Route Choice Foundation — next
+
+Goal: prove that the player can make a meaningful build choice while continuing to parkour.
+
+First slice:
+- periodically generate a clearly telegraphed two-route choice encounter
+- left and right routes each advertise one upgrade before commitment
+- collecting / crossing the route pickup applies the upgrade immediately
+- both routes rejoin into a safe recovery beat
+- no modal, pause screen, inventory, shop, or reroll system
+- deterministic generation so the same seed reproduces the same choice
+
+Initial upgrade pair should modify existing traversal rules rather than raw damage numbers:
+- **Dash route** — stronger Dash identity / resource interaction
+- **Flow route** — stronger chain/recovery identity
+
+Validation target:
+- the player understands there is a choice before committing
+- choosing a route feels like part of movement rather than menu navigation
+- either choice noticeably changes the next 30–60 seconds of traversal
+- neither route is strictly required to survive
+
+#### Later M5 slices
+- expand to Jump / Kill archetypes after route-choice UX is validated
+- run-local upgrade state and stacking rules
+- upgrade-aware encounter composition
+- lightweight build summary HUD only if needed for readability
 
 ### M6 — MVP Vertical Slice
 
@@ -215,11 +147,27 @@ Suggested pacing:
 
 The first MVP climax should be an Abyss chase rather than a stationary boss fight.
 
+## Queued systemic work
+
+### Level Pacing / Encounter Composition
+
+Known issue:
+- special encounters such as Moving Platform currently appear too sparsely in practical playtests.
+
+Future scope:
+- encounter decks / weighted phases
+- minimum and maximum spacing per encounter family
+- tutorial → variety → pressure pacing
+- deterministic composition for reproducible playtests
+
+This should be integrated while building M5/M6 rather than tuned as an isolated probability table.
+
 ## Current status
 
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
 - M3 Gameplay Objects: complete
-- M4 Flow System: in progress (M4.3 flow recovery benefit)
-- M5–M6: not started
+- M4 Flow System: complete
+- M5 Roguelite Layer: in progress (M5.1 Route Choice Foundation next)
+- M6 Vertical Slice: not started
