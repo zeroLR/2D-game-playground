@@ -44,7 +44,7 @@ Definition of done:
 
 Status: passed mobile playtest feedback on 2026-08-12.
 
-### M3 — Gameplay Objects 🚧
+### M3 — Gameplay Objects ✅
 
 Goal: world objects create traversal decisions instead of only dealing damage.
 
@@ -108,21 +108,18 @@ Status: mobile playtest confirmed that short traversal patterns are readable as 
 
 Status: mobile playtest confirmed the moving platform reads as an optional route, but encounter frequency/pacing needs a dedicated composition pass.
 
-#### M3.6 — Abyss Pressure 🚧
+#### M3.6 — Abyss Pressure ✅
 
-Goal: add persistent forward pressure without turning the run into a full chase sequence yet.
+- Abyss is a world-space pursuing boundary rather than a screen-space follower
+- sustained upward movement naturally creates distance because the player can climb faster than the Abyss
+- stopping or losing height allows the Abyss to visibly rise into the viewport
+- the liquid renderer uses a readable surface, layered body, restrained glow, ripples, and motes
+- touching the world-space surface ends the run
 
-Rules:
-- the Abyss starts near the bottom of the viewport
-- when the player stops creating new height, the boundary slowly rises
-- creating new height pushes the boundary back down faster than it approaches
-- pressure is capped so normal traversal remains readable
-- touching the visible Abyss boundary ends the run
+Status: mobile playtest accepted both the pursuit behavior and liquid visual presentation.
 
-Validation target:
-- conservative correction remains possible, but indefinite stalling should feel unsafe
-- sustained upward movement should naturally create breathing room
-- pressure should read as pacing, not as another precision obstacle
+Key rule:
+- enemies and objects should create movement decisions, not only subtract HP
 
 #### Level Pacing / Encounter Composition — queued
 
@@ -137,27 +134,39 @@ Future scope:
 - tutorial → variety → pressure pacing
 - deterministic composition for reproducible playtests
 
-#### Remaining M3 scope
-- validate Abyss pressure behavior
-- reconsider Breakable only if a future encounter pattern gives it a clear route-level purpose
-
-Key rule:
-- enemies and objects should create movement decisions, not only subtract HP
-
-### M4 — Flow System
+### M4 — Flow System 🚧
 
 Goal: Flow becomes a felt gameplay state rather than a HUD number.
 
-Scope:
-- Flow gain from clean traversal, kills, crystals, and near misses
-- Flow loss on mistakes
-- increasingly visible but restrained movement trails
+Existing foundation:
+- Dash, landing, Wall Jump, Crystal pickup, and Drone kills already award Flow
+- taking damage resets Flow to baseline
+- score already scales with the current Flow multiplier
+
+#### M4.1 — Chain + visual state 🚧
+
+- successful Flow gains refresh a short chain grace window
+- Flow decays toward baseline when the player stops linking traversal actions
+- Flow tiers: Calm → Engaged → Rush → Overdrive
+- player aura and restrained streaks increase by Flow tier
+- HUD communicates the current tier as well as the multiplier
+- this slice does not change movement speed or physics
+
+Validation target:
+- the player should feel when a chain is building without needing to stare at the number
+- a brief landing correction should not immediately destroy the chain
+- passive/stalled play should visibly cool back down
+- high Flow feedback must remain restrained enough for long mobile sessions
+
+#### Remaining M4 scope
 - speed-linked environmental streaks
-- Flow state feedback at higher multipliers
-- gameplay benefits tied to Flow
+- stronger high-tier transition feedback
+- near-miss Flow gain if it can be made readable and deterministic
+- gameplay benefit tied to Flow after visual/decay tuning is validated
 
 Definition of done:
 - skilled play naturally forms chains such as dash → kill → reset → crystal → jump
+- Flow state changes are readable through motion/visual language, not only HUD text
 
 ### M5 — Roguelite Layer
 
@@ -192,5 +201,6 @@ The first MVP climax should be an Abyss chase rather than a stationary boss figh
 - Mechanics prototype: complete
 - M1 Visual Foundation: complete
 - M2 Parkour Feel: complete
-- M3 Gameplay Objects: in progress (M3.6 Abyss Pressure)
-- M4–M6: not started
+- M3 Gameplay Objects: complete
+- M4 Flow System: in progress (M4.1 chain + visual state)
+- M5–M6: not started
