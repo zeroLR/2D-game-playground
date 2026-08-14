@@ -52,7 +52,7 @@ describe('WorldGenerator', () => {
       const branchPlatforms = group[1].spawns.filter((spawn) => spawn.type === 'platform' && !spawn.motion);
       const upgrades = group[1].spawns.filter((spawn) => spawn.type === 'upgrade');
       expect(branchPlatforms).toHaveLength(2);
-      expect(new Set(branchPlatforms.map((spawn) => spawn.x))).toEqual(new Set([82, 278]));
+      expect(new Set(branchPlatforms.map((spawn) => spawn.type === 'platform' ? spawn.x : null))).toEqual(new Set([82, 278]));
       expect(upgrades).toHaveLength(2);
       expect(new Set(upgrades.map((spawn) => spawn.type === 'upgrade' ? spawn.kind : null))).toEqual(new Set(['dash', 'flow']));
       expect(group[2].spawns.some((spawn) => spawn.type === 'platform' && spawn.x === 180)).toBe(true);
