@@ -1,5 +1,5 @@
 import { SKILLS, type SkillId } from '../domain/skills';
-import { EncounterDirector } from './EncounterDirector';
+import { EncounterDirector, type PacingPhase } from './EncounterDirector';
 
 export const START_PLATFORM_Y = 602;
 export const REGULAR_GAP_MIN = 72;
@@ -45,6 +45,7 @@ export class WorldGenerator {
   private encounterType: EncounterType = 'recovery';
   private encounterStep = ENCOUNTER_LENGTH;
   private encounterPlans: BandPlan[] = [];
+  private encounterPhase: PacingPhase = 'warmup';
   private encountersSinceSkill = 0;
   private encountersSinceRoute = 0;
   private choiceId = 0;
@@ -55,7 +56,7 @@ export class WorldGenerator {
   constructor(readonly seed: number) { this.random = new SeededRandom(seed); }
   getLastY() { return this.lastY; }
   queueRoute(kind: RouteKind) { this.queuedRoute = kind; }
-  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; this.encountersSinceSkill = 0; this.encountersSinceRoute = 0; this.choiceId = 0; this.queuedRoute = null; this.director.reset(); }
+  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; this.encounterPhase = 'warmup'; this.encountersSinceSkill = 0; this.encountersSinceRoute = 0; this.choiceId = 0; this.queuedRoute = null; this.director.reset(); }
 
   nextBand(): WorldBand {
     if (this.encounterStep >= this.encounterPlans.length) this.startEncounter();
@@ -80,6 +81,7 @@ export class WorldGenerator {
     } else if (this.encountersSinceSkill >= SKILL_CHOICE_INTERVAL) {
       this.encounterType = 'upgrade-choice'; this.encountersSinceSkill = 0; this.encountersSinceRoute += 1; this.choiceId += 1;
     } else {
+      this.encounterPhase = this.director.getPhase();
       this.encounterType = this.director.next(() => this.random.next());
       this.encountersSinceSkill += 1; this.encountersSinceRoute += 1;
     }
@@ -88,11 +90,11 @@ export class WorldGenerator {
 
   private buildEncounter(type: EncounterType): BandPlan[] {
     switch (type) {
-      case 'recovery': return this.buildRecovery();
-      case 'dash-chain': return this.buildDashChain();
-      case 'edge-read': return this.buildEdgeRead();
-      case 'wall-rescue': return this.buildWallRescue();
-      case 'moving-window': return this.buildMovingWindow();
+      case 'recovery': return this.buildRecovery(this.encounterPhase);
+      case 'dash-chain': return this.buildDashChain(this.encounterPhase);
+      case 'edge-read': return this.buildEdgeRead(this.encounterPhase);
+      case 'wall-rescue': return this.buildWallRescue(this.encounterPhase);
+      case 'moving-window': return this.buildMovingWindow(this.encounterPhase);
       case 'upgrade-choice': return this.buildUpgradeChoice();
       case 'route-choice': return this.buildRouteChoice();
       case 'treasure': return this.buildTreasure();
@@ -101,11 +103,32 @@ export class WorldGenerator {
     }
   }
 
-  private buildRecovery(): BandPlan[] { const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane); return [{ lane: adjacent, width: 102 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: this.pick([82, 278] as const), width: 104 }, { lane: 180, width: 112, rest: true }]; }
-  private buildDashChain(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const entry: Lane = side === -1 ? 82 : 278; const exit: Lane = side === -1 ? 278 : 82; return [{ lane: entry, width: 106 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
-  private buildEdgeRead(): BandPlan[] { const approach = this.previousPlatformLane; const target: Lane = approach === 82 || approach === 278 ? 180 : this.pick([82, 278] as const); const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1); const width = 110; const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET; const safeExit: Lane = direction > 0 ? 82 : 278; return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: 104 }, { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
-  private buildWallRescue(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const outer: Lane = side === -1 ? 82 : 278; const opposite: Lane = side === -1 ? 278 : 82; return [{ lane: outer, width: 102 }, { lane: opposite, width: 102, decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }] }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
-  private buildMovingWindow(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const safeLane: Lane = side === -1 ? 82 : 278; const rewardLane: Lane = side === -1 ? 278 : 82; const phase = this.random.next() * Math.PI * 2; return [{ lane: 180, width: 108 }, { lane: safeLane, width: 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: 118, motion: { axis: 'x', amplitude: 46, speed: 0.9, phase, originX: 180 } }] }, { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
+  private buildRecovery(phase: PacingPhase): BandPlan[] {
+    const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane);
+    if (phase === 'pressure') return [{ lane: adjacent, width: 98 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'hazard', x: adjacent, y: y - 38 }] }, { lane: this.pick([82, 278] as const), width: 100, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 110, rest: true }];
+    return [{ lane: adjacent, width: 102 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: this.pick([82, 278] as const), width: 104 }, { lane: 180, width: 112, rest: true }];
+  }
+  private buildDashChain(phase: PacingPhase): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const entry: Lane = side === -1 ? 82 : 278; const exit: Lane = side === -1 ? 278 : 82;
+    if (phase === 'warmup') return [{ lane: entry, width: 112 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 112, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 116, rest: true }];
+    if (phase === 'pressure') return [{ lane: entry, width: 100 }, { lane: 180, width: 96, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }, { type: 'hazard', x: entry, y: y - 34 }] }, { lane: exit, width: 102, decorate: (y) => [{ type: 'drone', x: entry, y: y - 40, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 108, rest: true }];
+    return [{ lane: entry, width: 106 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
+  }
+  private buildEdgeRead(phase: PacingPhase): BandPlan[] {
+    const approach = this.previousPlatformLane; const target: Lane = approach === 82 || approach === 278 ? 180 : this.pick([82, 278] as const); const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1); const width = phase === 'pressure' ? 102 : phase === 'warmup' ? 116 : 110; const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET; const safeExit: Lane = direction > 0 ? 82 : 278;
+    const pressureExtra = phase === 'pressure' ? [{ type: 'hazard' as const, x: direction > 0 ? 278 : 82, y: 0 }] : [];
+    return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: phase === 'pressure' ? 98 : 104, decorate: phase === 'pressure' ? (y) => pressureExtra.map((spawn) => ({ ...spawn, y: y - 38 })) : undefined }, { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
+  }
+  private buildWallRescue(phase: PacingPhase): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const outer: Lane = side === -1 ? 82 : 278; const opposite: Lane = side === -1 ? 278 : 82;
+    const middleDecorate = (y: number): WorldSpawn[] => [{ type: 'wall', side, y: y - 42, height: phase === 'pressure' ? 154 : 132 }, ...(phase === 'pressure' ? [{ type: 'drone' as const, x: outer, y: y - 46, phase: this.random.next() * Math.PI * 2 }] : [])];
+    return [{ lane: outer, width: phase === 'warmup' ? 108 : 102 }, { lane: opposite, width: phase === 'pressure' ? 96 : 102, decorate: middleDecorate }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
+  }
+  private buildMovingWindow(phase: PacingPhase): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const safeLane: Lane = side === -1 ? 82 : 278; const rewardLane: Lane = side === -1 ? 278 : 82; const motionPhase = this.random.next() * Math.PI * 2;
+    const amplitude = phase === 'warmup' ? 34 : phase === 'pressure' ? 58 : 46; const speed = phase === 'warmup' ? 0.72 : phase === 'pressure' ? 1.12 : 0.9;
+    return [{ lane: 180, width: 108 }, { lane: safeLane, width: phase === 'pressure' ? 100 : 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: phase === 'pressure' ? 108 : 118, motion: { axis: 'x', amplitude, speed, phase: motionPhase, originX: 180 } }] }, { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }, ...(phase === 'pressure' ? [{ type: 'hazard' as const, x: 180, y: y - 36 }] : [])] }, { lane: 180, width: 112, rest: true }];
+  }
   private buildUpgradeChoice(): BandPlan[] { const id = this.choiceId; const pair = this.pickSkillPair(); return [{ lane: 180, width: 118 }, { lane: 82, width: 108, decorate: (y) => [{ type: 'platform', x: 278, y, width: 108 }, { type: 'upgrade', x: 82, y: y - 46, kind: SKILLS[pair[0]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[0], choiceId: id }, { type: 'upgrade', x: 278, y: y - 46, kind: SKILLS[pair[1]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[1], choiceId: id }] }, { lane: 180, width: 116, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 44 }] }, { lane: 180, width: 122, rest: true }]; }
   private buildRouteChoice(): BandPlan[] { const id = this.choiceId; const pair = this.pickRoutePair(); return [{ lane: 180, width: 120 }, { lane: 82, width: 112, decorate: (y) => [{ type: 'platform', x: 278, y, width: 112 }, { type: 'route', x: 82, y: y - 48, kind: pair[0], choiceId: id }, { type: 'route', x: 278, y: y - 48, kind: pair[1], choiceId: id }] }, { lane: 180, width: 120 }, { lane: 180, width: 126, rest: true }]; }
   private buildTreasure(): BandPlan[] { return [{ lane: 180, width: 118, decorate: (y) => [{ type: 'crystal', x: 150, y: y - 48 }, { type: 'crystal', x: 210, y: y - 48 }] }, { lane: 82, width: 112, decorate: (y) => [{ type: 'crystal', x: 82, y: y - 46 }] }, { lane: 278, width: 112, decorate: (y) => [{ type: 'crystal', x: 278, y: y - 46 }] }, { lane: 180, width: 126, rest: true }]; }
