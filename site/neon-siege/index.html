@@ -12,28 +12,34 @@
       body { font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; overscroll-behavior:none; }
       canvas { display:block; width:100%; height:100%; image-rendering:pixelated; touch-action:none; }
       #touch-controls { display:none; position:fixed; inset:0; z-index:20; pointer-events:none; user-select:none; -webkit-user-select:none; }
-      .touch-cluster,.tower-selector { pointer-events:auto; }
+      .touch-cluster,.tower-selector,.weapon-selector { pointer-events:auto; }
       .touch-cluster { position:absolute; bottom:calc(8px + env(safe-area-inset-bottom)); display:flex; gap:7px; align-items:end; }
       .touch-left { left:calc(8px + env(safe-area-inset-left)); }
       .touch-right { right:calc(8px + env(safe-area-inset-right)); }
-      .touch-btn,.tower-btn { appearance:none; border:1px solid rgba(255,255,255,.16); background:var(--panel); color:#eef4f6; font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); touch-action:none; }
+      .touch-btn,.tower-btn,.weapon-btn { appearance:none; border:1px solid rgba(255,255,255,.16); background:var(--panel); color:#eef4f6; font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); touch-action:none; }
       .touch-btn { width:48px; height:48px; border-radius:50%; box-shadow:0 5px 16px rgba(0,0,0,.2); opacity:.78; }
       .touch-btn:active,.touch-btn.is-active { transform:scale(.94); opacity:1; border-color:var(--cyan); background:rgba(20,44,47,.84); }
       .touch-btn.shoot { border-color:rgba(255,53,127,.62); }
       .touch-btn.build { border-color:rgba(245,185,66,.62); color:var(--amber); }
-      .tower-selector { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(8px + env(safe-area-inset-bottom)); display:flex; gap:5px; padding:4px; border:1px solid rgba(255,255,255,.08); border-radius:18px; background:rgba(5,9,13,.46); opacity:.72; }
+      .tower-selector,.weapon-selector { position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:5px; padding:4px; border:1px solid rgba(255,255,255,.08); border-radius:18px; background:rgba(5,9,13,.46); opacity:.78; }
+      .tower-selector { bottom:calc(8px + env(safe-area-inset-bottom)); }
+      .weapon-selector { bottom:calc(43px + env(safe-area-inset-bottom)); }
       .tower-btn { min-width:68px; height:28px; padding:0 8px; border-radius:14px; font-size:9px; }
+      .weapon-btn { min-width:54px; height:25px; padding:0 7px; border-radius:13px; font-size:8px; }
       .tower-btn.is-selected { border-color:var(--cyan); color:var(--cyan); background:rgba(12,39,40,.78); }
+      .weapon-btn.is-selected { border-color:var(--pink); color:var(--pink); background:rgba(54,12,31,.78); }
       #rotate-hint { display:none; position:fixed; inset:0; z-index:30; place-items:center; padding:24px; background:#05070b; color:#eef4f6; text-align:center; font:800 16px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
       @media (pointer:coarse),(max-width:1024px) { #touch-controls { display:block; } }
       @media (pointer:coarse) and (orientation:portrait) and (max-width:700px) { #rotate-hint { display:grid; } }
       @media (max-height:430px) {
         .touch-btn { width:43px; height:43px; font-size:9px; }
         .tower-selector { bottom:calc(7px + env(safe-area-inset-bottom)); }
+        .weapon-selector { bottom:calc(38px + env(safe-area-inset-bottom)); }
         .tower-btn { min-width:62px; height:25px; font-size:8px; }
+        .weapon-btn { min-width:47px; height:22px; font-size:7px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CBOGNCR-.js"></script>
+    <script type="module" crossorigin src="./assets/index-DxPYloNQ.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -42,6 +48,12 @@
         <button class="touch-btn" data-hold-key="ArrowLeft" aria-label="Move left">◀</button>
         <button class="touch-btn" data-hold-key="ArrowRight" aria-label="Move right">▶</button>
         <button class="touch-btn" data-tap-key="Space" aria-label="Jump">JMP</button>
+      </div>
+      <div class="weapon-selector" aria-label="Weapon selector">
+        <button class="weapon-btn is-selected" data-weapon="0" data-tap-key="KeyZ">PST</button>
+        <button class="weapon-btn" data-weapon="1" data-tap-key="KeyX">SMG</button>
+        <button class="weapon-btn" data-weapon="2" data-tap-key="KeyC">SG</button>
+        <button class="weapon-btn" data-weapon="3" data-tap-key="KeyV">RAIL</button>
       </div>
       <div class="tower-selector" aria-label="Tower selector">
         <button class="tower-btn is-selected" data-tower="0" data-tap-key="Digit1">TURRET</button>
@@ -58,7 +70,7 @@
         const send=(type,code)=>window.dispatchEvent(new KeyboardEvent(type,{code,bubbles:true}));
         const release=(button)=>{const code=button.dataset.holdKey;if(!code||!button.classList.contains('is-active'))return;button.classList.remove('is-active');send('keyup',code);};
         document.querySelectorAll('[data-hold-key]').forEach((button)=>{button.addEventListener('pointerdown',(event)=>{event.preventDefault();button.setPointerCapture?.(event.pointerId);button.classList.add('is-active');send('keydown',button.dataset.holdKey);});button.addEventListener('pointerup',()=>release(button));button.addEventListener('pointercancel',()=>release(button));button.addEventListener('lostpointercapture',()=>release(button));});
-        document.querySelectorAll('[data-tap-key]').forEach((button)=>{button.addEventListener('pointerdown',(event)=>{event.preventDefault();const code=button.dataset.tapKey;send('keydown',code);requestAnimationFrame(()=>send('keyup',code));if(button.dataset.tower!==undefined){document.querySelectorAll('[data-tower]').forEach((item)=>item.classList.remove('is-selected'));button.classList.add('is-selected');}});});
+        document.querySelectorAll('[data-tap-key]').forEach((button)=>{button.addEventListener('pointerdown',(event)=>{event.preventDefault();const code=button.dataset.tapKey;send('keydown',code);requestAnimationFrame(()=>send('keyup',code));if(button.dataset.tower!==undefined){document.querySelectorAll('[data-tower]').forEach((item)=>item.classList.remove('is-selected'));button.classList.add('is-selected');}if(button.dataset.weapon!==undefined){document.querySelectorAll('[data-weapon]').forEach((item)=>item.classList.remove('is-selected'));button.classList.add('is-selected');}});});
         window.addEventListener('blur',()=>document.querySelectorAll('[data-hold-key]').forEach(release));
       })();
     </script>
