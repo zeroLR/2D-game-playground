@@ -6,7 +6,8 @@ export type GameEvent =
   | { type: 'wall-jumped'; x: number; y: number; direction: Direction }
   | { type: 'crystal-picked'; x: number; y: number }
   | { type: 'drone-killed'; x: number; y: number }
-  | { type: 'player-hit'; x: number; y: number };
+  | { type: 'player-hit'; x: number; y: number }
+  | { type: 'flow-tier-entered'; x: number; y: number; tier: 'rush' | 'overdrive' };
 
 export class GameEventQueue {
   private readonly events: GameEvent[] = [];

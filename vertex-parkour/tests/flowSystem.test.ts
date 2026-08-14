@@ -75,4 +75,26 @@ describe('FlowSystem', () => {
     expect(frame.graceRemaining).toBe(0);
     expect(frame.tier).toBe('calm');
   });
+
+  it('reports Rush and Overdrive only when crossing upward into them', () => {
+    const system = new FlowSystem();
+    let frame = system.update({ ...createInitialState(), flow: 5.8 }, 0.016);
+    expect(frame.enteredTier).toBeNull();
+    frame = system.update({ ...frame.state, flow: 6.2 }, 0.016);
+    expect(frame.enteredTier).toBe('rush');
+    frame = system.update({ ...frame.state, flow: 7.1 }, 0.016);
+    expect(frame.enteredTier).toBeNull();
+    frame = system.update({ ...frame.state, flow: 9.1 }, 0.016);
+    expect(frame.enteredTier).toBe('overdrive');
+  });
+
+  it('can report Rush again after Flow falls below the tier', () => {
+    const system = new FlowSystem();
+    let frame = system.update({ ...createInitialState(), flow: 6.4 }, 0.016);
+    expect(frame.enteredTier).toBe('rush');
+    frame = system.update({ ...frame.state, flow: 5.5 }, 0.016);
+    expect(frame.enteredTier).toBeNull();
+    frame = system.update({ ...frame.state, flow: 6.1 }, 0.016);
+    expect(frame.enteredTier).toBe('rush');
+  });
 });

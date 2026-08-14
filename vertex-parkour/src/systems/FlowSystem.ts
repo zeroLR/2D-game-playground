@@ -13,6 +13,7 @@ export type FlowFrame = {
   tier: FlowTier;
   intensity: number;
   graceRemaining: number;
+  enteredTier: 'rush' | 'overdrive' | null;
 };
 
 export function getFlowTier(flow: number): FlowTier {
@@ -26,18 +27,29 @@ export function getFlowIntensity(flow: number) {
   return Math.max(0, Math.min(1, (flow - FLOW_MIN) / (FLOW_MAX - FLOW_MIN)));
 }
 
+function tierRank(tier: FlowTier) {
+  switch (tier) {
+    case 'calm': return 0;
+    case 'engaged': return 1;
+    case 'rush': return 2;
+    case 'overdrive': return 3;
+  }
+}
+
 /**
  * Adds temporal meaning to the existing domain Flow gains.
- * Gameplay actions still decide how much Flow is earned; this system only
- * observes gains, maintains a short chaining grace period, and decays Flow
- * when the player stops connecting traversal actions.
+ * Gameplay actions still decide how much Flow is earned; this system observes
+ * gains, maintains a short chaining grace period, decays Flow when chaining
+ * stops, and reports one-shot high-tier entry transitions for presentation.
  */
 export class FlowSystem {
   private previousFlow = FLOW_MIN;
+  private previousTier: FlowTier = 'calm';
   private graceRemaining = 0;
 
   reset() {
     this.previousFlow = FLOW_MIN;
+    this.previousTier = 'calm';
     this.graceRemaining = 0;
   }
 
@@ -49,11 +61,8 @@ export class FlowSystem {
     if (gainedFlow) {
       this.graceRemaining = FLOW_GRACE_SECONDS;
     } else if (lostFlow) {
-      // A mistake/reset should immediately end the current chain grace.
       this.graceRemaining = 0;
     } else {
-      // A frame may cross the grace boundary. Only the portion of the frame
-      // after grace has actually expired is eligible for Flow decay.
       const graceConsumed = Math.min(this.graceRemaining, deltaSeconds);
       this.graceRemaining = Math.max(0, this.graceRemaining - graceConsumed);
       decaySeconds = Math.max(0, deltaSeconds - graceConsumed);
@@ -64,13 +73,18 @@ export class FlowSystem {
       flow = Math.max(FLOW_MIN, flow - FLOW_DECAY_PER_SECOND * decaySeconds);
     }
 
+    const tier = getFlowTier(flow);
+    const enteredTier = tierRank(tier) > tierRank(this.previousTier) && (tier === 'rush' || tier === 'overdrive') ? tier : null;
+
     this.previousFlow = flow;
+    this.previousTier = tier;
     const nextState = flow === state.flow ? state : { ...state, flow };
     return {
       state: nextState,
-      tier: getFlowTier(flow),
+      tier,
       intensity: getFlowIntensity(flow),
       graceRemaining: this.graceRemaining,
+      enteredTier,
     };
   }
 }
