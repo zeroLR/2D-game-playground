@@ -19,13 +19,14 @@
       .touch-btn,.tower-btn,.weapon-btn { appearance:none; border:1px solid rgba(255,255,255,.16); background:var(--panel); color:#eef4f6; font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); touch-action:none; }
       .touch-btn { width:48px; height:48px; border-radius:50%; box-shadow:0 5px 16px rgba(0,0,0,.2); opacity:.78; }
       .touch-btn:active,.touch-btn.is-active { transform:scale(.94); opacity:1; border-color:var(--cyan); background:rgba(20,44,47,.84); }
-      .touch-btn.shoot { border-color:rgba(255,53,127,.62); }
-      .touch-btn.build { border-color:rgba(245,185,66,.62); color:var(--amber); }
-      .tower-selector,.weapon-selector { position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:5px; padding:4px; border:1px solid rgba(255,255,255,.08); border-radius:18px; background:rgba(5,9,13,.46); opacity:.78; }
-      .tower-selector { bottom:calc(8px + env(safe-area-inset-bottom)); }
-      .weapon-selector { bottom:calc(43px + env(safe-area-inset-bottom)); }
-      .tower-btn { min-width:68px; height:28px; padding:0 8px; border-radius:14px; font-size:9px; }
-      .weapon-btn { min-width:54px; height:25px; padding:0 7px; border-radius:13px; font-size:8px; }
+      .touch-btn.jump { border-color:rgba(57,227,210,.55); }
+      .touch-btn.shoot { width:54px; height:54px; border-color:rgba(255,53,127,.72); color:#fff; }
+      .touch-btn.build { width:44px; height:44px; border-color:rgba(245,185,66,.62); color:var(--amber); font-size:9px; }
+      .tower-selector,.weapon-selector { position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:4px; padding:3px; border:1px solid rgba(255,255,255,.07); border-radius:16px; background:rgba(5,9,13,.42); opacity:.68; }
+      .tower-selector { bottom:calc(7px + env(safe-area-inset-bottom)); }
+      .weapon-selector { bottom:calc(38px + env(safe-area-inset-bottom)); }
+      .tower-btn { min-width:62px; height:25px; padding:0 7px; border-radius:13px; font-size:8px; }
+      .weapon-btn { min-width:48px; height:22px; padding:0 6px; border-radius:12px; font-size:7px; }
       .tower-btn.is-selected { border-color:var(--cyan); color:var(--cyan); background:rgba(12,39,40,.78); }
       .weapon-btn.is-selected { border-color:var(--pink); color:var(--pink); background:rgba(54,12,31,.78); }
       #rotate-hint { display:none; position:fixed; inset:0; z-index:30; place-items:center; padding:24px; background:#05070b; color:#eef4f6; text-align:center; font:800 16px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -33,13 +34,15 @@
       @media (pointer:coarse) and (orientation:portrait) and (max-width:700px) { #rotate-hint { display:grid; } }
       @media (max-height:430px) {
         .touch-btn { width:43px; height:43px; font-size:9px; }
-        .tower-selector { bottom:calc(7px + env(safe-area-inset-bottom)); }
-        .weapon-selector { bottom:calc(38px + env(safe-area-inset-bottom)); }
-        .tower-btn { min-width:62px; height:25px; font-size:8px; }
-        .weapon-btn { min-width:47px; height:22px; font-size:7px; }
+        .touch-btn.shoot { width:49px; height:49px; }
+        .touch-btn.build { width:40px; height:40px; font-size:8px; }
+        .tower-selector { bottom:calc(6px + env(safe-area-inset-bottom)); }
+        .weapon-selector { bottom:calc(34px + env(safe-area-inset-bottom)); }
+        .tower-btn { min-width:56px; height:23px; font-size:7px; }
+        .weapon-btn { min-width:43px; height:20px; font-size:7px; }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CzNH-7iK.js"></script>
+    <script type="module" crossorigin src="./assets/index-DIjW1gLB.js"></script>
   </head>
   <body>
     <div id="app"></div>
@@ -47,7 +50,6 @@
       <div class="touch-cluster touch-left">
         <button class="touch-btn" data-hold-key="ArrowLeft" aria-label="Move left">◀</button>
         <button class="touch-btn" data-hold-key="ArrowRight" aria-label="Move right">▶</button>
-        <button class="touch-btn" data-tap-key="Space" aria-label="Jump">JMP</button>
       </div>
       <div class="weapon-selector" aria-label="Weapon selector">
         <button class="weapon-btn is-selected" data-weapon="0" data-tap-key="KeyZ">PST</button>
@@ -60,6 +62,7 @@
         <button class="tower-btn" data-tower="1" data-tap-key="Digit2">TESLA</button>
       </div>
       <div class="touch-cluster touch-right">
+        <button class="touch-btn jump" data-tap-key="Space" aria-label="Jump">JMP</button>
         <button class="touch-btn shoot" data-hold-key="KeyJ" aria-label="Shoot">FIRE</button>
         <button class="touch-btn build" data-tap-key="KeyB" aria-label="Build selected tower">BUILD</button>
       </div>
