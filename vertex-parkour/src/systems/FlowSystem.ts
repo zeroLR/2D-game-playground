@@ -44,6 +44,7 @@ export class FlowSystem {
   update(state: GameState, deltaSeconds: number): FlowFrame {
     const gainedFlow = state.flow > this.previousFlow + FLOW_GAIN_EPSILON;
     const lostFlow = state.flow < this.previousFlow - FLOW_GAIN_EPSILON;
+    let decaySeconds = 0;
 
     if (gainedFlow) {
       this.graceRemaining = FLOW_GRACE_SECONDS;
@@ -51,12 +52,16 @@ export class FlowSystem {
       // A mistake/reset should immediately end the current chain grace.
       this.graceRemaining = 0;
     } else {
-      this.graceRemaining = Math.max(0, this.graceRemaining - deltaSeconds);
+      // A frame may cross the grace boundary. Only the portion of the frame
+      // after grace has actually expired is eligible for Flow decay.
+      const graceConsumed = Math.min(this.graceRemaining, deltaSeconds);
+      this.graceRemaining = Math.max(0, this.graceRemaining - graceConsumed);
+      decaySeconds = Math.max(0, deltaSeconds - graceConsumed);
     }
 
     let flow = state.flow;
-    if (!gainedFlow && this.graceRemaining <= 0 && flow > FLOW_MIN) {
-      flow = Math.max(FLOW_MIN, flow - FLOW_DECAY_PER_SECOND * deltaSeconds);
+    if (!gainedFlow && !lostFlow && decaySeconds > 0 && flow > FLOW_MIN) {
+      flow = Math.max(FLOW_MIN, flow - FLOW_DECAY_PER_SECOND * decaySeconds);
     }
 
     this.previousFlow = flow;
