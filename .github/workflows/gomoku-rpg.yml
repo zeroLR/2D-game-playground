@@ -1,17 +1,29 @@
-name: Gomoku RPG
+name: Gomoku RPG CI
 
 on:
+  pull_request:
+    paths:
+      - "gomoku-rpg/**"
+      - ".github/workflows/gomoku-rpg.yml"
+      - ".github/workflows/game-pages.yml"
   push:
     branches: [main]
-    paths: ["gomoku-rpg/**", ".github/workflows/gomoku-rpg.yml", ".github/workflows/game-pages.yml"]
-  pull_request:
-    paths: ["gomoku-rpg/**", ".github/workflows/gomoku-rpg.yml", ".github/workflows/game-pages.yml"]
+    paths:
+      - "gomoku-rpg/**"
+      - ".github/workflows/gomoku-rpg.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   game:
     uses: ./.github/workflows/game-pages.yml
     with:
       game: gomoku-rpg
-      install-command: npm install
+      install-command: npm install --no-audit --no-fund
       run-tests: true
       deploy: false
