@@ -94,7 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for game in simple-roguelike axiom vertex-parkour neon-siege; do
+          for game in simple-roguelike axiom vertex-parkour neon-siege gomoku-rpg; do
             if [ ! -f "_pages_state/site/${game}/index.html" ]; then
               echo "Missing published game: ${game}"
               missing=1
@@ -128,6 +128,7 @@ jobs:
             <li><a href="./axiom/">axiom</a><div class="desc">Mobile-portrait reverse bullet-hell deckbuilder (WIP).</div></li>
             <li><a href="./vertex-parkour/">vertex-parkour</a><div class="desc">Mobile-portrait parkour roguelite vertical slice.</div></li>
             <li><a href="./neon-siege/">neon-siege</a><div class="desc">Cyberpunk horizontal action tower-defense MVP.</div></li>
+            <li><a href="./gomoku-rpg/">gomoku-rpg</a><div class="desc">Portrait-first 9×9 Gomoku RPG with Mana and tactical Blink.</div></li>
           </ul>
           HTML
 
