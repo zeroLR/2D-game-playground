@@ -1,5 +1,5 @@
 import type { GameEventQueue } from '../domain/events';
-import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
+import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
 import type { WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
@@ -25,11 +25,7 @@ export class CollisionSystem {
     if (next.velocityY >= 0 && next.landingTime <= 0) {
       const nextFeet = next.playerY + PLAYER_FEET_OFFSET;
       for (const platform of world.platforms) {
-        if (
-          Math.abs(next.playerX - platform.x) <= platform.width / 2 + LANDING_EDGE_ASSIST &&
-          previousFeet <= platform.y + 4 &&
-          nextFeet >= platform.y - 2
-        ) {
+        if (Math.abs(next.playerX - platform.x) <= platform.width / 2 + LANDING_EDGE_ASSIST && previousFeet <= platform.y + 4 && nextFeet >= platform.y - 2) {
           next = applyLanding(next, platform.y);
           events.emit({ type: 'landed', x: next.playerX, y: next.playerY + cameraOffset });
           break;
@@ -48,6 +44,15 @@ export class CollisionSystem {
       }
     }
     if (!touchingWall) next = clearWallContact(next);
+
+    for (const upgrade of world.upgrades) {
+      if (upgrade.taken || upgrade.locked) continue;
+      if (Math.abs(next.playerX - upgrade.x) < 28 && Math.abs(next.playerY - upgrade.y) < 34) {
+        world.commitUpgradeChoice(upgrade.choiceId, upgrade.id);
+        next = applyUpgrade(next, upgrade.kind);
+        break;
+      }
+    }
 
     for (const crystal of world.crystals) {
       if (!crystal.taken && Math.abs(next.playerX - crystal.x) < 24 && Math.abs(next.playerY - crystal.y) < 32) {

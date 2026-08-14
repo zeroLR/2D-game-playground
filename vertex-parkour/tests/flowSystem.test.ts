@@ -3,7 +3,9 @@ import { createInitialState } from '../src/domain/gameState';
 import {
   FLOW_DECAY_PER_SECOND,
   FLOW_GRACE_SECONDS,
+  FLOW_UPGRADE_GRACE_BONUS,
   FlowSystem,
+  getFlowGraceSeconds,
   getFlowIntensity,
   getFlowTier,
 } from '../src/systems/FlowSystem';
@@ -20,6 +22,14 @@ describe('FlowSystem', () => {
     expect(getFlowIntensity(1)).toBe(0);
     expect(getFlowIntensity(12)).toBe(1);
     expect(getFlowIntensity(20)).toBe(1);
+  });
+
+  it('extends chain grace after choosing the Flow route', () => {
+    const state = { ...createInitialState(), flowUpgradeLevel: 1 };
+    expect(getFlowGraceSeconds(state)).toBeCloseTo(FLOW_GRACE_SECONDS + FLOW_UPGRADE_GRACE_BONUS);
+    const system = new FlowSystem();
+    const frame = system.update({ ...state, flow: 2.4 }, 0.016);
+    expect(frame.graceRemaining).toBeCloseTo(FLOW_GRACE_SECONDS + FLOW_UPGRADE_GRACE_BONUS);
   });
 
   it('starts a grace window when gameplay awards Flow', () => {

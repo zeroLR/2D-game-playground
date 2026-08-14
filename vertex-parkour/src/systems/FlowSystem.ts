@@ -3,6 +3,7 @@ import type { GameState } from '../domain/gameState';
 export const FLOW_MIN = 1;
 export const FLOW_MAX = 12;
 export const FLOW_GRACE_SECONDS = 1.35;
+export const FLOW_UPGRADE_GRACE_BONUS = 0.45;
 export const FLOW_DECAY_PER_SECOND = 0.9;
 export const FLOW_GAIN_EPSILON = 0.05;
 
@@ -27,6 +28,10 @@ export function getFlowIntensity(flow: number) {
   return Math.max(0, Math.min(1, (flow - FLOW_MIN) / (FLOW_MAX - FLOW_MIN)));
 }
 
+export function getFlowGraceSeconds(state: GameState) {
+  return FLOW_GRACE_SECONDS + state.flowUpgradeLevel * FLOW_UPGRADE_GRACE_BONUS;
+}
+
 function tierRank(tier: FlowTier) {
   switch (tier) {
     case 'calm': return 0;
@@ -36,12 +41,6 @@ function tierRank(tier: FlowTier) {
   }
 }
 
-/**
- * Adds temporal meaning to the existing domain Flow gains.
- * Gameplay actions still decide how much Flow is earned; this system observes
- * gains, maintains a short chaining grace period, decays Flow when chaining
- * stops, and reports one-shot high-tier entry transitions for presentation.
- */
 export class FlowSystem {
   private previousFlow = FLOW_MIN;
   private previousTier: FlowTier = 'calm';
@@ -59,7 +58,7 @@ export class FlowSystem {
     let decaySeconds = 0;
 
     if (gainedFlow) {
-      this.graceRemaining = FLOW_GRACE_SECONDS;
+      this.graceRemaining = getFlowGraceSeconds(state);
     } else if (lostFlow) {
       this.graceRemaining = 0;
     } else {
@@ -79,12 +78,6 @@ export class FlowSystem {
     this.previousFlow = flow;
     this.previousTier = tier;
     const nextState = flow === state.flow ? state : { ...state, flow };
-    return {
-      state: nextState,
-      tier,
-      intensity: getFlowIntensity(flow),
-      graceRemaining: this.graceRemaining,
-      enteredTier,
-    };
+    return { state: nextState, tier, intensity: getFlowIntensity(flow), graceRemaining: this.graceRemaining, enteredTier };
   }
 }

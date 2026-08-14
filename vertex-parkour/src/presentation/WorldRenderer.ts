@@ -1,14 +1,15 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, WorldEntity } from '../world/WorldState';
+import { createUpgradeVisual } from './UpgradeRenderer';
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
 export class WorldRenderer {
-  private readonly views = new Map<EntityId, Graphics>();
+  private readonly views = new Map<EntityId, Container>();
 
   constructor(private readonly container: Container) {}
 
   mount(entity: WorldEntity) {
-    let view: Graphics;
+    let view: Container;
     switch (entity.type) {
       case 'platform': view = createPlatformVisual(entity.width); break;
       case 'crystal': view = createCrystalVisual(); break;
@@ -16,6 +17,7 @@ export class WorldRenderer {
       case 'hazard': view = createHazardVisual(); break;
       case 'spike': view = createSpikeVisual(entity.width); break;
       case 'wall': view = createWallVisual(entity.height, entity.side); break;
+      case 'upgrade': view = createUpgradeVisual(entity.kind); break;
     }
     view.position.set(entity.x, entity.y);
     this.container.addChild(view);
@@ -35,6 +37,11 @@ export class WorldRenderer {
         view.visible = !entity.taken;
         view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3;
         view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04;
+      } else if (entity.type === 'upgrade') {
+        view.visible = !entity.taken;
+        view.alpha = entity.locked ? 0.16 : 1;
+        view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2;
+        view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015);
       } else if (entity.type === 'drone') {
         view.visible = !entity.destroyed;
         if (!entity.destroyed) {
@@ -44,13 +51,13 @@ export class WorldRenderer {
       } else if (entity.type === 'hazard') {
         view.y = entity.y + cameraOffset;
         view.rotation += dt * 0.36;
-        setHazardDanger(view, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150));
+        setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150));
       }
     }
   }
 
   clear() {
-    for (const view of this.views.values()) view.destroy();
+    for (const view of this.views.values()) view.destroy({ children: true });
     this.views.clear();
   }
 }

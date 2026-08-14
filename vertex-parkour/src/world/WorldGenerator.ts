@@ -8,10 +8,12 @@ const LANES = [82, 180, 278] as const;
 const SPIKE_WIDTH = 18;
 const SPIKE_EDGE_INSET = 5;
 const ENCOUNTER_LENGTH = 4;
+const CHOICE_INTERVAL = 3;
 
 type Lane = (typeof LANES)[number];
-export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue' | 'moving-window';
+export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue' | 'moving-window' | 'upgrade-choice';
 export type PlatformMotion = { axis: 'x'; amplitude: number; speed: number; phase: number; originX: number };
+export type UpgradeKind = 'dash' | 'flow';
 
 export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number; motion?: PlatformMotion };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
@@ -19,7 +21,8 @@ export type DroneSpawn = { type: 'drone'; x: number; y: number; phase: number };
 export type HazardSpawn = { type: 'hazard'; x: number; y: number };
 export type SpikeSpawn = { type: 'spike'; x: number; y: number; width: number };
 export type WallSpawn = { type: 'wall'; side: -1 | 1; y: number; height: number };
-export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | SpikeSpawn | WallSpawn;
+export type UpgradeSpawn = { type: 'upgrade'; x: number; y: number; kind: UpgradeKind; choiceId: number };
+export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | SpikeSpawn | WallSpawn | UpgradeSpawn;
 
 export type WorldBand = { index: number; y: number; rest: boolean; encounter: EncounterType; encounterStep: number; spawns: WorldSpawn[] };
 type BandPlan = { rest?: boolean; lane: Lane; width: number; decorate?: (y: number) => WorldSpawn[] };
@@ -44,11 +47,13 @@ export class WorldGenerator {
   private encounterType: EncounterType = 'recovery';
   private encounterStep = ENCOUNTER_LENGTH;
   private encounterPlans: BandPlan[] = [];
+  private encountersSinceChoice = 0;
+  private choiceId = 0;
   private readonly random: SeededRandom;
 
   constructor(readonly seed: number) { this.random = new SeededRandom(seed); }
   getLastY() { return this.lastY; }
-  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; }
+  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; this.encountersSinceChoice = 0; this.choiceId = 0; }
 
   nextBand(): WorldBand {
     if (this.encounterStep >= this.encounterPlans.length) this.startEncounter();
@@ -64,8 +69,15 @@ export class WorldGenerator {
   }
 
   private startEncounter() {
-    const roll = this.random.next();
-    this.encounterType = roll < 0.23 ? 'recovery' : roll < 0.45 ? 'dash-chain' : roll < 0.65 ? 'edge-read' : roll < 0.83 ? 'wall-rescue' : 'moving-window';
+    if (this.encountersSinceChoice >= CHOICE_INTERVAL) {
+      this.encounterType = 'upgrade-choice';
+      this.encountersSinceChoice = 0;
+      this.choiceId += 1;
+    } else {
+      const roll = this.random.next();
+      this.encounterType = roll < 0.23 ? 'recovery' : roll < 0.45 ? 'dash-chain' : roll < 0.65 ? 'edge-read' : roll < 0.83 ? 'wall-rescue' : 'moving-window';
+      this.encountersSinceChoice += 1;
+    }
     this.encounterPlans = this.buildEncounter(this.encounterType);
     this.encounterStep = 0;
   }
@@ -77,6 +89,7 @@ export class WorldGenerator {
       case 'edge-read': return this.buildEdgeRead();
       case 'wall-rescue': return this.buildWallRescue();
       case 'moving-window': return this.buildMovingWindow();
+      case 'upgrade-choice': return this.buildUpgradeChoice();
     }
   }
 
@@ -119,6 +132,24 @@ export class WorldGenerator {
       { lane: safeLane, width: 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: 118, motion: { axis: 'x', amplitude: 46, speed: 0.9, phase, originX: 180 } }] },
       { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }] },
       { lane: 180, width: 112, rest: true },
+    ];
+  }
+
+  private buildUpgradeChoice(): BandPlan[] {
+    const id = this.choiceId;
+    return [
+      { lane: 180, width: 118 },
+      {
+        lane: 82,
+        width: 108,
+        decorate: (y) => [
+          { type: 'platform', x: 278, y, width: 108 },
+          { type: 'upgrade', x: 82, y: y - 46, kind: 'dash', choiceId: id },
+          { type: 'upgrade', x: 278, y: y - 46, kind: 'flow', choiceId: id },
+        ],
+      },
+      { lane: 180, width: 116, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 44 }] },
+      { lane: 180, width: 122, rest: true },
     ];
   }
 
