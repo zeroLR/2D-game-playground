@@ -3,6 +3,7 @@ import { REGULAR_GAP_MAX, REGULAR_GAP_MIN, REST_GAP_MAX, REST_GAP_MIN, START_PLA
 
 function generate(seed: number, count: number) { const generator = new WorldGenerator(seed); return Array.from({ length: count }, () => generator.nextBand()); }
 function encounters(bands: WorldBand[]) { const groups: WorldBand[][] = []; for (let index = 0; index < bands.length; index += 4) groups.push(bands.slice(index, index + 4)); return groups; }
+function threatCount(group: WorldBand[]) { return group.flatMap((band) => band.spawns).filter((spawn) => spawn.type === 'drone' || spawn.type === 'hazard' || spawn.type === 'spike').length; }
 
 describe('WorldGenerator', () => {
   it('replays the same encounter sequence for the same seed', () => { expect(generate(12345, 24)).toEqual(generate(12345, 24)); });
@@ -16,4 +17,6 @@ describe('WorldGenerator', () => {
   it('maps skill route into a skill choice encounter', () => { const generator = new WorldGenerator(99); generator.queueRoute('skill'); const group = Array.from({ length: 4 }, () => generator.nextBand()); expect(group.every((band) => band.encounter === 'upgrade-choice')).toBe(true); expect(group.some((band) => band.spawns.some((spawn) => spawn.type === 'upgrade'))).toBe(true); });
   it('keeps recovery encounters resource-positive', () => { for (const group of encounters(generate(42, 400)).filter((group) => group[0].encounter === 'recovery')) expect(group.some((band) => band.spawns.some((spawn) => spawn.type === 'crystal'))).toBe(true); });
   it('authors moving-window as an optional moving shortcut with a static fallback', () => { for (const group of encounters(generate(1618033, 800)).filter((group) => group[0].encounter === 'moving-window')) { expect(group[1].spawns.filter((spawn) => spawn.type === 'platform' && spawn.motion)).toHaveLength(1); expect(group[1].spawns.filter((spawn) => spawn.type === 'platform' && !spawn.motion)).toHaveLength(1); } });
+  it('escalates core encounter threat density deeper into a deterministic run', () => { const groups = encounters(generate(20260815, 320)).filter((group) => !['upgrade-choice', 'route-choice', 'treasure', 'elite', 'rest-route'].includes(group[0].encounter)); const early = groups.slice(0, 4); const late = groups.slice(-10); expect(late.reduce((sum, group) => sum + threatCount(group), 0) / late.length).toBeGreaterThan(early.reduce((sum, group) => sum + threatCount(group), 0) / early.length); });
+  it('keeps pressure moving-window readable with a static landing fallback', () => { const groups = encounters(generate(1618033, 1200)); const lateMoving = groups.slice(20).filter((group) => group[0].encounter === 'moving-window'); expect(lateMoving.length).toBeGreaterThan(0); for (const group of lateMoving) expect(group[1].spawns.some((spawn) => spawn.type === 'platform' && !spawn.motion)).toBe(true); });
 });
