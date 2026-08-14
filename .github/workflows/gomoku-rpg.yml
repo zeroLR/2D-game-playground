@@ -1,0 +1,17 @@
+name: Gomoku RPG
+
+on:
+  push:
+    branches: [main]
+    paths: ["gomoku-rpg/**", ".github/workflows/gomoku-rpg.yml", ".github/workflows/game-pages.yml"]
+  pull_request:
+    paths: ["gomoku-rpg/**", ".github/workflows/gomoku-rpg.yml", ".github/workflows/game-pages.yml"]
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: gomoku-rpg
+      install-command: npm install
+      run-tests: true
+      deploy: false
