@@ -1,5 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, WorldEntity } from '../world/WorldState';
+import { createRouteVisual } from './RouteRenderer';
 import { createUpgradeVisual } from './UpgradeRenderer';
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
@@ -16,6 +17,7 @@ export class WorldRenderer {
       case 'spike': view = createSpikeVisual(entity.width); break;
       case 'wall': view = createWallVisual(entity.height, entity.side); break;
       case 'upgrade': view = createUpgradeVisual(entity.kind, entity.skillId); break;
+      case 'route': view = createRouteVisual(entity.kind); break;
     }
     view.position.set(entity.x, entity.y); this.container.addChild(view); this.views.set(entity.id, view);
   }
@@ -25,7 +27,7 @@ export class WorldRenderer {
       if (entity.type === 'platform') { view.x = entity.x; view.y = entity.y + cameraOffset; }
       else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
       else if (entity.type === 'crystal') { view.visible = !entity.taken; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3; view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04; }
-      else if (entity.type === 'upgrade') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
+      else if (entity.type === 'upgrade' || entity.type === 'route') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
       else if (entity.type === 'drone') { view.visible = !entity.destroyed; if (!entity.destroyed) { view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5; view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06; } }
       else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
