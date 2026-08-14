@@ -32,6 +32,31 @@ export class CombatFeedback {
     this.fade(trail, 0.09);
   }
 
+  enemyAttackTelegraph(x: number, y: number, heavy: boolean) {
+    const radius = heavy ? 28 : 20;
+    const warning = new Graphics()
+      .circle(x, y, radius).stroke({ color: COLORS.amber, width: heavy ? 4 : 3, alpha: 0.95 })
+      .circle(x, y, radius * 0.45).stroke({ color: COLORS.red, width: 2, alpha: 0.85 });
+    this.fx.addChild(warning);
+    this.fade(warning, heavy ? 0.32 : 0.18);
+  }
+
+  enemyAttackImpact(x: number, y: number, heavy: boolean) {
+    const impact = new Graphics();
+    const rays = heavy ? 10 : 7;
+    const radius = heavy ? 34 : 24;
+    for (let i = 0; i < rays; i++) {
+      const angle = (Math.PI * 2 * i) / rays;
+      impact.moveTo(x + Math.cos(angle) * 8, y + Math.sin(angle) * 8)
+        .lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
+        .stroke({ color: i % 2 ? COLORS.red : COLORS.amber, width: heavy ? 3 : 2, alpha: 0.9 });
+    }
+    this.fx.addChild(impact);
+    this.fade(impact, heavy ? 0.2 : 0.14);
+    this.shakeTime = Math.max(this.shakeTime, heavy ? 0.22 : 0.14);
+    this.shakeStrength = Math.max(this.shakeStrength, heavy ? 9 : 6);
+  }
+
   hit(x: number, y: number, damage: number, heavy: boolean) {
     const burst = new Graphics();
     const radius = heavy ? 18 : 12;
@@ -82,7 +107,12 @@ export class CombatFeedback {
     this.shakeStrength = Math.max(this.shakeStrength, heavy ? 7 : 4);
   }
 
-  playerHit(_x?: number, _y?: number, heavy = false) {
+  playerHit(x = 0, y = 0, heavy = false) {
+    const ring = new Graphics()
+      .circle(x, y, heavy ? 30 : 23)
+      .stroke({ color: COLORS.red, width: heavy ? 5 : 3, alpha: 0.95 });
+    this.fx.addChild(ring);
+    this.fade(ring, heavy ? 0.22 : 0.16);
     this.shakeTime = Math.max(this.shakeTime, heavy ? 0.2 : 0.16);
     this.shakeStrength = Math.max(this.shakeStrength, heavy ? 8 : 6);
   }
