@@ -4,11 +4,13 @@ import { Palette } from '../visuals';
 
 export class FxSystem {
   private cameraShake = 0;
+  private flowTransitionBoost = 0;
 
   constructor(private readonly particles: Container) {}
 
   reset() {
     this.cameraShake = 0;
+    this.flowTransitionBoost = 0;
     this.particles.removeChildren().forEach((child) => child.destroy());
   }
 
@@ -33,8 +35,7 @@ export class FxSystem {
         case 'player-hit':
           break;
         case 'flow-tier-entered':
-          this.spawnFlowPulse(event.x, event.y, event.tier);
-          this.cameraShake = Math.max(this.cameraShake, event.tier === 'overdrive' ? 2.2 : 1.3);
+          this.flowTransitionBoost = Math.max(this.flowTransitionBoost, event.tier === 'overdrive' ? 1 : 0.7);
           break;
       }
     }
@@ -42,6 +43,11 @@ export class FxSystem {
 
   update(deltaSeconds: number) {
     this.cameraShake = Math.max(0, this.cameraShake - deltaSeconds * 28);
+    this.flowTransitionBoost = Math.max(0, this.flowTransitionBoost - deltaSeconds * 1.9);
+  }
+
+  getFlowTransitionBoost() {
+    return this.flowTransitionBoost;
   }
 
   getShake(elapsed: number) {
@@ -73,19 +79,6 @@ export class FxSystem {
       shard.rotation = angle;
       this.particles.addChild(shard);
       setTimeout(() => shard.destroy(), 180 + i * 12);
-    }
-  }
-
-  private spawnFlowPulse(x: number, y: number, tier: 'rush' | 'overdrive') {
-    const rings = tier === 'overdrive' ? 2 : 1;
-    for (let i = 0; i < rings; i += 1) {
-      const ring = new Graphics();
-      const radius = 25 + i * 9;
-      ring.circle(0, 0, radius).stroke({ width: tier === 'overdrive' ? 1.5 : 1.2, color: Palette.tealSoft, alpha: tier === 'overdrive' ? 0.42 : 0.3 });
-      ring.position.set(x, y - 2);
-      ring.scale.set(0.82 + i * 0.08);
-      this.particles.addChild(ring);
-      setTimeout(() => ring.destroy(), 220 + i * 70);
     }
   }
 }
