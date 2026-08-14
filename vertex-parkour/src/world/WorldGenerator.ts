@@ -1,3 +1,5 @@
+import { SKILLS, type SkillId } from '../domain/skills';
+
 export const START_PLATFORM_Y = 602;
 export const REGULAR_GAP_MIN = 72;
 export const REGULAR_GAP_MAX = 90;
@@ -10,7 +12,7 @@ const SPIKE_EDGE_INSET = 5;
 const ENCOUNTER_LENGTH = 4;
 const CHOICE_INTERVAL = 3;
 
-type Lane = (typeof LANES)[number];
+export type Lane = (typeof LANES)[number];
 export type EncounterType = 'recovery' | 'dash-chain' | 'edge-read' | 'wall-rescue' | 'moving-window' | 'upgrade-choice';
 export type PlatformMotion = { axis: 'x'; amplitude: number; speed: number; phase: number; originX: number };
 export type UpgradeKind = 'dash' | 'flow';
@@ -21,7 +23,7 @@ export type DroneSpawn = { type: 'drone'; x: number; y: number; phase: number };
 export type HazardSpawn = { type: 'hazard'; x: number; y: number };
 export type SpikeSpawn = { type: 'spike'; x: number; y: number; width: number };
 export type WallSpawn = { type: 'wall'; side: -1 | 1; y: number; height: number };
-export type UpgradeSpawn = { type: 'upgrade'; x: number; y: number; kind: UpgradeKind; choiceId: number };
+export type UpgradeSpawn = { type: 'upgrade'; x: number; y: number; kind: UpgradeKind; skillId?: SkillId; choiceId: number };
 export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | SpikeSpawn | WallSpawn | UpgradeSpawn;
 
 export type WorldBand = { index: number; y: number; rest: boolean; encounter: EncounterType; encounterStep: number; spawns: WorldSpawn[] };
@@ -93,64 +95,33 @@ export class WorldGenerator {
     }
   }
 
-  private buildRecovery(): BandPlan[] {
-    const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane);
-    return [{ lane: adjacent, width: 102 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: this.pick([82, 278] as const), width: 104 }, { lane: 180, width: 112, rest: true }];
-  }
-
-  private buildDashChain(): BandPlan[] {
-    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
-    const entry: Lane = side === -1 ? 82 : 278;
-    const exit: Lane = side === -1 ? 278 : 82;
-    return [{ lane: entry, width: 106 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
-  }
-
-  private buildEdgeRead(): BandPlan[] {
-    const approach = this.previousPlatformLane;
-    const target: Lane = approach === 82 ? 180 : approach === 278 ? 180 : this.pick([82, 278] as const);
-    const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1);
-    const width = 110;
-    const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET;
-    const safeExit: Lane = direction > 0 ? 82 : 278;
-    return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: 104 }, { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
-  }
-
-  private buildWallRescue(): BandPlan[] {
-    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
-    const outer: Lane = side === -1 ? 82 : 278;
-    const opposite: Lane = side === -1 ? 278 : 82;
-    return [{ lane: outer, width: 102 }, { lane: opposite, width: 102, decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }] }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
-  }
-
-  private buildMovingWindow(): BandPlan[] {
-    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
-    const safeLane: Lane = side === -1 ? 82 : 278;
-    const rewardLane: Lane = side === -1 ? 278 : 82;
-    const phase = this.random.next() * Math.PI * 2;
-    return [
-      { lane: 180, width: 108 },
-      { lane: safeLane, width: 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: 118, motion: { axis: 'x', amplitude: 46, speed: 0.9, phase, originX: 180 } }] },
-      { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }] },
-      { lane: 180, width: 112, rest: true },
-    ];
-  }
+  private buildRecovery(): BandPlan[] { const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane); return [{ lane: adjacent, width: 102 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: this.pick([82, 278] as const), width: 104 }, { lane: 180, width: 112, rest: true }]; }
+  private buildDashChain(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const entry: Lane = side === -1 ? 82 : 278; const exit: Lane = side === -1 ? 278 : 82; return [{ lane: entry, width: 106 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
+  private buildEdgeRead(): BandPlan[] { const approach = this.previousPlatformLane; const target: Lane = approach === 82 ? 180 : approach === 278 ? 180 : this.pick([82, 278] as const); const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1); const width = 110; const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET; const safeExit: Lane = direction > 0 ? 82 : 278; return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: 104 }, { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
+  private buildWallRescue(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const outer: Lane = side === -1 ? 82 : 278; const opposite: Lane = side === -1 ? 278 : 82; return [{ lane: outer, width: 102 }, { lane: opposite, width: 102, decorate: (y) => [{ type: 'wall', side, y: y - 42, height: 132 }] }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
+  private buildMovingWindow(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const safeLane: Lane = side === -1 ? 82 : 278; const rewardLane: Lane = side === -1 ? 278 : 82; const phase = this.random.next() * Math.PI * 2; return [{ lane: 180, width: 108 }, { lane: safeLane, width: 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: 118, motion: { axis: 'x', amplitude: 46, speed: 0.9, phase, originX: 180 } }] }, { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }] }, { lane: 180, width: 112, rest: true }]; }
 
   private buildUpgradeChoice(): BandPlan[] {
     const id = this.choiceId;
+    const pair = this.pickSkillPair();
     return [
       { lane: 180, width: 118 },
-      {
-        lane: 82,
-        width: 108,
-        decorate: (y) => [
-          { type: 'platform', x: 278, y, width: 108 },
-          { type: 'upgrade', x: 82, y: y - 46, kind: 'dash', choiceId: id },
-          { type: 'upgrade', x: 278, y: y - 46, kind: 'flow', choiceId: id },
-        ],
-      },
+      { lane: 82, width: 108, decorate: (y) => [
+        { type: 'platform', x: 278, y, width: 108 },
+        { type: 'upgrade', x: 82, y: y - 46, kind: SKILLS[pair[0]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[0], choiceId: id },
+        { type: 'upgrade', x: 278, y: y - 46, kind: SKILLS[pair[1]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[1], choiceId: id },
+      ] },
       { lane: 180, width: 116, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 44 }] },
       { lane: 180, width: 122, rest: true },
     ];
+  }
+
+  private pickSkillPair(): [SkillId, SkillId] {
+    const ids = Object.keys(SKILLS) as SkillId[];
+    const firstIndex = Math.floor(this.random.next() * ids.length);
+    let secondIndex = Math.floor(this.random.next() * (ids.length - 1));
+    if (secondIndex >= firstIndex) secondIndex += 1;
+    return [ids[firstIndex], ids[secondIndex]];
   }
 
   private towardCenterOrAdjacent(lane: Lane): Lane { return lane === 180 ? this.pick([82, 278] as const) : 180; }

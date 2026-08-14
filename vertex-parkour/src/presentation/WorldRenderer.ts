@@ -5,9 +5,7 @@ import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatf
 
 export class WorldRenderer {
   private readonly views = new Map<EntityId, Container>();
-
   constructor(private readonly container: Container) {}
-
   mount(entity: WorldEntity) {
     let view: Container;
     switch (entity.type) {
@@ -17,47 +15,20 @@ export class WorldRenderer {
       case 'hazard': view = createHazardVisual(); break;
       case 'spike': view = createSpikeVisual(entity.width); break;
       case 'wall': view = createWallVisual(entity.height, entity.side); break;
-      case 'upgrade': view = createUpgradeVisual(entity.kind); break;
+      case 'upgrade': view = createUpgradeVisual(entity.kind, entity.skillId); break;
     }
-    view.position.set(entity.x, entity.y);
-    this.container.addChild(view);
-    this.views.set(entity.id, view);
+    view.position.set(entity.x, entity.y); this.container.addChild(view); this.views.set(entity.id, view);
   }
-
   update(entities: WorldEntity[], cameraOffset: number, elapsed: number, playerX: number, playerY: number, dt: number) {
     for (const entity of entities) {
-      const view = this.views.get(entity.id);
-      if (!view) continue;
-      if (entity.type === 'platform') {
-        view.x = entity.x;
-        view.y = entity.y + cameraOffset;
-      } else if (entity.type === 'wall' || entity.type === 'spike') {
-        view.y = entity.y + cameraOffset;
-      } else if (entity.type === 'crystal') {
-        view.visible = !entity.taken;
-        view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3;
-        view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04;
-      } else if (entity.type === 'upgrade') {
-        view.visible = !entity.taken;
-        view.alpha = entity.locked ? 0.16 : 1;
-        view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2;
-        view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015);
-      } else if (entity.type === 'drone') {
-        view.visible = !entity.destroyed;
-        if (!entity.destroyed) {
-          view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5;
-          view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06;
-        }
-      } else if (entity.type === 'hazard') {
-        view.y = entity.y + cameraOffset;
-        view.rotation += dt * 0.36;
-        setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150));
-      }
+      const view = this.views.get(entity.id); if (!view) continue;
+      if (entity.type === 'platform') { view.x = entity.x; view.y = entity.y + cameraOffset; }
+      else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
+      else if (entity.type === 'crystal') { view.visible = !entity.taken; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3; view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04; }
+      else if (entity.type === 'upgrade') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
+      else if (entity.type === 'drone') { view.visible = !entity.destroyed; if (!entity.destroyed) { view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5; view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06; } }
+      else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
   }
-
-  clear() {
-    for (const view of this.views.values()) view.destroy({ children: true });
-    this.views.clear();
-  }
+  clear() { for (const view of this.views.values()) view.destroy({ children: true }); this.views.clear(); }
 }

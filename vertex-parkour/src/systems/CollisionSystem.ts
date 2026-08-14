@@ -1,23 +1,13 @@
 import type { GameEventQueue } from '../domain/events';
-import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
+import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applySkill, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
 import type { WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
 
-export type CollisionResult = {
-  state: GameState;
-  invulnerable: number;
-};
+export type CollisionResult = { state: GameState; invulnerable: number };
 
 export class CollisionSystem {
-  update(
-    state: GameState,
-    previousPlayerY: number,
-    world: WorldState,
-    cameraOffset: number,
-    invulnerable: number,
-    events: GameEventQueue,
-  ): CollisionResult {
+  update(state: GameState, previousPlayerY: number, world: WorldState, cameraOffset: number, invulnerable: number, events: GameEventQueue): CollisionResult {
     let next = state;
     let nextInvulnerable = invulnerable;
     const previousFeet = previousPlayerY + PLAYER_FEET_OFFSET;
@@ -49,7 +39,7 @@ export class CollisionSystem {
       if (upgrade.taken || upgrade.locked) continue;
       if (Math.abs(next.playerX - upgrade.x) < 28 && Math.abs(next.playerY - upgrade.y) < 34) {
         world.commitUpgradeChoice(upgrade.choiceId, upgrade.id);
-        next = applyUpgrade(next, upgrade.kind);
+        next = upgrade.skillId ? applySkill(next, upgrade.skillId) : applyUpgrade(next, upgrade.kind);
         break;
       }
     }
