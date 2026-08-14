@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { BLINK_COST, BOARD_SIZE, Pos, chooseCpuMove, createBoard, earnsMana, isWin } from './game';
+import { BLINK_COST, BOARD_SIZE, Pos, chooseCpuMove, createBoard, isWin } from './game';
 import { Locale, getMessages, loadLocale, nextLocale, saveLocale } from './i18n';
+import { applyManaReward, manaReward } from './patterns';
 import './style.css';
 
 const app = new Application();
@@ -68,7 +69,7 @@ function render(){
 function toggleLocale(){ locale=nextLocale(locale); saveLocale(locale); render(); }
 function restartGame(){ if(cpuTimer){clearTimeout(cpuTimer);cpuTimer=null;} board=createBoard();mana=0;turn=1;locked=false;blinkMode=false;blinkFrom=null;gameStatus='playing';statusKey='yourTurn';render(); }
 function toggleBlink(){ if(locked||gameStatus!=='playing'||mana<BLINK_COST)return; blinkMode=!blinkMode;blinkFrom=null;statusKey=blinkMode?'blink':'yourTurn';render(); }
-function onCell(p:Pos){ if(locked||gameStatus!=='playing')return; if(blinkMode){ if(!blinkFrom){ if(board[p.row][p.col]===1){blinkFrom=p;statusKey='selectDestination';render();} return; } if(board[p.row][p.col]!==0)return; board[blinkFrom.row][blinkFrom.col]=0;board[p.row][p.col]=1;mana-=BLINK_COST;blinkMode=false;blinkFrom=null;finishPlayer(p);return; } if(board[p.row][p.col]!==0)return; board[p.row][p.col]=1;if(earnsMana(board,p,1))mana=Math.min(5,mana+1);finishPlayer(p); }
+function onCell(p:Pos){ if(locked||gameStatus!=='playing')return; if(blinkMode){ if(!blinkFrom){ if(board[p.row][p.col]===1){blinkFrom=p;statusKey='selectDestination';render();} return; } if(board[p.row][p.col]!==0)return; board[blinkFrom.row][blinkFrom.col]=0;board[p.row][p.col]=1;mana-=BLINK_COST;blinkMode=false;blinkFrom=null;finishPlayer(p);return; } if(board[p.row][p.col]!==0)return; board[p.row][p.col]=1;mana=applyManaReward(mana,manaReward(board,p,1));finishPlayer(p); }
 function finishPlayer(p:Pos){ if(isWin(board,p,1)){gameStatus='victory';locked=true;render();return;} locked=true;statusKey='opponentTurn';turn++;render();cpuTimer=setTimeout(cpuTurn,350); }
 function cpuTurn(){ cpuTimer=null;const p=chooseCpuMove(board);if(!p){gameStatus='draw';locked=true;render();return;}board[p.row][p.col]=2;if(isWin(board,p,2)){gameStatus='defeat';locked=true;render();return;}locked=false;statusKey='yourTurn';render(); }
 
