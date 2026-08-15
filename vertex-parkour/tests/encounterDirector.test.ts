@@ -34,6 +34,12 @@ describe('EncounterDirector', () => {
     expect(amber.next(() => 0.65, 'amber-district')).toBe('edge-read');
     expect(violet.next(() => 0.65, 'violet-zone')).toBe('wall-rescue');
   });
+  it('opens Pale Heights around aerial timing and moving windows', () => {
+    const violet = new EncounterDirector();
+    const pale = new EncounterDirector();
+    expect(violet.next(() => 0.85, 'violet-zone')).toBe('wall-rescue');
+    expect(pale.next(() => 0.85, 'pale-heights')).toBe('moving-window');
+  });
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector();
     for (let i = 0; i < 12; i += 1) director.next(() => 0.5);
