@@ -1,54 +1,52 @@
 import { Container, Graphics } from 'pixi.js';
+import type { BiomeId } from '../world/Biome';
 
 export const Palette = { background: 0x0d2428, backgroundDeep: 0x08181b, distant: 0x17363a, mid: 0x1d4144, foreground: 0x0a1719, teal: 0x78c9bf, tealSoft: 0xcce9e3, cream: 0xf0eadf, magenta: 0xb74468, magentaDeep: 0x692744, hazard: 0x26393b, gold: 0xf2d28b } as const;
 export type EnvironmentLayers = { sky: Graphics; ambientWash: Graphics; far: Container; mid: Container; foreground: Container; motes: Array<{ view: Graphics; baseY: number; drift: number }>; flowStreaks: Graphics; routeMotes: Graphics };
 export type AmbientRouteVisual = { color: number; alpha: number; mote: number } | null;
+export type PlatformSilhouette = 'ruin-slab' | 'industrial-deck' | 'night-slab' | 'pale-slab';
+export function platformSilhouetteForBiome(biome: BiomeId): PlatformSilhouette {
+  if (biome === 'amber-district') return 'industrial-deck';
+  if (biome === 'violet-zone') return 'night-slab';
+  if (biome === 'pale-heights') return 'pale-slab';
+  return 'ruin-slab';
+}
 
 export function createEnvironment(width: number, height: number): EnvironmentLayers {
-  const sky = new Graphics();
-  sky.rect(0, 0, width, height).fill(Palette.background);
-  sky.rect(0, 0, width, height * 0.28).fill({ color: 0x18383b, alpha: 0.22 });
-  sky.rect(0, height * 0.45, width, height * 0.55).fill({ color: Palette.backgroundDeep, alpha: 0.26 });
-  const ambientWash = new Graphics();
-  const far = new Container();
-  const mid = new Container();
-  const foreground = new Container();
+  const sky = new Graphics(); sky.rect(0, 0, width, height).fill(Palette.background); sky.rect(0, 0, width, height * 0.28).fill({ color: 0x18383b, alpha: 0.22 }); sky.rect(0, height * 0.45, width, height * 0.55).fill({ color: Palette.backgroundDeep, alpha: 0.26 });
+  const ambientWash = new Graphics(); const far = new Container(); const mid = new Container(); const foreground = new Container();
   for (let i = 0; i < 10; i += 1) { const tower = new Graphics(); const w = 24 + (i % 3) * 12; const h = 120 + (i % 4) * 55; tower.rect(-w / 2, -h, w, h).fill({ color: Palette.distant, alpha: 0.3 }); tower.poly([-w / 2, -h, 0, -h - 28 - (i % 2) * 18, w / 2, -h]).fill({ color: Palette.distant, alpha: 0.3 }); tower.position.set(18 + i * 42, height - 80 + (i % 2) * 18); far.addChild(tower); }
   for (let i = 0; i < 7; i += 1) { const ruin = new Graphics(); const w = 40 + (i % 3) * 18; const h = 150 + (i % 4) * 70; ruin.rect(-w / 2, -h, w, h).fill({ color: Palette.mid, alpha: 0.44 }); ruin.position.set(30 + i * 58, height - 12 + (i % 2) * 22); mid.addChild(ruin); }
   const leftFrame = new Graphics(); leftFrame.poly([0, 0, 26, 0, 26, 110, 48, 138, 48, 248, 31, 274, 31, height, 0, height]).fill({ color: Palette.foreground, alpha: 0.92 });
-  const rightFrame = new Graphics(); rightFrame.poly([width, 0, width - 28, 0, width - 28, 150, width - 52, 180, width - 52, 310, width - 30, 336, width - 30, height, width, height]).fill({ color: Palette.foreground, alpha: 0.92 });
-  foreground.addChild(leftFrame, rightFrame);
+  const rightFrame = new Graphics(); rightFrame.poly([width, 0, width - 28, 0, width - 28, 150, width - 52, 180, width - 52, 310, width - 30, 336, width - 30, height, width, height]).fill({ color: Palette.foreground, alpha: 0.92 }); foreground.addChild(leftFrame, rightFrame);
   const motes: Array<{ view: Graphics; baseY: number; drift: number }> = [];
   for (let i = 0; i < 11; i += 1) { const mote = new Graphics(); mote.circle(0, 0, 1 + (i % 3) * 0.6).fill({ color: i % 5 === 0 ? Palette.gold : Palette.tealSoft, alpha: 0.12 + (i % 4) * 0.035 }); const baseY = 70 + ((i * 83) % (height - 140)); mote.position.set(40 + ((i * 71) % (width - 80)), baseY); foreground.addChild(mote); motes.push({ view: mote, baseY, drift: 4 + (i % 5) * 1.4 }); }
-  const routeMotes = new Graphics();
-  const flowStreaks = new Graphics();
-  foreground.addChild(routeMotes, flowStreaks);
-  return { sky, ambientWash, far, mid, foreground, motes, flowStreaks, routeMotes };
+  const routeMotes = new Graphics(); const flowStreaks = new Graphics(); foreground.addChild(routeMotes, flowStreaks); return { sky, ambientWash, far, mid, foreground, motes, flowStreaks, routeMotes };
 }
 
 export function updateEnvironment(layers: EnvironmentLayers, worldOffset: number, elapsed: number, height: number, flowIntensity = 0, routeVisual: AmbientRouteVisual = null) {
-  layers.far.y = (worldOffset * 0.08) % 80;
-  layers.mid.y = (worldOffset * 0.18) % 110;
-  layers.motes.forEach((mote, index) => { mote.view.y = mote.baseY + Math.sin(elapsed * 0.7 + index) * mote.drift; mote.view.x += Math.sin(elapsed * 0.25 + index * 0.9) * 0.015; if (mote.view.y > height - 20) mote.view.y = 20; });
-
-  layers.ambientWash.clear();
-  layers.routeMotes.clear();
-  if (routeVisual) {
-    layers.ambientWash.rect(0, 0, 360, height).fill({ color: routeVisual.color, alpha: routeVisual.alpha });
-    for (let i = 0; i < 6; i += 1) {
-      const x = 42 + ((i * 61 + Math.floor(elapsed * (4 + i * 0.3))) % 276);
-      const cycle = (elapsed * (8 + i) + i * 103) % (height + 80);
-      const y = height - cycle;
-      const radius = 0.8 + (i % 3) * 0.45;
-      layers.routeMotes.circle(x, y, radius).fill({ color: routeVisual.mote, alpha: 0.045 + (i % 3) * 0.018 });
-    }
-  }
-
-  layers.flowStreaks.clear();
-  if (flowIntensity > 0.42) { const strength = (flowIntensity - 0.42) / 0.58; const count = 2 + Math.floor(strength * 6); for (let i = 0; i < count; i += 1) { const x = 34 + ((i * 67 + Math.floor(elapsed * (18 + i * 2))) % 292); const cycle = (elapsed * (55 + i * 5) + i * 83) % (height + 100); const y = height - cycle; const length = 12 + strength * 28 + (i % 3) * 5; layers.flowStreaks.moveTo(x, y).lineTo(x, y + length).stroke({ width: 0.8 + strength * 0.5, color: Palette.tealSoft, alpha: 0.025 + strength * 0.07 }); } }
+  layers.far.y = (worldOffset * 0.08) % 80; layers.mid.y = (worldOffset * 0.18) % 110; layers.motes.forEach((mote, index) => { mote.view.y = mote.baseY + Math.sin(elapsed * 0.7 + index) * mote.drift; mote.view.x += Math.sin(elapsed * 0.25 + index * 0.9) * 0.015; if (mote.view.y > height - 20) mote.view.y = 20; });
+  layers.ambientWash.clear(); layers.routeMotes.clear(); if (routeVisual) { layers.ambientWash.rect(0, 0, 360, height).fill({ color: routeVisual.color, alpha: routeVisual.alpha }); for (let i = 0; i < 6; i += 1) { const x = 42 + ((i * 61 + Math.floor(elapsed * (4 + i * 0.3))) % 276); const cycle = (elapsed * (8 + i) + i * 103) % (height + 80); const y = height - cycle; const radius = 0.8 + (i % 3) * 0.45; layers.routeMotes.circle(x, y, radius).fill({ color: routeVisual.mote, alpha: 0.045 + (i % 3) * 0.018 }); } }
+  layers.flowStreaks.clear(); if (flowIntensity > 0.42) { const strength = (flowIntensity - 0.42) / 0.58; const count = 2 + Math.floor(strength * 6); for (let i = 0; i < count; i += 1) { const x = 34 + ((i * 67 + Math.floor(elapsed * (18 + i * 2))) % 292); const cycle = (elapsed * (55 + i * 5) + i * 83) % (height + 100); const y = height - cycle; const length = 12 + strength * 28 + (i % 3) * 5; layers.flowStreaks.moveTo(x, y).lineTo(x, y + length).stroke({ width: 0.8 + strength * 0.5, color: Palette.tealSoft, alpha: 0.025 + strength * 0.07 }); } }
 }
 
-export function createPlatformVisual(width: number): Graphics { const g = new Graphics(); g.poly([-width / 2 - 7, -7, width / 2 + 7, -7, width / 2, 4, -width / 2 + 3, 4]).fill({ color: 0x173437, alpha: 0.98 }); g.rect(-width / 2, -7, width, 3).fill(Palette.teal); g.rect(-width / 2 + 8, -3, Math.max(12, width - 18), 2).fill({ color: Palette.tealSoft, alpha: 0.3 }); return g; }
+export function createPlatformVisual(width: number, biome: BiomeId = 'teal-ruins'): Graphics {
+  const g = new Graphics(); const silhouette = platformSilhouetteForBiome(biome);
+  if (silhouette === 'industrial-deck') {
+    g.rect(-width / 2 - 5, -8, width + 10, 12).fill({ color: 0x263332, alpha: 0.98 });
+    g.rect(-width / 2, -8, width, 3).fill(Palette.gold);
+    g.rect(-width / 2 + 7, -2, Math.max(10, width - 14), 2).fill({ color: Palette.cream, alpha: 0.24 });
+    for (let x = -width / 2 + 12; x < width / 2 - 5; x += 22) g.rect(x, 1, 9, 3).fill({ color: Palette.gold, alpha: 0.28 });
+    g.rect(-width / 2 - 8, -4, 5, 8).fill({ color: 0x182424, alpha: 0.95 }); g.rect(width / 2 + 3, -4, 5, 8).fill({ color: 0x182424, alpha: 0.95 });
+    return g;
+  }
+  if (silhouette === 'ruin-slab') {
+    g.poly([-width / 2 - 7, -7, -width / 2 + 8, -9, width / 2 + 7, -7, width / 2 - 5, 4, -width / 2 + 3, 4]).fill({ color: 0x173437, alpha: 0.98 });
+    g.rect(-width / 2, -7, Math.max(18, width * 0.43), 3).fill(Palette.teal); g.rect(-width / 2 + width * 0.49, -7, Math.max(16, width * 0.45), 3).fill(Palette.teal);
+    g.rect(-width / 2 + 8, -3, Math.max(12, width - 18), 2).fill({ color: Palette.tealSoft, alpha: 0.22 }); return g;
+  }
+  g.poly([-width / 2 - 7, -7, width / 2 + 7, -7, width / 2, 4, -width / 2 + 3, 4]).fill({ color: 0x173437, alpha: 0.98 }); g.rect(-width / 2, -7, width, 3).fill(Palette.teal); g.rect(-width / 2 + 8, -3, Math.max(12, width - 18), 2).fill({ color: Palette.tealSoft, alpha: 0.3 }); return g;
+}
 export function createWallVisual(height: number, side: -1 | 1): Graphics { const g = new Graphics(); const x = side === -1 ? 0 : -16; g.rect(x, -height / 2, 16, height).fill({ color: 0x173437, alpha: 0.96 }); const edgeX = side === -1 ? 15 : 1; g.rect(edgeX, -height / 2 + 5, 2, height - 10).fill({ color: Palette.teal, alpha: 0.85 }); for (let y = -height / 2 + 18; y < height / 2 - 10; y += 24) g.rect(side === -1 ? 5 : -9, y, 6, 2).fill({ color: Palette.tealSoft, alpha: 0.22 }); return g; }
 export function createHazardVisual(): Graphics { const g = new Graphics(); g.circle(0, 0, 11).fill(Palette.hazard); g.circle(0, 0, 14).stroke({ width: 1.5, color: Palette.magentaDeep, alpha: 0.45 }); for (let i = 0; i < 8; i += 1) { const a = (Math.PI * 2 * i) / 8; g.moveTo(Math.cos(a) * 13, Math.sin(a) * 13).lineTo(Math.cos(a) * (i % 2 === 0 ? 20 : 18), Math.sin(a) * (i % 2 === 0 ? 20 : 18)).stroke({ width: 3.5, color: Palette.magentaDeep, alpha: 0.72 }); } g.circle(0, 0, 4).fill({ color: 0xf16c78, alpha: 0.88 }); return g; }
 export function createSpikeVisual(width: number): Graphics { const g = new Graphics(); const count = 3; const step = width / count; for (let i = 0; i < count; i += 1) { const left = -width / 2 + i * step; g.poly([left, 4, left + step / 2, -9, left + step, 4]).fill({ color: Palette.magentaDeep, alpha: 0.9 }); } g.rect(-width / 2, 3, width, 2).fill({ color: Palette.magenta, alpha: 0.5 }); return g; }
