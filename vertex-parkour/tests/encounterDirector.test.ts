@@ -22,6 +22,12 @@ describe('EncounterDirector', () => {
     const values = [0.1, 0.7, 0.35, 0.92, 0.5]; const randomA = seeded(values); const randomB = seeded(values);
     expect(Array.from({ length: 20 }, () => a.next(randomA))).toEqual(Array.from({ length: 20 }, () => b.next(randomB)));
   });
+  it('uses a more traversal-forward opening deck in Amber', () => {
+    const teal = new EncounterDirector();
+    const amber = new EncounterDirector();
+    expect(teal.next(() => 0.2, 'teal-ruins')).toBe('recovery');
+    expect(amber.next(() => 0.2, 'amber-district')).toBe('dash-chain');
+  });
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector();
     for (let i = 0; i < 12; i += 1) director.next(() => 0.5);

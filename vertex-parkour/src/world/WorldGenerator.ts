@@ -1,4 +1,5 @@
 import { SKILLS, type SkillId } from '../domain/skills';
+import type { BiomeId } from './Biome';
 import { EncounterDirector, type PacingPhase } from './EncounterDirector';
 
 export const START_PLATFORM_Y = 602;
@@ -54,13 +55,15 @@ export class WorldGenerator {
   private coreEncountersSinceClimax = 0;
   private choiceId = 0;
   private queuedRoute: RouteKind | null = null;
+  private biome: BiomeId = 'teal-ruins';
   private readonly random: SeededRandom;
   private readonly director = new EncounterDirector();
 
   constructor(readonly seed: number) { this.random = new SeededRandom(seed); }
   getLastY() { return this.lastY; }
+  setBiome(biome: BiomeId) { this.biome = biome; }
   queueRoute(kind: RouteKind) { this.queuedRoute = kind; }
-  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; this.encounterPhase = 'warmup'; this.encountersSinceSkill = 0; this.encountersSinceRoute = 0; this.coreEncountersSinceClimax = 0; this.choiceId = 0; this.queuedRoute = null; this.director.reset(); }
+  reset() { this.bandIndex = 0; this.lastY = START_PLATFORM_Y; this.previousPlatformLane = 180; this.encounterType = 'recovery'; this.encounterStep = ENCOUNTER_LENGTH; this.encounterPlans = []; this.encounterPhase = 'warmup'; this.encountersSinceSkill = 0; this.encountersSinceRoute = 0; this.coreEncountersSinceClimax = 0; this.choiceId = 0; this.queuedRoute = null; this.biome = 'teal-ruins'; this.director.reset(); }
 
   nextBand(): WorldBand {
     if (this.encounterStep >= this.encounterPlans.length) this.startEncounter();
@@ -89,7 +92,7 @@ export class WorldGenerator {
       this.encounterType = 'upgrade-choice'; this.encountersSinceSkill = 0; this.encountersSinceRoute += 1; this.choiceId += 1;
     } else {
       this.encounterPhase = this.director.getPhase();
-      this.encounterType = this.director.next(() => this.random.next());
+      this.encounterType = this.director.next(() => this.random.next(), this.biome);
       this.encountersSinceSkill += 1; this.encountersSinceRoute += 1; this.coreEncountersSinceClimax += 1;
     }
     this.encounterPlans = this.buildEncounter(this.encounterType); this.encounterStep = 0;
@@ -113,17 +116,20 @@ export class WorldGenerator {
 
   private buildRecovery(phase: PacingPhase): BandPlan[] {
     const adjacent = this.towardCenterOrAdjacent(this.previousPlatformLane);
+    if (this.biome === 'amber-district') return [{ lane: adjacent, width: 100 }, { lane: 180, width: 104, decorate: (y) => [{ type: 'pulse-gate', x: adjacent, y: y - 48, height: 94, phase: this.random.next() * Math.PI * 2 }] }, { lane: this.pick([82, 278] as const), width: 102, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 114, rest: true }];
     if (phase === 'pressure') return [{ lane: adjacent, width: 98 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'hazard', x: adjacent, y: y - 38 }] }, { lane: this.pick([82, 278] as const), width: 100, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 110, rest: true }];
     return [{ lane: adjacent, width: 102 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: this.pick([82, 278] as const), width: 104 }, { lane: 180, width: 112, rest: true }];
   }
   private buildDashChain(phase: PacingPhase): BandPlan[] {
     const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const entry: Lane = side === -1 ? 82 : 278; const exit: Lane = side === -1 ? 278 : 82;
+    if (this.biome === 'amber-district') return [{ lane: entry, width: 104 }, { lane: exit, width: 100, decorate: (y) => [{ type: 'interceptor', x: 180, y: y - 42, phase: this.random.next() * Math.PI * 2 }] }, { lane: entry, width: 102, decorate: (y) => [{ type: 'drone', x: exit, y: y - 40, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: entry, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
     if (phase === 'warmup') return [{ lane: entry, width: 112 }, { lane: 180, width: 108, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 112, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 116, rest: true }];
     if (phase === 'pressure') return [{ lane: entry, width: 100 }, { lane: 180, width: 96, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }, { type: 'hazard', x: entry, y: y - 34 }] }, { lane: exit, width: 102, decorate: (y) => [{ type: 'drone', x: entry, y: y - 40, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 108, rest: true }];
     return [{ lane: entry, width: 106 }, { lane: 180, width: 100, decorate: (y) => [{ type: 'drone', x: exit, y: y - 38, phase: this.random.next() * Math.PI * 2 }] }, { lane: exit, width: 108, decorate: (y) => [{ type: 'crystal', x: exit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
   }
   private buildEdgeRead(phase: PacingPhase): BandPlan[] {
-    const approach = this.previousPlatformLane; const target: Lane = approach === 82 || approach === 278 ? 180 : this.pick([82, 278] as const); const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1); const width = phase === 'pressure' ? 102 : phase === 'warmup' ? 116 : 110; const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET; const safeExit: Lane = direction > 0 ? 82 : 278;
+    const approach = this.previousPlatformLane; const target: Lane = approach === 82 || approach === 278 ? 180 : this.pick([82, 278] as const); const direction = Math.sign(target - approach) || (target < 180 ? -1 : 1); const width = this.biome === 'amber-district' ? 104 : phase === 'pressure' ? 102 : phase === 'warmup' ? 116 : 110; const edgeOffset = width / 2 - SPIKE_WIDTH / 2 - SPIKE_EDGE_INSET; const safeExit: Lane = direction > 0 ? 82 : 278;
+    if (this.biome === 'amber-district') return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: 100, decorate: (y) => [{ type: 'pulse-gate', x: 180, y: y - 48, height: 92, phase: this.random.next() * Math.PI * 2 }] }, { lane: 180, width: 104, decorate: (y) => [{ type: 'crystal', x: safeExit, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
     const pressureExtra = phase === 'pressure' ? [{ type: 'hazard' as const, x: direction > 0 ? 278 : 82, y: 0 }] : [];
     return [{ lane: target, width, decorate: (y) => [{ type: 'spike', x: target + direction * edgeOffset, y: y - 10, width: SPIKE_WIDTH }] }, { lane: safeExit, width: phase === 'pressure' ? 98 : 104, decorate: phase === 'pressure' ? (y) => pressureExtra.map((spawn) => ({ ...spawn, y: y - 38 })) : undefined }, { lane: 180, width: 106, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 112, rest: true }];
   }
@@ -134,8 +140,9 @@ export class WorldGenerator {
   }
   private buildMovingWindow(phase: PacingPhase): BandPlan[] {
     const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const safeLane: Lane = side === -1 ? 82 : 278; const rewardLane: Lane = side === -1 ? 278 : 82; const motionPhase = this.random.next() * Math.PI * 2;
-    const amplitude = phase === 'warmup' ? 34 : phase === 'pressure' ? 58 : 46; const speed = phase === 'warmup' ? 0.72 : phase === 'pressure' ? 1.12 : 0.9;
-    return [{ lane: 180, width: 108 }, { lane: safeLane, width: phase === 'pressure' ? 100 : 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: phase === 'pressure' ? 108 : 118, motion: { axis: 'x', amplitude, speed, phase: motionPhase, originX: 180 } }] }, { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }, ...(phase === 'pressure' ? [{ type: 'hazard' as const, x: 180, y: y - 36 }] : [])] }, { lane: 180, width: 112, rest: true }];
+    const amber = this.biome === 'amber-district';
+    const amplitude = amber ? 64 : phase === 'warmup' ? 34 : phase === 'pressure' ? 58 : 46; const speed = amber ? 1.18 : phase === 'warmup' ? 0.72 : phase === 'pressure' ? 1.12 : 0.9;
+    return [{ lane: 180, width: 108 }, { lane: safeLane, width: amber ? 102 : phase === 'pressure' ? 100 : 106, decorate: (y) => [{ type: 'platform', x: 180, y, width: amber ? 104 : phase === 'pressure' ? 108 : 118, motion: { axis: 'x', amplitude, speed, phase: motionPhase, originX: 180 } }, ...(amber ? [{ type: 'pulse-gate' as const, x: rewardLane, y: y - 48, height: 94, phase: this.random.next() * Math.PI * 2 }] : [])] }, { lane: rewardLane, width: 108, decorate: (y) => [{ type: 'crystal', x: rewardLane, y: y - 46 }, ...(!amber && phase === 'pressure' ? [{ type: 'hazard' as const, x: 180, y: y - 36 }] : [])] }, { lane: 180, width: 112, rest: true }];
   }
   private buildClimax(): BandPlan[] {
     const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
