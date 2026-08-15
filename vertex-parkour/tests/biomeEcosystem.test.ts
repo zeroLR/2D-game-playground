@@ -11,10 +11,11 @@ function band(encounter: WorldBand['encounter'], encounterStep: number, index = 
 }
 
 describe('M7.5 biome ecosystem identity', () => {
-  it('uses distinct structural platform silhouettes for Teal, Amber and Violet', () => {
+  it('uses distinct structural platform silhouettes for all implemented ecosystems', () => {
     expect(platformSilhouetteForBiome('teal-ruins')).toBe('ruin-slab');
     expect(platformSilhouetteForBiome('amber-district')).toBe('industrial-deck');
     expect(platformSilhouetteForBiome('violet-zone')).toBe('night-slab');
+    expect(platformSilhouetteForBiome('pale-heights')).toBe('pale-slab');
   });
 
   it('gives Amber an industrial threat vocabulary beyond a palette swap', () => {
@@ -66,5 +67,34 @@ describe('M7.5 biome ecosystem identity', () => {
     const gate = world.addSpawn({ type: 'pulse-gate', x: 180, y: -900, height: 108, phase: 0 });
     expect(hunter).toMatchObject({ type: 'interceptor', biomeTheme: 'violet-zone' });
     expect(gate).toMatchObject({ type: 'pulse-gate', biomeTheme: 'violet-zone' });
+  });
+
+  it('turns ordinary Pale traversal into broader independently drifting ice floes', () => {
+    const source = band('dash-chain', 1, 32);
+    source.spawns.push({ type: 'drone', x: 278, y: -1240, phase: 0 });
+    const pale = biomeSpawnsForBand('pale-heights', source);
+    const platforms = pale.filter((spawn) => spawn.type === 'platform');
+    expect(platforms.length).toBeGreaterThanOrEqual(2);
+    expect(platforms.every((spawn) => spawn.type === 'platform' && spawn.width >= 52 && spawn.width <= 76)).toBe(true);
+    expect(platforms.every((spawn) => spawn.type === 'platform' && Boolean(spawn.motion))).toBe(true);
+    expect(new Set(platforms.map((spawn) => spawn.type === 'platform' ? spawn.x : 0)).size).toBe(platforms.length);
+    expect(new Set(platforms.map((spawn) => spawn.type === 'platform' ? spawn.y : 0)).size).toBeGreaterThan(1);
+    expect(new Set(platforms.map((spawn) => spawn.type === 'platform' ? spawn.motion?.phase : 0)).size).toBe(platforms.length);
+    expect(pale.some((spawn) => spawn.type === 'drone')).toBe(false);
+  });
+
+  it('keeps Pale decision and recovery beats on stable full ice shelves', () => {
+    for (const source of [
+      band('route-choice', 1, 40),
+      band('upgrade-choice', 1, 41),
+      band('rest-route', 1, 42),
+      band('moving-window', 3, 43, true),
+      band('climax', 3, 44, true),
+    ]) {
+      const platforms = biomeSpawnsForBand('pale-heights', source).filter((spawn) => spawn.type === 'platform');
+      expect(platforms).toHaveLength(1);
+      expect(platforms[0]).toMatchObject({ type: 'platform', width: 104 });
+      if (platforms[0].type === 'platform') expect(platforms[0].motion).toBeUndefined();
+    }
   });
 });
