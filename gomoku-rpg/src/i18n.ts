@@ -13,7 +13,11 @@ const messages = {
     blinkHelp: 'Move one of your stones. Uses your whole turn.',
     guardHelp: 'Protect one stone from one hostile skill effect.',
     sealHelp: 'Block one empty intersection for one opponent turn.',
-    playAgain: 'PLAY AGAIN', language: 'EN / 繁中', footer: 'M1  •  9×9  •  FIVE IN A ROW',
+    playAgain: 'PLAY AGAIN', language: 'EN / 繁中', footer: 'M2  •  9×9  •  FIVE IN A ROW',
+    title: 'GOMOKU RPG', titleTagline: 'Choose how you bend the board.', chooseHero: 'CHOOSE HERO', startBattle: 'START BATTLE', changeHero: 'CHANGE HERO',
+    vanguard: 'VANGUARD', arcanist: 'ARCANIST', shade: 'SHADE',
+    defense: 'DEFENSE', control: 'CONTROL', disruption: 'DISRUPTION',
+    fortified: 'FORTIFIED', flow: 'FLOW', pressure: 'PRESSURE', passive: 'PASSIVE', skillsLabel: 'SKILLS',
   },
   'zh-TW': {
     vsCpu: '對戰 CPU  •  LV.1', opponent: '對手', mana: '魔力', turn: '回合', you: '你',
@@ -24,7 +28,11 @@ const messages = {
     blinkHelp: '移動自己一枚棋子，會消耗整個回合。',
     guardHelp: '保護一枚棋，抵擋一次敵方技能效果。',
     sealHelp: '封鎖一個空位，直到對手回合結束。',
-    playAgain: '再玩一局', language: 'EN / 繁中', footer: 'M1  •  9×9  •  五子連線',
+    playAgain: '再玩一局', language: 'EN / 繁中', footer: 'M2  •  9×9  •  五子連線',
+    title: '五子棋 RPG', titleTagline: '選擇你的方式，改變棋盤規則。', chooseHero: '選擇英雄', startBattle: '開始對戰', changeHero: '更換英雄',
+    vanguard: '先鋒', arcanist: '奧術師', shade: '影刃',
+    defense: '防禦', control: '控制', disruption: '擾亂',
+    fortified: '堅守', flow: '流轉', pressure: '壓迫', passive: '被動', skillsLabel: '技能',
   },
 } as const;
 
