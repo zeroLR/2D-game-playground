@@ -17,6 +17,10 @@ export class WorldLifecycleSystem {
     }
   }
 
+  getVisualRoute(): RouteKind | null {
+    return this.waitingForRouteSelection ? null : this.state.getActiveRoute();
+  }
+
   updateMotion(elapsed: number) {
     for (const platform of this.state.platforms) {
       const motion = platform.motion;
