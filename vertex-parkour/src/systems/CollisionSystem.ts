@@ -1,6 +1,7 @@
 import type { GameEventQueue } from '../domain/events';
 import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applySkill, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
 import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../world/RouteChoice';
+import { applyWindVelocity, windAccelerationAt } from '../world/WindField';
 import type { WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
@@ -8,8 +9,13 @@ const LANDING_EDGE_ASSIST = 12;
 export type CollisionResult = { state: GameState; invulnerable: number };
 
 export class CollisionSystem {
+  private previousElapsed = 0;
+
   update(state: GameState, previousPlayerY: number, world: WorldState, cameraOffset: number, invulnerable: number, events: GameEventQueue, ignoreDamage = false): CollisionResult {
-    let next = state;
+    const windDt = state.elapsed >= this.previousElapsed ? state.elapsed - this.previousElapsed : 0;
+    this.previousElapsed = state.elapsed;
+    const windAcceleration = windAccelerationAt(world.platforms, state.playerX, state.playerY);
+    let next = windAcceleration === 0 ? state : { ...state, velocityX: applyWindVelocity(state.velocityX, windAcceleration, windDt) };
     let nextInvulnerable = invulnerable;
     const previousFeet = previousPlayerY + PLAYER_FEET_OFFSET;
 
