@@ -1,4 +1,5 @@
 import type { WorldRenderer } from '../presentation/WorldRenderer';
+import { nextBiome, type BiomeId } from '../world/Biome';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
 import { WorldState } from '../world/WorldState';
 
@@ -10,7 +11,7 @@ export class WorldLifecycleSystem {
   constructor(private readonly renderer: WorldRenderer) {}
 
   seedInitialWorld() {
-    this.spawn({ type: 'platform', x: 180, y: START_PLATFORM_Y, width: 122 }, null);
+    this.spawn({ type: 'platform', x: 180, y: START_PLATFORM_Y, width: 122 }, null, this.state.getActiveBiome());
     for (let i = 0; i < 12; i += 1) {
       if (this.waitingForRouteSelection) break;
       this.spawnBand();
@@ -19,6 +20,10 @@ export class WorldLifecycleSystem {
 
   getVisualRoute(): RouteKind | null {
     return this.waitingForRouteSelection ? null : this.state.getActiveRoute();
+  }
+
+  getVisualBiome(): BiomeId {
+    return this.state.getActiveBiome();
   }
 
   updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
@@ -65,8 +70,16 @@ export class WorldLifecycleSystem {
   private spawnBand() {
     const band = this.generator.nextBand();
     const routeTheme = this.themeForBand(band);
-    for (const spawn of band.spawns) this.spawn(spawn, routeTheme);
+    const biomeTheme = this.state.getActiveBiome();
+    for (const spawn of band.spawns) this.spawn(spawn, routeTheme, biomeTheme);
     if (band.encounter === 'route-choice' && band.encounterStep === 3) this.waitingForRouteSelection = true;
+    if (band.encounter === 'climax' && band.encounterStep === 3) this.advanceBiome();
+  }
+
+  private advanceBiome() {
+    const current = this.state.getActiveBiome();
+    const next = nextBiome(current);
+    if (next !== current) this.state.setActiveBiome(next);
   }
 
   private themeForBand(band: WorldBand): RouteKind | null {
@@ -74,8 +87,8 @@ export class WorldLifecycleSystem {
     return this.state.getActiveRoute();
   }
 
-  private spawn(spawn: WorldSpawn, routeTheme: RouteKind | null) {
-    const entity = this.state.addSpawn(spawn, spawn.type === 'platform' ? routeTheme : null);
+  private spawn(spawn: WorldSpawn, routeTheme: RouteKind | null, biomeTheme: BiomeId) {
+    const entity = this.state.addSpawn(spawn, spawn.type === 'platform' ? routeTheme : null, biomeTheme);
     this.renderer.mount(entity);
   }
 }
