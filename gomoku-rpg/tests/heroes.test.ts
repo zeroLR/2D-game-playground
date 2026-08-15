@@ -1,8 +1,8 @@
 import { describe,expect,it } from 'vitest';
 import { createCombatState,executePlace,getMana,setMana } from '../src/combat';
 import { createBoard } from '../src/game';
-import { createLoadout,heroes,isSkillEquipped } from '../src/heroes';
-import { sealSkill } from '../src/skills';
+import { COMMON_SKILL,createLoadout,heroes,isHeroSkillEquipped,isSkillEquipped } from '../src/heroes';
+import { commonSkillIds,sealSkill } from '../src/skills';
 
 describe('M2 combat resources',()=>{
  it('tracks Mana independently for both actors',()=>{let state=createCombatState(createBoard(),3);state=setMana(state,2,4);expect(getMana(state,1)).toBe(3);expect(getMana(state,2)).toBe(4);});
@@ -10,7 +10,10 @@ describe('M2 combat resources',()=>{
  it('skills spend the acting player resource',()=>{let state=createCombatState(createBoard(),5,2);state=setMana(state,2,3);const next=sealSkill.execute({state,player:2},{row:4,col:4});expect(getMana(next,1)).toBe(5);expect(getMana(next,2)).toBe(1);});
 });
 
-describe('M2 hero definitions',()=>{
- it('gives every hero exactly two active skills',()=>{Object.values(heroes).forEach((hero)=>expect(hero.activeSkills).toHaveLength(2));});
- it('creates an Arcanist control loadout',()=>{const loadout=createLoadout('arcanist');expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isSkillEquipped(loadout,'seal')).toBe(true);expect(isSkillEquipped(loadout,'guard')).toBe(false);});
+describe('M2.4 skill architecture',()=>{
+ it('declares Blink as the common skill',()=>{expect(COMMON_SKILL).toBe('blink');expect(commonSkillIds).toEqual(['blink']);});
+ it('separates common and hero-owned slots for Arcanist',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['seal']);expect(loadout.skills).toEqual(['blink','seal']);expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isHeroSkillEquipped(loadout,'blink')).toBe(false);expect(isHeroSkillEquipped(loadout,'seal')).toBe(true);});
+ it('separates common and hero-owned slots for Shade',()=>{const loadout=createLoadout('shade');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['guard']);expect(loadout.skills).toEqual(['blink','guard']);});
+ it('keeps Vanguard legacy gameplay intact until its vertical slice',()=>{const loadout=createLoadout('vanguard');expect(loadout.commonSkill).toBeNull();expect(loadout.heroSkills).toEqual(['guard','seal']);expect(loadout.skills).toEqual(['guard','seal']);});
+ it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.arcanist.heroSkills).toEqual(['seal']);expect(heroes.shade.heroSkills).toEqual(['guard']);});
 });

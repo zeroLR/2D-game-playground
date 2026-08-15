@@ -7,16 +7,34 @@ export type HeroDefinition={
   nameKey:HeroId;
   role:'defense'|'control'|'disruption';
   passive:PassiveId;
-  activeSkills:readonly [SkillId,SkillId];
+  /** Current hero-owned abilities. Replaced by new tactical skills one vertical slice at a time. */
+  heroSkills:readonly SkillId[];
+  /** Compatibility/display view of the current runtime loadout. Remove after every hero migrates. */
+  activeSkills:readonly SkillId[];
 };
 
-/** M2 starts data-first: passives are identity hooks and become executable one at a time. */
+/**
+ * M2.4 target architecture:
+ * - one common skill slot shared by every hero
+ * - hero-owned slots define the character's tactical identity
+ *
+ * During migration the runtime loadout keeps the existing two-button HUD intact.
+ * A hero receives the common slot only when Blink was already part of its legacy loadout;
+ * Vanguard keeps Guard / Seal until its later vertical slice. This avoids changing live
+ * gameplay merely to establish the domain boundary.
+ */
+export const COMMON_SKILL:SkillId='blink';
 export const heroes:Record<HeroId,HeroDefinition>={
-  vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',passive:'fortified',activeSkills:['guard','seal']},
-  arcanist:{id:'arcanist',nameKey:'arcanist',role:'control',passive:'flow',activeSkills:['blink','seal']},
-  shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',activeSkills:['blink','guard']},
+  vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',passive:'fortified',heroSkills:['guard','seal'],activeSkills:['guard','seal']},
+  arcanist:{id:'arcanist',nameKey:'arcanist',role:'control',passive:'flow',heroSkills:['seal'],activeSkills:['blink','seal']},
+  shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',heroSkills:['guard'],activeSkills:['blink','guard']},
 };
 
-export type Loadout={heroId:HeroId;skills:readonly [SkillId,SkillId]};
-export function createLoadout(heroId:HeroId):Loadout{const hero=heroes[heroId];return{heroId,skills:hero.activeSkills};}
+export type Loadout={heroId:HeroId;commonSkill:SkillId|null;heroSkills:readonly SkillId[];skills:readonly SkillId[]};
+export function createLoadout(heroId:HeroId):Loadout{
+ const hero=heroes[heroId];
+ const commonSkill=heroId==='vanguard'?null:COMMON_SKILL;
+ return{heroId,commonSkill,heroSkills:hero.heroSkills,skills:hero.activeSkills};
+}
 export function isSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.skills.includes(skillId);}
+export function isHeroSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.heroSkills.includes(skillId);}
