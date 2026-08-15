@@ -1,4 +1,4 @@
-import { Pos, createBoard, winningLine } from '../game';
+import { Player, Pos, createBoard, winningLine } from '../game';
 import { CombatState, createCombatState, getMana } from '../combat';
 import { SkillId, skills } from '../skills';
 import { HeroDefinition, HeroId, Loadout, createLoadout, heroes } from '../heroes';
@@ -9,7 +9,7 @@ import { IDLE_TARGETING, SkillTargetingState, TargetingHighlights, selectTargeti
 import { SkillBarItem, StatusKey, describeSkillBar, statusKey } from './presentation';
 import { MatchStatus, TurnState, completeCpuTurn, completePlayerTurn, continuePlayerTurn, createTurnState, endMatch, isPlayerInput } from './turn-runtime';
 
-export const PLAYER=1;
+export const PLAYER:Player=1;
 const CPU_DELAY=500,CPU_DELAY_AFTER_PASSIVE=900;
 
 export type MatchEvent=|{kind:'reset'}|{kind:'move';at:Pos}|{kind:'mana-gain';amount:number;fromSkill:boolean}|{kind:'passive';at:Pos}|{kind:'action';at:Pos}|{kind:'invalid';at:Pos}|{kind:'winning-line';cells:Pos[]};
