@@ -61,16 +61,28 @@ export class CollisionSystem {
       }
     }
 
-    for (const drone of world.drones) {
-      if (drone.destroyed || Math.hypot(next.playerX - drone.x, next.playerY - drone.y) >= 28) continue;
+    for (const enemy of [...world.drones, ...world.interceptors]) {
+      if (enemy.destroyed || Math.hypot(next.playerX - enemy.x, next.playerY - enemy.y) >= 28) continue;
       if (next.dashTime > 0 && !next.dashReady) {
-        drone.destroyed = true;
+        enemy.destroyed = true;
         next = applyDroneKill(next);
-        events.emit({ type: 'drone-killed', x: drone.x, y: drone.y + cameraOffset });
+        events.emit({ type: 'drone-killed', x: enemy.x, y: enemy.y + cameraOffset });
       } else if (nextInvulnerable <= 0) {
         nextInvulnerable = 0.9;
         next = applyHit(next);
         events.emit({ type: 'player-hit', x: next.playerX, y: next.playerY + cameraOffset });
+      }
+    }
+
+    if (nextInvulnerable <= 0) {
+      for (const gate of world.pulseGates) {
+        if (!gate.active) continue;
+        if (Math.abs(next.playerX - gate.x) <= 13 && Math.abs(next.playerY - gate.y) <= gate.height / 2) {
+          nextInvulnerable = 0.9;
+          next = applyHit(next);
+          events.emit({ type: 'player-hit', x: next.playerX, y: next.playerY + cameraOffset });
+          break;
+        }
       }
     }
 
