@@ -6,7 +6,7 @@ export type HeroDefinition={id:HeroId;nameKey:HeroId;role:'defense'|'control'|'d
 
 export const COMMON_SKILL:SkillId='blink';
 export const heroes:Record<HeroId,HeroDefinition>={
-  vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',passive:'fortified',heroSkills:['bulwark'],activeSkills:['blink','bulwark']},
+  vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',passive:'fortified',heroSkills:['charge'],activeSkills:['blink','charge']},
   arcanist:{id:'arcanist',nameKey:'arcanist',role:'control',passive:'flow',heroSkills:['seal'],activeSkills:['blink','seal']},
   shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',heroSkills:['corrupt'],activeSkills:['blink','corrupt']},
 };
