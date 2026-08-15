@@ -23,6 +23,13 @@ const THEMES: Record<BiomeId, BiomeTheme> = {
     ambientAlpha: 0.095,
     mote: 0xffb85c,
   },
+  'violet-zone': {
+    name: 'NIGHT / VIOLET ZONE',
+    platformTint: 0xc3a6ff,
+    ambient: 0x26194f,
+    ambientAlpha: 0.105,
+    mote: 0xb792ff,
+  },
 };
 
 export function getBiomeTheme(id: BiomeId): BiomeTheme { return THEMES[id]; }

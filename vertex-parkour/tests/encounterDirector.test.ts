@@ -28,6 +28,12 @@ describe('EncounterDirector', () => {
     expect(teal.next(() => 0.2, 'teal-ruins')).toBe('recovery');
     expect(amber.next(() => 0.2, 'amber-district')).toBe('dash-chain');
   });
+  it('shifts Violet toward constrained edge and wall routing', () => {
+    const amber = new EncounterDirector();
+    const violet = new EncounterDirector();
+    expect(amber.next(() => 0.65, 'amber-district')).toBe('edge-read');
+    expect(violet.next(() => 0.65, 'violet-zone')).toBe('wall-rescue');
+  });
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector();
     for (let i = 0; i < 12; i += 1) director.next(() => 0.5);
