@@ -23,12 +23,14 @@ export type UpgradeKind = 'dash' | 'flow';
 export type PlatformSpawn = { type: 'platform'; x: number; y: number; width: number; motion?: PlatformMotion };
 export type CrystalSpawn = { type: 'crystal'; x: number; y: number };
 export type DroneSpawn = { type: 'drone'; x: number; y: number; phase: number };
+export type InterceptorSpawn = { type: 'interceptor'; x: number; y: number; phase: number };
+export type PulseGateSpawn = { type: 'pulse-gate'; x: number; y: number; height: number; phase: number };
 export type HazardSpawn = { type: 'hazard'; x: number; y: number };
 export type SpikeSpawn = { type: 'spike'; x: number; y: number; width: number };
 export type WallSpawn = { type: 'wall'; side: -1 | 1; y: number; height: number };
 export type UpgradeSpawn = { type: 'upgrade'; x: number; y: number; kind: UpgradeKind; skillId?: SkillId; choiceId: number };
 export type RouteSpawn = { type: 'route'; x: number; y: number; kind: RouteKind; choiceId: number };
-export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | HazardSpawn | SpikeSpawn | WallSpawn | UpgradeSpawn | RouteSpawn;
+export type WorldSpawn = PlatformSpawn | CrystalSpawn | DroneSpawn | InterceptorSpawn | PulseGateSpawn | HazardSpawn | SpikeSpawn | WallSpawn | UpgradeSpawn | RouteSpawn;
 export type WorldBand = { index: number; y: number; rest: boolean; encounter: EncounterType; encounterStep: number; spawns: WorldSpawn[] };
 type BandPlan = { rest?: boolean; lane: Lane; width: number; decorate?: (y: number) => WorldSpawn[] };
 
@@ -142,8 +144,8 @@ export class WorldGenerator {
     const wallSide = (-side) as -1 | 1;
     const motionPhase = this.random.next() * Math.PI * 2;
     return [
-      { lane: first, width: 102, decorate: (y) => [{ type: 'drone', x: 180, y: y - 40, phase: this.random.next() * Math.PI * 2 }] },
-      { lane: second, width: 100, decorate: (y) => [{ type: 'platform', x: 180, y, width: 106, motion: { axis: 'x', amplitude: 58, speed: 1.08, phase: motionPhase, originX: 180 } }, { type: 'hazard', x: first, y: y - 36 }] },
+      { lane: first, width: 102, decorate: (y) => [{ type: 'pulse-gate', x: 180, y: y - 54, height: 116, phase: this.random.next() * Math.PI * 2 }, { type: 'drone', x: second, y: y - 40, phase: this.random.next() * Math.PI * 2 }] },
+      { lane: second, width: 100, decorate: (y) => [{ type: 'platform', x: 180, y, width: 106, motion: { axis: 'x', amplitude: 58, speed: 1.08, phase: motionPhase, originX: 180 } }, { type: 'interceptor', x: first, y: y - 42, phase: this.random.next() * Math.PI * 2 }] },
       { lane: 180, width: 106, decorate: (y) => [{ type: 'wall', side: wallSide, y: y - 44, height: 154 }, { type: 'drone', x: second, y: y - 42, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: first, y: y - 46 }] },
       { lane: 180, width: 124, rest: true, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] },
     ];
@@ -151,7 +153,17 @@ export class WorldGenerator {
   private buildUpgradeChoice(): BandPlan[] { const id = this.choiceId; const pair = this.pickSkillPair(); return [{ lane: 180, width: 118 }, { lane: 82, width: 108, decorate: (y) => [{ type: 'platform', x: 278, y, width: 108 }, { type: 'upgrade', x: 82, y: y - 46, kind: SKILLS[pair[0]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[0], choiceId: id }, { type: 'upgrade', x: 278, y: y - 46, kind: SKILLS[pair[1]].archetype === 'flow' ? 'flow' : 'dash', skillId: pair[1], choiceId: id }] }, { lane: 180, width: 116, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 44 }] }, { lane: 180, width: 122, rest: true }]; }
   private buildRouteChoice(): BandPlan[] { const id = this.choiceId; const pair = this.pickRoutePair(); return [{ lane: 180, width: 120 }, { lane: 82, width: 112, decorate: (y) => [{ type: 'platform', x: 278, y, width: 112 }, { type: 'route', x: 82, y: y - 48, kind: pair[0], choiceId: id }, { type: 'route', x: 278, y: y - 48, kind: pair[1], choiceId: id }] }, { lane: 180, width: 120 }, { lane: 180, width: 126, rest: true }]; }
   private buildTreasure(): BandPlan[] { return [{ lane: 180, width: 118, decorate: (y) => [{ type: 'crystal', x: 150, y: y - 48 }, { type: 'crystal', x: 210, y: y - 48 }] }, { lane: 82, width: 112, decorate: (y) => [{ type: 'crystal', x: 82, y: y - 46 }] }, { lane: 278, width: 112, decorate: (y) => [{ type: 'crystal', x: 278, y: y - 46 }] }, { lane: 180, width: 126, rest: true }]; }
-  private buildElite(): BandPlan[] { const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1; const first: Lane = side === -1 ? 82 : 278; const second: Lane = side === -1 ? 278 : 82; return [{ lane: first, width: 104, decorate: (y) => [{ type: 'drone', x: 180, y: y - 40, phase: this.random.next() * Math.PI * 2 }] }, { lane: second, width: 102, decorate: (y) => [{ type: 'hazard', x: 180, y: y - 38 }] }, { lane: 180, width: 108, decorate: (y) => [{ type: 'drone', x: second, y: y - 42, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: first, y: y - 46 }] }, { lane: 180, width: 118, rest: true }]; }
+  private buildElite(): BandPlan[] {
+    const side: -1 | 1 = this.random.next() < 0.5 ? -1 : 1;
+    const first: Lane = side === -1 ? 82 : 278;
+    const second: Lane = side === -1 ? 278 : 82;
+    return [
+      { lane: first, width: 104, decorate: (y) => [{ type: 'pulse-gate', x: 180, y: y - 52, height: 108, phase: this.random.next() * Math.PI * 2 }] },
+      { lane: second, width: 102, decorate: (y) => [{ type: 'interceptor', x: first, y: y - 42, phase: this.random.next() * Math.PI * 2 }] },
+      { lane: 180, width: 108, decorate: (y) => [{ type: 'drone', x: second, y: y - 42, phase: this.random.next() * Math.PI * 2 }, { type: 'crystal', x: first, y: y - 46 }] },
+      { lane: 180, width: 118, rest: true },
+    ];
+  }
   private buildRestRoute(): BandPlan[] { return [{ lane: 180, width: 136, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 142 }, { lane: 180, width: 142, decorate: (y) => [{ type: 'crystal', x: 180, y: y - 46 }] }, { lane: 180, width: 148, rest: true }]; }
 
   private pickSkillPair(): [SkillId, SkillId] { const ids = Object.keys(SKILLS) as SkillId[]; const firstIndex = Math.floor(this.random.next() * ids.length); let secondIndex = Math.floor(this.random.next() * (ids.length - 1)); if (secondIndex >= firstIndex) secondIndex += 1; return [ids[firstIndex], ids[secondIndex]]; }
