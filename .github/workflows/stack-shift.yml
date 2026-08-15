@@ -1,0 +1,27 @@
+name: stack-shift CI
+
+on:
+  pull_request:
+    paths:
+      - "stack-shift/**"
+      - ".github/workflows/stack-shift.yml"
+  push:
+    branches: [main]
+    paths:
+      - "stack-shift/**"
+      - ".github/workflows/stack-shift.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: stack-shift
+      install-command: npm install --no-audit --no-fund
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
