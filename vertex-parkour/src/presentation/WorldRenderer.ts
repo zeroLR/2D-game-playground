@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, RouteEntity, WorldEntity } from '../world/WorldState';
-import { createRouteVisual, getRouteAccent, updateRouteVisual } from './RouteRenderer';
+import { createRouteVisual, updateRouteVisual } from './RouteRenderer';
+import { getRouteTheme } from './RouteTheme';
 import { createUpgradeVisual } from './UpgradeRenderer';
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
@@ -11,6 +12,7 @@ function routeForPlatform(platform: Extract<WorldEntity, { type: 'platform' }>, 
 export class WorldRenderer {
   private readonly views = new Map<EntityId, Container>();
   constructor(private readonly container: Container) {}
+
   mount(entity: WorldEntity) {
     let view: Container;
     switch (entity.type) {
@@ -23,16 +25,22 @@ export class WorldRenderer {
       case 'upgrade': view = createUpgradeVisual(entity.kind, entity.skillId); break;
       case 'route': view = createRouteVisual(entity.kind); break;
     }
-    view.position.set(entity.x, entity.y); this.container.addChild(view); this.views.set(entity.id, view);
+    view.position.set(entity.x, entity.y);
+    this.container.addChild(view);
+    this.views.set(entity.id, view);
   }
+
   update(entities: WorldEntity[], cameraOffset: number, elapsed: number, playerX: number, playerY: number, dt: number) {
     for (const entity of entities) {
-      const view = this.views.get(entity.id); if (!view) continue;
+      const view = this.views.get(entity.id);
+      if (!view) continue;
       if (entity.type === 'platform') {
-        view.x = entity.x; view.y = entity.y + cameraOffset;
+        view.x = entity.x;
+        view.y = entity.y + cameraOffset;
         const route = routeForPlatform(entity, entities);
+        const theme = entity.routeTheme ?? route?.kind ?? null;
         const graphics = view as Graphics;
-        graphics.tint = route ? getRouteAccent(route.kind) : 0xffffff;
+        graphics.tint = theme ? getRouteTheme(theme).platformTint : 0xffffff;
         graphics.alpha = route?.locked ? 0.38 : 1;
       }
       else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
@@ -43,5 +51,6 @@ export class WorldRenderer {
       else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
   }
+
   clear() { for (const view of this.views.values()) view.destroy({ children: true }); this.views.clear(); }
 }
