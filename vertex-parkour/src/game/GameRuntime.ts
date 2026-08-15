@@ -45,7 +45,6 @@ export class GameRuntime {
   private readonly abyssPressure = new AbyssPressureSystem();
   private readonly flow = new FlowSystem();
   private readonly biomeProgress = new BiomeProgressRail();
-  private devPanel: DevPanel | null = null;
 
   private readonly flowText = new Text({ text: '', style: new TextStyle({ fill: '#f0eadf', fontSize: 19, fontWeight: '600' }) });
   private readonly scoreText = new Text({ text: '', style: new TextStyle({ fill: '#789b99', fontSize: 10 }) });
@@ -65,7 +64,7 @@ export class GameRuntime {
     this.bindInput();
     this.resize();
     window.addEventListener('resize', this.resize);
-    if (isDevPanelEnabled()) this.devPanel = new DevPanel(this.devTuning, (value) => { this.devTuning = value; });
+    if (isDevPanelEnabled()) new DevPanel(this.devTuning, (value) => { this.devTuning = value; });
     this.worldLifecycle.seedInitialWorld();
     this.app.ticker.add(this.tick);
   }
