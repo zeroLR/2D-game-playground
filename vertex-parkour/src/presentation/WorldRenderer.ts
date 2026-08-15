@@ -1,5 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, RouteEntity, WorldEntity } from '../world/WorldState';
+import { getBiomeTheme, mixTint } from './BiomeTheme';
 import { createRouteVisual, updateRouteVisual } from './RouteRenderer';
 import { getRouteTheme } from './RouteTheme';
 import { createInterceptorVisual, createPulseGateVisual, updatePulseGateVisual } from './ThreatRenderer';
@@ -41,9 +42,10 @@ export class WorldRenderer {
         view.x = entity.x;
         view.y = entity.y + cameraOffset;
         const route = routeForPlatform(entity, entities);
-        const theme = entity.routeTheme ?? route?.kind ?? null;
+        const routeKind = entity.routeTheme ?? route?.kind ?? null;
+        const biomeTint = getBiomeTheme(entity.biomeTheme).platformTint;
         const graphics = view as Graphics;
-        graphics.tint = theme ? getRouteTheme(theme).platformTint : 0xffffff;
+        graphics.tint = routeKind ? mixTint(biomeTint, getRouteTheme(routeKind).platformTint, 0.58) : biomeTint;
         graphics.alpha = route?.locked ? 0.38 : 1;
       }
       else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
