@@ -4,7 +4,8 @@ import type { PlatformMotion, RouteKind, UpgradeKind, WorldSpawn } from './World
 
 export type EntityId = number;
 type BaseEntity = { id: EntityId; x: number; y: number; biomeTheme: BiomeId };
-export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion; routeTheme: RouteKind | null };
+export type PlatformCollapseState = 'stable' | 'cracking' | 'broken';
+export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion; routeTheme: RouteKind | null; collapsible: boolean; collapseState: PlatformCollapseState; collapseTimer: number };
 export type CrystalEntity = BaseEntity & { type: 'crystal'; taken: boolean };
 export type DroneEntity = BaseEntity & { type: 'drone'; destroyed: boolean; phase: number; originX: number; patrolAmplitude: number; patrolSpeed: number };
 export type InterceptorEntity = BaseEntity & { type: 'interceptor'; destroyed: boolean; phase: number; originX: number; trackingRange: number; maxSpeed: number };
@@ -15,6 +16,12 @@ export type WallEntity = BaseEntity & { type: 'wall'; side: -1 | 1; height: numb
 export type UpgradeEntity = BaseEntity & { type: 'upgrade'; kind: UpgradeKind; skillId?: SkillId; choiceId: number; taken: boolean; locked: boolean };
 export type RouteEntity = BaseEntity & { type: 'route'; kind: RouteKind; choiceId: number; taken: boolean; locked: boolean };
 export type WorldEntity = PlatformEntity | CrystalEntity | DroneEntity | InterceptorEntity | PulseGateEntity | HazardEntity | SpikeEntity | WallEntity | UpgradeEntity | RouteEntity;
+
+function isCollapsiblePalePlatform(spawn: Extract<WorldSpawn, { type: 'platform' }>, biomeTheme: BiomeId, id: number): boolean {
+  if (biomeTheme !== 'pale-heights' || !spawn.motion) return false;
+  const phaseBucket = Math.floor(spawn.motion.phase * 10);
+  return (phaseBucket + id) % 3 === 0;
+}
 
 export class WorldState {
   private nextId = 1;
@@ -36,7 +43,11 @@ export class WorldState {
     const id = this.nextId++;
     const base = { id, x: spawn.type === 'wall' ? (spawn.side === -1 ? 52 : 308) : spawn.x, y: spawn.y, biomeTheme };
     switch (spawn.type) {
-      case 'platform': { const entity: PlatformEntity = { ...base, type: 'platform', width: spawn.width, motion: spawn.motion, routeTheme }; this.platforms.push(entity); return entity; }
+      case 'platform': {
+        const collapsible = isCollapsiblePalePlatform(spawn, biomeTheme, id);
+        const entity: PlatformEntity = { ...base, type: 'platform', width: spawn.width, motion: spawn.motion, routeTheme, collapsible, collapseState: 'stable', collapseTimer: 0 };
+        this.platforms.push(entity); return entity;
+      }
       case 'crystal': { const entity: CrystalEntity = { ...base, type: 'crystal', taken: false }; this.crystals.push(entity); return entity; }
       case 'drone': { const entity: DroneEntity = { ...base, type: 'drone', destroyed: false, phase: spawn.phase, originX: spawn.x, patrolAmplitude: 34, patrolSpeed: 0.82 }; this.drones.push(entity); return entity; }
       case 'interceptor': { const entity: InterceptorEntity = { ...base, type: 'interceptor', destroyed: false, phase: spawn.phase, originX: spawn.x, trackingRange: 150, maxSpeed: 135 }; this.interceptors.push(entity); return entity; }
@@ -46,6 +57,22 @@ export class WorldState {
       case 'wall': { const entity: WallEntity = { ...base, type: 'wall', side: spawn.side, height: spawn.height }; this.walls.push(entity); return entity; }
       case 'upgrade': { const entity: UpgradeEntity = { ...base, type: 'upgrade', kind: spawn.kind, skillId: spawn.skillId, choiceId: spawn.choiceId, taken: false, locked: false }; this.upgrades.push(entity); return entity; }
       case 'route': { const entity: RouteEntity = { ...base, type: 'route', kind: spawn.kind, choiceId: spawn.choiceId, taken: false, locked: false }; this.routes.push(entity); return entity; }
+    }
+  }
+
+  triggerPlatformCollapse(id: EntityId, duration = 1.0) {
+    const platform = this.platforms.find((candidate) => candidate.id === id);
+    if (!platform || !platform.collapsible || platform.collapseState !== 'stable') return;
+    platform.collapseState = 'cracking';
+    platform.collapseTimer = duration;
+  }
+
+  updatePlatformCollapse(dt: number) {
+    if (dt <= 0) return;
+    for (const platform of this.platforms) {
+      if (platform.collapseState !== 'cracking') continue;
+      platform.collapseTimer = Math.max(0, platform.collapseTimer - dt);
+      if (platform.collapseTimer <= 0) platform.collapseState = 'broken';
     }
   }
 
