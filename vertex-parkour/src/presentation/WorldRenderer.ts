@@ -1,8 +1,12 @@
 import { Container, Graphics } from 'pixi.js';
-import type { EntityId, WorldEntity } from '../world/WorldState';
-import { createRouteVisual } from './RouteRenderer';
+import type { EntityId, RouteEntity, WorldEntity } from '../world/WorldState';
+import { createRouteVisual, getRouteAccent, updateRouteVisual } from './RouteRenderer';
 import { createUpgradeVisual } from './UpgradeRenderer';
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createPlatformVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
+
+function routeForPlatform(platform: Extract<WorldEntity, { type: 'platform' }>, entities: WorldEntity[]): RouteEntity | undefined {
+  return entities.find((entity): entity is RouteEntity => entity.type === 'route' && Math.abs(entity.x - platform.x) < 40 && Math.abs(entity.y + 48 - platform.y) < 8);
+}
 
 export class WorldRenderer {
   private readonly views = new Map<EntityId, Container>();
@@ -24,10 +28,17 @@ export class WorldRenderer {
   update(entities: WorldEntity[], cameraOffset: number, elapsed: number, playerX: number, playerY: number, dt: number) {
     for (const entity of entities) {
       const view = this.views.get(entity.id); if (!view) continue;
-      if (entity.type === 'platform') { view.x = entity.x; view.y = entity.y + cameraOffset; }
+      if (entity.type === 'platform') {
+        view.x = entity.x; view.y = entity.y + cameraOffset;
+        const route = routeForPlatform(entity, entities);
+        const graphics = view as Graphics;
+        graphics.tint = route ? getRouteAccent(route.kind) : 0xffffff;
+        graphics.alpha = route?.locked ? 0.38 : 1;
+      }
       else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
       else if (entity.type === 'crystal') { view.visible = !entity.taken; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3; view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04; }
-      else if (entity.type === 'upgrade' || entity.type === 'route') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
+      else if (entity.type === 'upgrade') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
+      else if (entity.type === 'route') { view.visible = true; view.x = entity.x; view.y = entity.y + cameraOffset; updateRouteVisual(view, entity.taken, entity.locked, elapsed); }
       else if (entity.type === 'drone') { view.visible = !entity.destroyed; if (!entity.destroyed) { view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5; view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06; } }
       else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
