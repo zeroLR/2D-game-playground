@@ -1,71 +1,29 @@
 import { Cell, Player, Pos } from './game';
+import { CombatState, addGuard, addSeal, isGuarded, isSealed, samePos } from './combat';
 
-export type SkillTargetType = 'friendly-then-empty' | 'friendly' | 'empty';
+export type SkillTargetType='friendly-then-empty'|'friendly'|'empty';
+export type SkillContext={state:CombatState;player:Player};
+export type SkillDefinition={id:'blink'|'guard'|'seal';cost:number;targetType:SkillTargetType;descriptionKey:'blinkHelp'|'guardHelp'|'sealHelp';legalSources?:(context:SkillContext)=>Pos[];legalTargets:(context:SkillContext,source?:Pos)=>Pos[];execute:(context:SkillContext,target:Pos,source?:Pos)=>CombatState};
 
-export type SkillContext = {
-  board: Cell[][];
-  player: Player;
-  mana: number;
+function positions(board:Cell[][],predicate:(cell:Cell,pos:Pos)=>boolean):Pos[]{const out:Pos[]=[];board.forEach((row,r)=>row.forEach((cell,c)=>{const pos={row:r,col:c};if(predicate(cell,pos))out.push(pos);}));return out;}
+function spend(state:CombatState,cost:number){return{...state,mana:state.mana-cost};}
+
+export const blinkSkill:SkillDefinition={id:'blink',cost:2,targetType:'friendly-then-empty',descriptionKey:'blinkHelp',
+  legalSources:({state,player})=>positions(state.board,(cell,pos)=>cell===player&&!isGuarded(state,pos)),
+  legalTargets:({state},source)=>source?positions(state.board,(cell,pos)=>cell===0&&!isSealed(state,pos)):[],
+  execute:({state,player},target,source)=>{if(!source)return state;const board=state.board.map((row)=>[...row]);board[source.row][source.col]=0;board[target.row][target.col]=player;return spend({...state,board},2);}
 };
 
-export type SkillDefinition = {
-  id: string;
-  cost: number;
-  targetType: SkillTargetType;
-  descriptionKey: 'blinkHelp' | 'guardHelp' | 'sealHelp';
-  legalSources?: (context: SkillContext) => Pos[];
-  legalTargets: (context: SkillContext, source?: Pos) => Pos[];
-  execute: (context: SkillContext, target: Pos, source?: Pos) => Cell[][];
+export const guardSkill:SkillDefinition={id:'guard',cost:2,targetType:'friendly',descriptionKey:'guardHelp',
+  legalTargets:({state,player})=>positions(state.board,(cell,pos)=>cell===player&&!isGuarded(state,pos)),
+  execute:({state,player},target)=>spend(addGuard(state,target,player),2)
 };
 
-function positions(board: Cell[][], predicate: (cell: Cell) => boolean): Pos[] {
-  const result: Pos[] = [];
-  board.forEach((row, r) => row.forEach((cell, c) => {
-    if (predicate(cell)) result.push({ row: r, col: c });
-  }));
-  return result;
-}
-
-function samePos(a: Pos, b: Pos) { return a.row === b.row && a.col === b.col; }
-
-export const blinkSkill: SkillDefinition = {
-  id: 'blink',
-  cost: 2,
-  targetType: 'friendly-then-empty',
-  descriptionKey: 'blinkHelp',
-  legalSources: ({ board, player }) => positions(board, (cell) => cell === player),
-  legalTargets: ({ board }, source) => source ? positions(board, (cell) => cell === 0) : [],
-  execute: ({ board, player }, target, source) => {
-    if (!source) return board;
-    const next = board.map((row) => [...row]);
-    next[source.row][source.col] = 0;
-    next[target.row][target.col] = player;
-    return next;
-  },
+export const sealSkill:SkillDefinition={id:'seal',cost:2,targetType:'empty',descriptionKey:'sealHelp',
+  legalTargets:({state})=>positions(state.board,(cell,pos)=>cell===0&&!isSealed(state,pos)),
+  execute:({state,player},target)=>spend(addSeal(state,target,player),2)
 };
 
-/** M1 vocabulary placeholder: effect state lands in the next slice. */
-export const guardSkill: SkillDefinition = {
-  id: 'guard', cost: 2, targetType: 'friendly', descriptionKey: 'guardHelp',
-  legalTargets: ({ board, player }) => positions(board, (cell) => cell === player),
-  execute: ({ board }) => board,
-};
-
-/** M1 vocabulary placeholder: timed blocked-cell state lands in the next slice. */
-export const sealSkill: SkillDefinition = {
-  id: 'seal', cost: 2, targetType: 'empty', descriptionKey: 'sealHelp',
-  legalTargets: ({ board }) => positions(board, (cell) => cell === 0),
-  execute: ({ board }) => board,
-};
-
-export const skills = {
-  blink: blinkSkill,
-  guard: guardSkill,
-  seal: sealSkill,
-} as const;
-
-export type SkillId = keyof typeof skills;
-
-export function isLegalPosition(candidate: Pos, legal: Pos[]) {
-  return legal.some((pos) => samePos(candidate, pos));
-}
+export const skills={blink:blinkSkill,guard:guardSkill,seal:sealSkill} as const;
+export type SkillId=keyof typeof skills;
+export function isLegalPosition(candidate:Pos,legal:Pos[]){return legal.some((pos)=>samePos(candidate,pos));}
