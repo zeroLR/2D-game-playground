@@ -25,7 +25,7 @@ export function createMatchRuntime({heroId,schedule,cancel,onChange,onEvent,init
  function reset(){clearCpuTimer();combat=initialState();metrics=createPlaytestMetrics(hero,getMana(combat,PLAYER));turn=createTurnState();targeting=IDLE_TARGETING;onEvent({kind:'reset'});}
  function finishPlayerTurn(delay:number){recordMana(metrics,getMana(combat,PLAYER));const done=completePlayerTurn(combat,turn);combat=done.state;turn=done.turn;onChange();cpuTimer=schedule(runCpuTurn,delay);}
  function keepPlayerTurn(){turn=continuePlayerTurn(turn);onChange();}
- function hasLegalOpportunity(skillId:SkillId){const skill=skills[skillId];if(getMana(combat,PLAYER)<skill.cost)return false;const context={state:combat,player:PLAYER as const};if(skill.legalSources){return skill.legalSources(context).some((source)=>skill.legalTargets(context,source).length>0);}return skill.legalTargets(context).length>0;}
+ function hasLegalOpportunity(skillId:SkillId){const skill=skills[skillId];if(getMana(combat,PLAYER)<skill.cost)return false;const context={state:combat,player:PLAYER};if(skill.legalSources){return skill.legalSources(context).some((source)=>skill.legalTargets(context,source).length>0);}return skill.legalTargets(context).length>0;}
  function currentSkillOpportunities(){return loadout.skills.filter(hasLegalOpportunity);}
  function applyResolution(resolution:ActionResolution,opportunities:readonly SkillId[]){
   const manaBefore=getMana(combat,PLAYER);recordSkillOpportunities(metrics,opportunities);combat=resolution.state;const mana=getMana(combat,PLAYER);
