@@ -1,6 +1,5 @@
 export const BOARD_SIZE = 9;
 export const WIN_LENGTH = 5;
-export const BLINK_COST = 2;
 export type Cell = 0 | 1 | 2;
 export type Player = 1 | 2;
 export type Pos = { row: number; col: number };
@@ -23,10 +22,6 @@ export function longestLine(board: Cell[][], p: Pos, player: Player) {
 
 export function isWin(board: Cell[][], p: Pos, player: Player) {
   return longestLine(board,p,player) >= WIN_LENGTH;
-}
-
-export function earnsMana(board: Cell[][], p: Pos, player: Player) {
-  return longestLine(board,p,player) >= 3;
 }
 
 export function emptyCells(board: Cell[][]): Pos[] {
