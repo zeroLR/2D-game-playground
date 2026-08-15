@@ -42,6 +42,7 @@ CHARACTERS.forEach((character, index) => {
   card.addEventListener('pointerdown', (event) => event.preventDefault());
   card.addEventListener('click', () => {
     selectCharacter(character.id);
+    document.querySelectorAll('.select.weapons button').forEach((button, buttonIndex) => button.classList.toggle('selected', buttonIndex === character.startingWeaponIndex));
     root.remove();
     style.remove();
     void import('./gameM45');
