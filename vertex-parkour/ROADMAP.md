@@ -72,8 +72,18 @@ Remaining M6.2:
 - evaluate gap/width pressure and Rebound Tier 3 only after the full pacing loop is played end-to-end
 - define how Climax hands off into the first biome transition during M7
 
-## M6.3 — More Enemies / Traversal Threats
+## M6.3 — More Enemies / Traversal Threats 🚧
 Threats should primarily force movement decisions. Elite enemies alter route planning rather than becoming stationary HP sponges; combat remains secondary to traversal.
+
+Implemented slices:
+- **Patrol Drone** — existing Drone now sweeps horizontally around its authored lane. Its collision position follows the visual position, so the player must read timing/lateral space rather than treating every Drone as a stationary Dash target.
+
+Planned threat vocabulary before balance tuning:
+- lane-denial / timing threat that periodically makes a route unsafe
+- pursuit/interceptor threat that pressures continued movement
+- combine threat roles inside Elite / Climax packets only after each role is readable alone
+
+Balance tuning remains deferred until the representative M6.3 threat set exists.
 
 # M7 — Environments / Biomes
 Goal: a run visibly and mechanically progresses through multiple environments.
@@ -101,6 +111,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M1–M4: complete
 - M5 Run Build System: mechanics implemented; balance/option weighting deferred until representative content pressure
 - M6.1 Route Node Types: complete
-- M6.2 Encounter Deck + Pacing Director: in progress; director, phase variants, and recurring Climax packet implemented
-- M6.3 More Enemies / Traversal Threats: not started
+- M6.2 Encounter Deck + Pacing Director: mechanics implemented; cadence/balance deferred
+- M6.3 More Enemies / Traversal Threats: in progress; Patrol Drone first slice implemented
 - M7–M12: not started
