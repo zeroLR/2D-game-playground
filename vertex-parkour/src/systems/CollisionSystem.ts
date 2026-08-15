@@ -1,6 +1,6 @@
 import type { GameEventQueue } from '../domain/events';
 import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applySkill, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
-import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../presentation/RouteRenderer';
+import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../world/RouteChoice';
 import type { WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
