@@ -47,7 +47,7 @@ export class WorldRenderer {
       else if (entity.type === 'crystal') { view.visible = !entity.taken; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2.4 + entity.x) * 3; view.rotation = Math.sin(elapsed * 1.3 + entity.x) * 0.04; }
       else if (entity.type === 'upgrade') { view.visible = !entity.taken; view.alpha = entity.locked ? 0.16 : 1; view.y = entity.y + cameraOffset + Math.sin(elapsed * 2 + entity.x * 0.01) * 2; view.scale.set(entity.locked ? 0.9 : 1 + Math.sin(elapsed * 3 + entity.x) * 0.015); }
       else if (entity.type === 'route') { view.visible = true; view.x = entity.x; view.y = entity.y + cameraOffset; updateRouteVisual(view, entity.taken, entity.locked, elapsed); }
-      else if (entity.type === 'drone') { view.visible = !entity.destroyed; if (!entity.destroyed) { view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5; view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06; } }
+      else if (entity.type === 'drone') { view.visible = !entity.destroyed; if (!entity.destroyed) { view.x = entity.x; view.y = entity.y + cameraOffset + Math.sin(elapsed * 3 + entity.phase) * 5; view.rotation = Math.sin(elapsed * 2 + entity.phase) * 0.06; } }
       else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
   }

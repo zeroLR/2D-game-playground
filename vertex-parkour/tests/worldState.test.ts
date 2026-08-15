@@ -9,7 +9,7 @@ describe('WorldState', () => {
     expect(platform.id).toBe(1);
     expect(drone.id).toBe(2);
     expect(world.platforms[0]).toMatchObject({ type: 'platform', x: 180, y: 500, width: 90, routeTheme: null });
-    expect(world.drones[0]).toMatchObject({ type: 'drone', destroyed: false, phase: 1.2 });
+    expect(world.drones[0]).toMatchObject({ type: 'drone', destroyed: false, phase: 1.2, originX: 82, patrolAmplitude: 34, patrolSpeed: 0.82 });
     expect('view' in world.platforms[0]).toBe(false);
     expect('view' in world.drones[0]).toBe(false);
   });
