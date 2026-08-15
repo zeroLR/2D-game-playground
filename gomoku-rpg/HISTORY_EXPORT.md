@@ -1,0 +1,1 @@
+The existing result-screen METRICS action exports the full persisted playtest history in this slice. CLEAR METRICS appears after the first completed match and removes the stored dataset after confirmation.
