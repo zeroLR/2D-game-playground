@@ -1,6 +1,6 @@
 import { describe,expect,it } from 'vitest';
 import { BOARD_SIZE } from '../src/game';
-import { BOARD_PAD,BOARD_SPAN,BOARD_X,BOARD_Y,cellX,cellY } from '../src/ui/board-view';
+import { BOARD_PAD,BOARD_SPAN,BOARD_X,BOARD_Y,cellX,cellY } from '../src/ui/board-layout';
 
 describe('R4 board layout',()=>{
  it('keeps the M2 board geometry',()=>{expect([BOARD_X,BOARD_Y,BOARD_SPAN,BOARD_PAD]).toEqual([24,145,342,19]);});

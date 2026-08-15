@@ -3,16 +3,13 @@ import { BOARD_SIZE, Pos } from '../game';
 import { CombatState, isGuarded, isSealed, samePos } from '../combat';
 import { TargetingHighlights } from '../runtime/targeting';
 import { ViewContext, card, diamond, edge, gold, line, violet } from './theme';
+import { BOARD_PAD, BOARD_SPAN, BOARD_X, BOARD_Y, BoardFeedback, cellX, cellY } from './board-layout';
 
-export const BOARD_X=24,BOARD_Y=145,BOARD_SPAN=342,BOARD_PAD=19;
-const STEP=(BOARD_SPAN-BOARD_PAD*2)/(BOARD_SIZE-1);
+export type { BoardFeedback } from './board-layout';
+export { BOARD_PAD, BOARD_SPAN, BOARD_X, BOARD_Y, cellX, cellY } from './board-layout';
 
-/** Transient marks the board draws on top of state. Owned by the feedback layer, never by rules. */
-export interface BoardFeedback{lastMove:Pos|null;winCells:Pos[];actionPulse:Pos|null;passivePulse:Pos|null;flash:Pos|null}
 export interface BoardViewProps{state:CombatState;highlights:TargetingHighlights;feedback:BoardFeedback;onCell:(pos:Pos)=>void}
 
-export const cellX=(col:number)=>BOARD_X+BOARD_PAD+col*STEP;
-export const cellY=(row:number)=>BOARD_Y+BOARD_PAD+row*STEP;
 const marks=(list:Pos[],pos:Pos)=>list.some((p)=>samePos(p,pos));
 
 /** Vanguard Guard marker: a layered crystal shell around a protected stone. */

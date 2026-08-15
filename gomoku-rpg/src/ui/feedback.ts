@@ -1,5 +1,5 @@
 import { Pos } from '../game';
-import { BoardFeedback } from './board-view';
+import type { BoardFeedback } from './board-layout';
 
 /** Milliseconds each transient mark stays on screen. */
 export const FEEDBACK_MS={action:220,passive:850,invalid:180,manaPlace:420,manaSkill:520} as const;
