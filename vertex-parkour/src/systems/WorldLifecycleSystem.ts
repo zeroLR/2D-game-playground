@@ -27,6 +27,10 @@ export class WorldLifecycleSystem {
       if (!motion) continue;
       platform.x = motion.originX + Math.sin(elapsed * motion.speed + motion.phase) * motion.amplitude;
     }
+    for (const drone of this.state.drones) {
+      if (drone.destroyed) continue;
+      drone.x = drone.originX + Math.sin(elapsed * drone.patrolSpeed + drone.phase) * drone.patrolAmplitude;
+    }
   }
 
   update(cameraOffset: number) {
