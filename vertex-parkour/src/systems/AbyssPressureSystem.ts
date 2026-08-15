@@ -13,6 +13,10 @@ export class AbyssPressureSystem {
     return this.worldY;
   }
 
+  keepBehind(playerWorldY: number, gap = 150) {
+    this.worldY = Math.max(this.worldY, playerWorldY + gap);
+  }
+
   getWorldY() {
     return this.worldY;
   }
