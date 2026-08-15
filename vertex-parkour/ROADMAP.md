@@ -86,22 +86,26 @@ M6.3 intentionally does not rebalance damage, Rebound, gaps, widths, route caden
 # M7 — Environments / Biomes 🚧
 Goal: a run visibly and mechanically progresses through multiple environments.
 
-## M7.1 — Biome Foundation 🚧
-Implemented foundation:
+## M7.1 — Biome Foundation ✅
 - run starts in **Teal Ruins**
 - first completed Climax hands off into **Amber District**
 - generated platforms snapshot their biome identity, preserving a visible vertical boundary instead of recoloring old geometry
 - Biome palette is layered beneath Route palette so Treasure / Elite / Rest / Skill remain readable inside each biome
 - environment ambience and motes inherit biome identity while Route mood remains a local overlay
 
-Remaining M7.1:
-- mobile visual validation of the Teal → Amber handoff
-- add a short transition treatment only if the palette/composition boundary is not readable enough
+## M7.2 — Biome Encounter Vocabulary 🚧
+Implemented Amber identity:
+- biome-aware encounter decks; Amber favors **Dash Chain / Edge Read / Moving Window** over passive Recovery
+- Amber Recovery becomes a light timing-reset packet with **Pulse Gate + Crystal** rather than empty traversal
+- Amber Dash Chain uses stronger cross-lane routing and introduces an **Interceptor** in ordinary core play
+- Amber Edge Read combines edge commitment with a timed central gate
+- Amber Moving Window uses a larger/faster motion profile and lane-denial timing pressure
+- Skill / Route / Climax cadence and global damage/gap balance remain unchanged
 
-## M7.2 — Biome Encounter Vocabulary
-Add biome-specific composition and hazard/encounter bias so biome changes are not cosmetic-only. Amber should alter traversal vocabulary before Night / Violet Zone and Ice / Pale Heights are added.
-
-Future directions: Night / Violet Zone, Ice / Pale Heights.
+Next M7 slices:
+- mobile validation that Amber feels mechanically distinct without becoming precision punishment
+- add **Night / Violet Zone** with its own encounter vocabulary
+- add **Ice / Pale Heights** after Violet identity is validated
 
 # M8 — Relic System
 Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats.
@@ -127,5 +131,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M6.1 Route Node Types: complete
 - M6.2 Encounter Deck + Pacing Director: mechanics implemented; cadence/balance deferred
 - M6.3 More Enemies / Traversal Threats: complete; mobile playtest pending
-- M7.1 Biome Foundation: in progress; Teal Ruins → Amber District handoff implemented
-- M7.2–M12: not started
+- M7.1 Biome Foundation: complete; Teal Ruins → Amber District handoff implemented
+- M7.2 Biome Encounter Vocabulary: in progress; Amber gameplay identity implemented
+- M8–M12: not started
