@@ -8,7 +8,7 @@ const LANDING_EDGE_ASSIST = 12;
 export type CollisionResult = { state: GameState; invulnerable: number };
 
 export class CollisionSystem {
-  update(state: GameState, previousPlayerY: number, world: WorldState, cameraOffset: number, invulnerable: number, events: GameEventQueue): CollisionResult {
+  update(state: GameState, previousPlayerY: number, world: WorldState, cameraOffset: number, invulnerable: number, events: GameEventQueue, ignoreDamage = false): CollisionResult {
     let next = state;
     let nextInvulnerable = invulnerable;
     const previousFeet = previousPlayerY + PLAYER_FEET_OFFSET;
@@ -67,14 +67,14 @@ export class CollisionSystem {
         enemy.destroyed = true;
         next = applyDroneKill(next);
         events.emit({ type: 'drone-killed', x: enemy.x, y: enemy.y + cameraOffset });
-      } else if (nextInvulnerable <= 0) {
+      } else if (!ignoreDamage && nextInvulnerable <= 0) {
         nextInvulnerable = 0.9;
         next = applyHit(next);
         events.emit({ type: 'player-hit', x: next.playerX, y: next.playerY + cameraOffset });
       }
     }
 
-    if (nextInvulnerable <= 0) {
+    if (!ignoreDamage && nextInvulnerable <= 0) {
       for (const gate of world.pulseGates) {
         if (!gate.active) continue;
         if (Math.abs(next.playerX - gate.x) <= 13 && Math.abs(next.playerY - gate.y) <= gate.height / 2) {
@@ -86,7 +86,7 @@ export class CollisionSystem {
       }
     }
 
-    if (nextInvulnerable <= 0) {
+    if (!ignoreDamage && nextInvulnerable <= 0) {
       for (const spike of world.spikes) {
         const feet = next.playerY + PLAYER_FEET_OFFSET;
         if (Math.abs(next.playerX - spike.x) <= spike.width / 2 + 7 && feet >= spike.y - 13 && feet <= spike.y + 9) {
@@ -98,7 +98,7 @@ export class CollisionSystem {
       }
     }
 
-    if (nextInvulnerable <= 0) {
+    if (!ignoreDamage && nextInvulnerable <= 0) {
       for (const hazard of world.hazards) {
         if (!hazard.hit && Math.hypot(next.playerX - hazard.x, next.playerY - hazard.y) < 25) {
           hazard.hit = true;
