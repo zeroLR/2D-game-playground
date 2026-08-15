@@ -1,0 +1,34 @@
+import type { BiomeId } from '../world/Biome';
+
+export type BiomeTheme = {
+  name: string;
+  platformTint: number;
+  ambient: number;
+  ambientAlpha: number;
+  mote: number;
+};
+
+const THEMES: Record<BiomeId, BiomeTheme> = {
+  'teal-ruins': {
+    name: 'TEAL RUINS',
+    platformTint: 0xb7fff1,
+    ambient: 0x123f46,
+    ambientAlpha: 0.055,
+    mote: 0x74d9ce,
+  },
+  'amber-district': {
+    name: 'AMBER DISTRICT',
+    platformTint: 0xffc979,
+    ambient: 0x6b3517,
+    ambientAlpha: 0.095,
+    mote: 0xffb85c,
+  },
+};
+
+export function getBiomeTheme(id: BiomeId): BiomeTheme { return THEMES[id]; }
+
+export function mixTint(base: number, accent: number, accentWeight = 0.55): number {
+  const weight = Math.max(0, Math.min(1, accentWeight));
+  const mix = (shift: number) => Math.round(((base >> shift) & 0xff) * (1 - weight) + ((accent >> shift) & 0xff) * weight);
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+}
