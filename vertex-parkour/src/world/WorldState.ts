@@ -5,7 +5,7 @@ export type EntityId = number;
 type BaseEntity = { id: EntityId; x: number; y: number };
 export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion; routeTheme: RouteKind | null };
 export type CrystalEntity = BaseEntity & { type: 'crystal'; taken: boolean };
-export type DroneEntity = BaseEntity & { type: 'drone'; destroyed: boolean; phase: number };
+export type DroneEntity = BaseEntity & { type: 'drone'; destroyed: boolean; phase: number; originX: number; patrolAmplitude: number; patrolSpeed: number };
 export type HazardEntity = BaseEntity & { type: 'hazard'; hit: boolean };
 export type SpikeEntity = BaseEntity & { type: 'spike'; width: number };
 export type WallEntity = BaseEntity & { type: 'wall'; side: -1 | 1; height: number };
@@ -31,7 +31,7 @@ export class WorldState {
     switch (spawn.type) {
       case 'platform': { const entity: PlatformEntity = { id, type: 'platform', x: spawn.x, y: spawn.y, width: spawn.width, motion: spawn.motion, routeTheme }; this.platforms.push(entity); return entity; }
       case 'crystal': { const entity: CrystalEntity = { id, type: 'crystal', x: spawn.x, y: spawn.y, taken: false }; this.crystals.push(entity); return entity; }
-      case 'drone': { const entity: DroneEntity = { id, type: 'drone', x: spawn.x, y: spawn.y, destroyed: false, phase: spawn.phase }; this.drones.push(entity); return entity; }
+      case 'drone': { const entity: DroneEntity = { id, type: 'drone', x: spawn.x, y: spawn.y, destroyed: false, phase: spawn.phase, originX: spawn.x, patrolAmplitude: 34, patrolSpeed: 0.82 }; this.drones.push(entity); return entity; }
       case 'hazard': { const entity: HazardEntity = { id, type: 'hazard', x: spawn.x, y: spawn.y, hit: false }; this.hazards.push(entity); return entity; }
       case 'spike': { const entity: SpikeEntity = { id, type: 'spike', x: spawn.x, y: spawn.y, width: spawn.width }; this.spikes.push(entity); return entity; }
       case 'wall': { const entity: WallEntity = { id, type: 'wall', x: spawn.side === -1 ? 52 : 308, y: spawn.y, side: spawn.side, height: spawn.height }; this.walls.push(entity); return entity; }
