@@ -13,21 +13,11 @@ export type HeroDefinition={
   activeSkills:readonly SkillId[];
 };
 
-/**
- * M2.4 target architecture:
- * - one common skill slot shared by every hero
- * - hero-owned slots define the character's tactical identity
- *
- * During migration the runtime loadout keeps the existing two-button HUD intact.
- * A hero receives the common slot only when Blink was already part of its legacy loadout;
- * Vanguard keeps Guard / Seal until its later vertical slice. This avoids changing live
- * gameplay merely to establish the domain boundary.
- */
 export const COMMON_SKILL:SkillId='blink';
 export const heroes:Record<HeroId,HeroDefinition>={
   vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',passive:'fortified',heroSkills:['guard','seal'],activeSkills:['guard','seal']},
   arcanist:{id:'arcanist',nameKey:'arcanist',role:'control',passive:'flow',heroSkills:['seal'],activeSkills:['blink','seal']},
-  shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',heroSkills:['guard'],activeSkills:['blink','guard']},
+  shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',heroSkills:['corrupt'],activeSkills:['blink','corrupt']},
 };
 
 export type Loadout={heroId:HeroId;commonSkill:SkillId|null;heroSkills:readonly SkillId[];skills:readonly SkillId[]};

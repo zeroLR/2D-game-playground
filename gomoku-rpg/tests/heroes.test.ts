@@ -2,7 +2,7 @@ import { describe,expect,it } from 'vitest';
 import { createCombatState,executePlace,getMana,setMana } from '../src/combat';
 import { createBoard } from '../src/game';
 import { COMMON_SKILL,createLoadout,heroes,isHeroSkillEquipped,isSkillEquipped } from '../src/heroes';
-import { commonSkillIds,sealSkill } from '../src/skills';
+import { commonSkillIds,corruptSkill,sealSkill } from '../src/skills';
 
 describe('M2 combat resources',()=>{
  it('tracks Mana independently for both actors',()=>{let state=createCombatState(createBoard(),3);state=setMana(state,2,4);expect(getMana(state,1)).toBe(3);expect(getMana(state,2)).toBe(4);});
@@ -13,7 +13,12 @@ describe('M2 combat resources',()=>{
 describe('M2.4 skill architecture',()=>{
  it('declares Blink as the common skill',()=>{expect(COMMON_SKILL).toBe('blink');expect(commonSkillIds).toEqual(['blink']);});
  it('separates common and hero-owned slots for Arcanist',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['seal']);expect(loadout.skills).toEqual(['blink','seal']);expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isHeroSkillEquipped(loadout,'blink')).toBe(false);expect(isHeroSkillEquipped(loadout,'seal')).toBe(true);});
- it('separates common and hero-owned slots for Shade',()=>{const loadout=createLoadout('shade');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['guard']);expect(loadout.skills).toEqual(['blink','guard']);});
+ it('equips Shade with common Blink and hero-owned Corrupt',()=>{const loadout=createLoadout('shade');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['corrupt']);expect(loadout.skills).toEqual(['blink','corrupt']);expect(isHeroSkillEquipped(loadout,'corrupt')).toBe(true);});
  it('keeps Vanguard legacy gameplay intact until its vertical slice',()=>{const loadout=createLoadout('vanguard');expect(loadout.commonSkill).toBeNull();expect(loadout.heroSkills).toEqual(['guard','seal']);expect(loadout.skills).toEqual(['guard','seal']);});
- it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.arcanist.heroSkills).toEqual(['seal']);expect(heroes.shade.heroSkills).toEqual(['guard']);});
+ it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.arcanist.heroSkills).toEqual(['seal']);expect(heroes.shade.heroSkills).toEqual(['corrupt']);});
+});
+
+describe('M2.4 Shade Corrupt',()=>{
+ it('targets only enemy stones adjacent to a Shade stone',()=>{const board=createBoard();board[4][4]=1;board[4][5]=2;board[1][1]=2;const state=createCombatState(board,5);expect(corruptSkill.legalTargets({state,player:1})).toEqual([{row:4,col:5}]);});
+ it('destroys the target and spends three Mana',()=>{const board=createBoard();board[4][4]=1;board[4][5]=2;const state=createCombatState(board,5);const next=corruptSkill.execute({state,player:1},{row:4,col:5});expect(next.board[4][5]).toBe(0);expect(getMana(next,1)).toBe(2);});
 });
