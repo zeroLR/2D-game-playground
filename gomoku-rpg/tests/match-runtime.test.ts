@@ -79,11 +79,11 @@ describe('R7 match runtime skills',()=>{
   expect(after.turn.phase).toBe('cpu');
  });
  it('keeps the skill selected after an illegal target',()=>{
-  const h=harness('arcanist',()=>createCombatState(boardWith([[4,4,1]]),2));
-  h.runtime.selectSkill('seal');
-  h.runtime.tapCell({row:4,col:4});
+  const h=harness('arcanist',()=>createCombatState(boardWith([[4,4,1]]),3));
+  h.runtime.selectSkill('phase');
+  h.runtime.tapCell({row:0,col:0});
   expect(h.kinds()).toEqual(['invalid']);
-  expect(h.runtime.snapshot().status).toBe('seal');
+  expect(h.runtime.snapshot().status).toBe('phase');
  });
 });
 
@@ -100,7 +100,7 @@ describe('R7 match runtime lifecycle',()=>{
  });
  it('selectHero swaps the loadout for the next match',()=>{
   const h=harness();
-  expect(h.runtime.snapshot().loadout.skills).toEqual(['blink','seal']);
+  expect(h.runtime.snapshot().loadout.skills).toEqual(['blink','phase']);
   h.runtime.selectHero('shade');
   expect(h.runtime.heroId()).toBe('shade');
   expect(h.runtime.snapshot().loadout.skills).toEqual(['blink','corrupt']);

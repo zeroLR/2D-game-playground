@@ -77,9 +77,11 @@ First three abstract hero archetypes:
 - Common skill boundary: Blink
 - Shade vertical slice: Pressure + Corrupt
 - Vanguard vertical slice: Fortified + Charge
-- Arcanist vertical slice: pending
+- Arcanist vertical slice: Flow + Phase
 
-**Deferred — Bulwark:** the defensive cluster-Guard design is retained but unequipped. Current CPU has no hostile active skills, so playtesting showed no meaningful reason to spend a turn and 3 Mana on it. Re-evaluate Bulwark after the CPU Skill System exists and can actively disrupt player structures.
+**Phase — the first free action.** M1.2 reserved the right to design a skill that does not consume the turn. Phase is that skill: 3 Mana shifts one Arcanist stone one step to an adjacent empty intersection, Flow refunds 1 Mana, and the player still places a stone in the same turn. Skills now declare `consumesTurn`, and the runtime reads the turn decision from that flag rather than assuming every cast ends the turn.
+
+**Deferred — Bulwark and Seal:** both are retained in the skill registry but unequipped. Current CPU has no hostile active skills, so playtesting showed no meaningful reason to spend a turn and 3 Mana on Bulwark. Seal steps aside for Phase while the Arcanist slice is measured; re-evaluate both after the CPU Skill System exists and can actively disrupt player structures.
 
 Exit criterion: players should describe different strategic priorities for each hero, not merely different visual effects.
 
@@ -192,7 +194,7 @@ Polish:
 
 ## Deferred until validated
 
-- **Bulwark** — re-evaluate after CPU Skill System can threaten protected structures
+- **Bulwark**, **Seal** — re-evaluate after CPU Skill System can threaten protected structures
 - online matchmaking
 - ranked seasons
 - account system

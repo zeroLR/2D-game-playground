@@ -110,6 +110,7 @@ export function createMatchRuntime({heroId,schedule,cancel,onChange,onEvent,init
       return;
     }
     onEvent({kind:'action',at:resolution.at});
+    if(!resolution.consumedTurn){keepPlayerTurn();return;}
     finishPlayerTurn(resolution.passiveTriggered?CPU_DELAY_AFTER_PASSIVE:CPU_DELAY);
   }
 

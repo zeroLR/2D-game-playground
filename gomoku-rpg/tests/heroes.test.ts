@@ -12,10 +12,10 @@ describe('M2 combat resources',()=>{
 
 describe('M2.4 skill architecture',()=>{
  it('declares Blink as the common skill',()=>{expect(COMMON_SKILL).toBe('blink');expect(commonSkillIds).toEqual(['blink']);});
- it('separates common and hero-owned slots for Arcanist',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['seal']);expect(loadout.skills).toEqual(['blink','seal']);});
+ it('separates common and hero-owned slots for Arcanist',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['phase']);expect(loadout.skills).toEqual(['blink','phase']);});
  it('equips Shade with common Blink and Corrupt',()=>{expect(createLoadout('shade').skills).toEqual(['blink','corrupt']);});
  it('equips Vanguard with common Blink and hero-owned Charge',()=>{const loadout=createLoadout('vanguard');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['charge']);expect(loadout.skills).toEqual(['blink','charge']);expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isHeroSkillEquipped(loadout,'charge')).toBe(true);expect(isHeroSkillEquipped(loadout,'bulwark')).toBe(false);});
- it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.vanguard.heroSkills).toEqual(['charge']);expect(heroes.arcanist.heroSkills).toEqual(['seal']);expect(heroes.shade.heroSkills).toEqual(['corrupt']);});
+ it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.vanguard.heroSkills).toEqual(['charge']);expect(heroes.arcanist.heroSkills).toEqual(['phase']);expect(heroes.shade.heroSkills).toEqual(['corrupt']);});
 });
 
 describe('M2.4 Shade Corrupt',()=>{

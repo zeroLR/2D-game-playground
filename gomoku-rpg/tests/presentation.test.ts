@@ -15,7 +15,7 @@ describe('R5 skill bar presentation',()=>{
   expect(bar.map((item)=>item.enabled)).toEqual([false,false]);
  });
  it('enables skills once their cost is covered',()=>{
-  const bar=describeSkillBar(createCombatState(createBoard(),2),1,arcanist,createTurnState(),IDLE_TARGETING);
+  const bar=describeSkillBar(createCombatState(createBoard(),3),1,arcanist,createTurnState(),IDLE_TARGETING);
   expect(bar.every((item)=>item.enabled)).toBe(true);
  });
  it('disables every skill while the CPU holds the turn',()=>{
@@ -23,8 +23,8 @@ describe('R5 skill bar presentation',()=>{
   expect(bar.some((item)=>item.enabled)).toBe(false);
  });
  it('reports exactly one selected skill',()=>{
-  const bar=describeSkillBar(createCombatState(createBoard(),5),1,arcanist,createTurnState(),beginTargeting('seal'));
-  expect(bar.filter((item)=>item.selected).map((item)=>item.skillId)).toEqual(['seal']);
+  const bar=describeSkillBar(createCombatState(createBoard(),5),1,arcanist,createTurnState(),beginTargeting('phase'));
+  expect(bar.filter((item)=>item.selected).map((item)=>item.skillId)).toEqual(['phase']);
  });
 });
 
