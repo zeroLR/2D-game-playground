@@ -1,0 +1,1 @@
+M2.4 Slice 1.1: persistent completed-match history, full dataset export, explicit clear control.
