@@ -28,5 +28,5 @@ describe('R1 turn consumption',()=>{
   expect(resolveSkillAction(createCombatState(b,3),'vanguard',1,'charge',{row:5,col:4},{row:4,col:4}).consumedTurn).toBe(true);
   expect(resolveSkillAction(createCombatState(b,3),'shade',1,'corrupt',{row:4,col:5}).consumedTurn).toBe(true);
  });
- it('declares Phase as the only free action',()=>{const free=Object.values(skills).filter((skill)=>!skill.consumesTurn).map((skill)=>skill.id);expect(free).toEqual(['phase']);});
+ it('declares no free actions after Phase v2',()=>{const free=Object.values(skills).filter((skill)=>!skill.consumesTurn).map((skill)=>skill.id);expect(free).toEqual([]);});
 });
