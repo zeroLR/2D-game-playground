@@ -26,24 +26,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-
       - name: Install dependencies
         working-directory: ${{ inputs.game }}
         run: ${{ inputs.install-command }}
-
       - name: Run tests
         if: inputs.run-tests
         working-directory: ${{ inputs.game }}
         run: npm test
-
       - name: Build
         working-directory: ${{ inputs.game }}
         run: npm run build
-
       - name: Upload game dist
         if: inputs.deploy
         uses: actions/upload-artifact@v4
@@ -68,7 +63,6 @@ jobs:
         with:
           name: ${{ inputs.game }}-dist
           path: _game_dist
-
       - name: Restore complete site state
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,7 +74,6 @@ jobs:
             exit 1
           fi
           git clone --depth 1 --branch pages-state "$remote" _pages_state
-
       - name: Replace changed game in site state
         env:
           GAME: ${{ inputs.game }}
@@ -89,12 +82,11 @@ jobs:
           rm -rf "_pages_state/site/${GAME}"
           mkdir -p "_pages_state/site/${GAME}"
           cp -a _game_dist/. "_pages_state/site/${GAME}/"
-
       - name: Validate complete site before publish
         run: |
           set -euo pipefail
           missing=0
-          for game in simple-roguelike axiom vertex-parkour neon-siege gomoku-rpg; do
+          for game in simple-roguelike axiom vertex-parkour neon-siege gomoku-rpg stack-shift; do
             if [ ! -f "_pages_state/site/${game}/index.html" ]; then
               echo "Missing published game: ${game}"
               missing=1
@@ -104,7 +96,6 @@ jobs:
             echo "Refusing partial GitHub Pages deployment. Run the Bootstrap full GitHub Pages site workflow to repair pages-state."
             exit 1
           fi
-
       - name: Refresh landing page
         run: |
           cat > _pages_state/site/index.html <<'HTML'
@@ -129,9 +120,9 @@ jobs:
             <li><a href="./vertex-parkour/">vertex-parkour</a><div class="desc">Mobile-portrait parkour roguelite vertical slice.</div></li>
             <li><a href="./neon-siege/">neon-siege</a><div class="desc">Cyberpunk horizontal action tower-defense MVP.</div></li>
             <li><a href="./gomoku-rpg/">gomoku-rpg</a><div class="desc">Portrait-first 9×9 Gomoku RPG with Mana and tactical Blink.</div></li>
+            <li><a href="./stack-shift/">stack-shift</a><div class="desc">Portrait 3D gravity-shifting puzzle prototype.</div></li>
           </ul>
           HTML
-
       - name: Persist site state
         env:
           GAME: ${{ inputs.game }}
@@ -144,10 +135,8 @@ jobs:
             git -C _pages_state commit -m "deploy ${GAME}"
             git -C _pages_state push origin pages-state
           fi
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _pages_state/site
-
       - id: deployment
         uses: actions/deploy-pages@v4
