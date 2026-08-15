@@ -12,6 +12,9 @@ function platform(overrides: Partial<PlatformEntity> = {}): PlatformEntity {
     motion: { axis: 'x', amplitude: 20, speed: 0.3, phase: 1.2, originX: 180 },
     routeTheme: null,
     biomeTheme: 'pale-heights',
+    collapsible: false,
+    collapseState: 'stable',
+    collapseTimer: 0,
     ...overrides,
   };
 }
