@@ -31,8 +31,8 @@ describe('EncounterDirector', () => {
   it('shifts Violet toward constrained edge and wall routing', () => {
     const amber = new EncounterDirector();
     const violet = new EncounterDirector();
-    expect(amber.next(() => 0.55, 'amber-district')).toBe('edge-read');
-    expect(violet.next(() => 0.55, 'violet-zone')).toBe('wall-rescue');
+    expect(amber.next(() => 0.65, 'amber-district')).toBe('edge-read');
+    expect(violet.next(() => 0.65, 'violet-zone')).toBe('wall-rescue');
   });
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector();
