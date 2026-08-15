@@ -19,6 +19,15 @@ export function createBiomePlatformVisual(width: number, biome: BiomeId): Graphi
 
   if (silhouette === 'night-slab') {
     const half = width / 2;
+    if (width < 60) {
+      // Small Violet platforms are now real world-space fragments, so draw each
+      // collider as one irregular shard rather than faking another split inside it.
+      g.poly([-half - 3, -5, -half + 6, -9, half + 4, -6, half - 2, 5, -half + 2, 4]).fill({ color: 0x20263d, alpha: 0.98 });
+      g.moveTo(-half + 3, -7).lineTo(half - 4, -6).stroke({ width: 2, color: 0xb49cff, alpha: 0.8 });
+      g.poly([half + 1, 0, half + 7, -3, half + 5, 4]).fill({ color: 0x7969bc, alpha: 0.34 });
+      g.rect(-half + 5, 6, Math.max(10, width - 10), 1).fill({ color: 0xcbbcff, alpha: 0.16 });
+      return g;
+    }
     const gap = Math.max(10, width * 0.1);
     g.poly([-half - 6, -6, -gap / 2 - 3, -9, -gap / 2, 3, -half + 5, 5]).fill({ color: 0x20263d, alpha: 0.97 });
     g.poly([gap / 2, -8, half + 7, -5, half - 4, 5, gap / 2 + 3, 3]).fill({ color: 0x20263d, alpha: 0.97 });
