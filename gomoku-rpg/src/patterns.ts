@@ -29,12 +29,13 @@ function count(board: Cell[][], p: Pos, player: Player, dr: number, dc: number) 
 export function patternRewards(board: Cell[][], p: Pos, player: Player): PatternReward[] {
   if (board[p.row]?.[p.col] !== player) return [];
 
-  return directions.flatMap(({ name, dr, dc }) => {
+  const rewards: PatternReward[] = [];
+  for (const { name, dr, dc } of directions) {
     const length = 1 + count(board, p, player, dr, dc) + count(board, p, player, -dr, -dc);
-    if (length === 3) return [{ direction: name, length: 3 as const, mana: 1 as const }];
-    if (length === 4) return [{ direction: name, length: 4 as const, mana: 2 as const }];
-    return [];
-  });
+    if (length === 3) rewards.push({ direction: name, length: 3, mana: 1 });
+    if (length === 4) rewards.push({ direction: name, length: 4, mana: 2 });
+  }
+  return rewards;
 }
 
 export function manaReward(board: Cell[][], p: Pos, player: Player) {
