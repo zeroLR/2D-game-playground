@@ -1,8 +1,8 @@
-export type BiomeId = 'teal-ruins' | 'amber-district';
+export type BiomeId = 'teal-ruins' | 'amber-district' | 'violet-zone';
 
 export const STARTING_BIOME: BiomeId = 'teal-ruins';
 
-export const BIOME_SEQUENCE: readonly BiomeId[] = ['teal-ruins', 'amber-district'];
+export const BIOME_SEQUENCE: readonly BiomeId[] = ['teal-ruins', 'amber-district', 'violet-zone'];
 
 export function nextBiome(current: BiomeId): BiomeId {
   const index = BIOME_SEQUENCE.indexOf(current);
