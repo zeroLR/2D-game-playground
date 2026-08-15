@@ -1,5 +1,6 @@
 import type { WorldRenderer } from '../presentation/WorldRenderer';
 import { nextBiome, type BiomeId } from '../world/Biome';
+import { biomeExtraSpawns } from '../world/BiomeEcosystem';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
 import { WorldState } from '../world/WorldState';
 
@@ -50,7 +51,7 @@ export class WorldLifecycleSystem {
     const band = this.generator.nextBand();
     const routeTheme = this.themeForBand(band);
     const biomeTheme = this.state.getActiveBiome();
-    for (const spawn of band.spawns) this.spawn(spawn, routeTheme, biomeTheme);
+    for (const spawn of [...band.spawns, ...biomeExtraSpawns(biomeTheme, band)]) this.spawn(spawn, routeTheme, biomeTheme);
     if (band.encounter === 'route-choice' && band.encounterStep === 3) this.waitingForRouteSelection = true;
     if (band.encounter === 'climax' && band.encounterStep === 3) this.advanceBiome();
   }

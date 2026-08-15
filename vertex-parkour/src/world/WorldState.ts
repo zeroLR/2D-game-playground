@@ -3,8 +3,8 @@ import { STARTING_BIOME, type BiomeId } from './Biome';
 import type { PlatformMotion, RouteKind, UpgradeKind, WorldSpawn } from './WorldGenerator';
 
 export type EntityId = number;
-type BaseEntity = { id: EntityId; x: number; y: number };
-export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion; routeTheme: RouteKind | null; biomeTheme: BiomeId };
+type BaseEntity = { id: EntityId; x: number; y: number; biomeTheme: BiomeId };
+export type PlatformEntity = BaseEntity & { type: 'platform'; width: number; motion?: PlatformMotion; routeTheme: RouteKind | null };
 export type CrystalEntity = BaseEntity & { type: 'crystal'; taken: boolean };
 export type DroneEntity = BaseEntity & { type: 'drone'; destroyed: boolean; phase: number; originX: number; patrolAmplitude: number; patrolSpeed: number };
 export type InterceptorEntity = BaseEntity & { type: 'interceptor'; destroyed: boolean; phase: number; originX: number; trackingRange: number; maxSpeed: number };
@@ -34,17 +34,18 @@ export class WorldState {
 
   addSpawn(spawn: WorldSpawn, routeTheme: RouteKind | null = null, biomeTheme: BiomeId = this.activeBiome): WorldEntity {
     const id = this.nextId++;
+    const base = { id, x: spawn.type === 'wall' ? (spawn.side === -1 ? 52 : 308) : spawn.x, y: spawn.y, biomeTheme };
     switch (spawn.type) {
-      case 'platform': { const entity: PlatformEntity = { id, type: 'platform', x: spawn.x, y: spawn.y, width: spawn.width, motion: spawn.motion, routeTheme, biomeTheme }; this.platforms.push(entity); return entity; }
-      case 'crystal': { const entity: CrystalEntity = { id, type: 'crystal', x: spawn.x, y: spawn.y, taken: false }; this.crystals.push(entity); return entity; }
-      case 'drone': { const entity: DroneEntity = { id, type: 'drone', x: spawn.x, y: spawn.y, destroyed: false, phase: spawn.phase, originX: spawn.x, patrolAmplitude: 34, patrolSpeed: 0.82 }; this.drones.push(entity); return entity; }
-      case 'interceptor': { const entity: InterceptorEntity = { id, type: 'interceptor', x: spawn.x, y: spawn.y, destroyed: false, phase: spawn.phase, originX: spawn.x, trackingRange: 150, maxSpeed: 135 }; this.interceptors.push(entity); return entity; }
-      case 'pulse-gate': { const entity: PulseGateEntity = { id, type: 'pulse-gate', x: spawn.x, y: spawn.y, height: spawn.height, phase: spawn.phase, active: false, period: 2.4, activeRatio: 0.56 }; this.pulseGates.push(entity); return entity; }
-      case 'hazard': { const entity: HazardEntity = { id, type: 'hazard', x: spawn.x, y: spawn.y, hit: false }; this.hazards.push(entity); return entity; }
-      case 'spike': { const entity: SpikeEntity = { id, type: 'spike', x: spawn.x, y: spawn.y, width: spawn.width }; this.spikes.push(entity); return entity; }
-      case 'wall': { const entity: WallEntity = { id, type: 'wall', x: spawn.side === -1 ? 52 : 308, y: spawn.y, side: spawn.side, height: spawn.height }; this.walls.push(entity); return entity; }
-      case 'upgrade': { const entity: UpgradeEntity = { id, type: 'upgrade', x: spawn.x, y: spawn.y, kind: spawn.kind, skillId: spawn.skillId, choiceId: spawn.choiceId, taken: false, locked: false }; this.upgrades.push(entity); return entity; }
-      case 'route': { const entity: RouteEntity = { id, type: 'route', x: spawn.x, y: spawn.y, kind: spawn.kind, choiceId: spawn.choiceId, taken: false, locked: false }; this.routes.push(entity); return entity; }
+      case 'platform': { const entity: PlatformEntity = { ...base, type: 'platform', width: spawn.width, motion: spawn.motion, routeTheme }; this.platforms.push(entity); return entity; }
+      case 'crystal': { const entity: CrystalEntity = { ...base, type: 'crystal', taken: false }; this.crystals.push(entity); return entity; }
+      case 'drone': { const entity: DroneEntity = { ...base, type: 'drone', destroyed: false, phase: spawn.phase, originX: spawn.x, patrolAmplitude: 34, patrolSpeed: 0.82 }; this.drones.push(entity); return entity; }
+      case 'interceptor': { const entity: InterceptorEntity = { ...base, type: 'interceptor', destroyed: false, phase: spawn.phase, originX: spawn.x, trackingRange: 150, maxSpeed: 135 }; this.interceptors.push(entity); return entity; }
+      case 'pulse-gate': { const entity: PulseGateEntity = { ...base, type: 'pulse-gate', height: spawn.height, phase: spawn.phase, active: false, period: 2.4, activeRatio: 0.56 }; this.pulseGates.push(entity); return entity; }
+      case 'hazard': { const entity: HazardEntity = { ...base, type: 'hazard', hit: false }; this.hazards.push(entity); return entity; }
+      case 'spike': { const entity: SpikeEntity = { ...base, type: 'spike', width: spawn.width }; this.spikes.push(entity); return entity; }
+      case 'wall': { const entity: WallEntity = { ...base, type: 'wall', side: spawn.side, height: spawn.height }; this.walls.push(entity); return entity; }
+      case 'upgrade': { const entity: UpgradeEntity = { ...base, type: 'upgrade', kind: spawn.kind, skillId: spawn.skillId, choiceId: spawn.choiceId, taken: false, locked: false }; this.upgrades.push(entity); return entity; }
+      case 'route': { const entity: RouteEntity = { ...base, type: 'route', kind: spawn.kind, choiceId: spawn.choiceId, taken: false, locked: false }; this.routes.push(entity); return entity; }
     }
   }
 
