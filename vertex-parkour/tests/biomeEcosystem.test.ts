@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { platformSilhouetteForBiome } from '../src/presentation/visuals';
+import { platformSilhouetteForBiome } from '../src/world/BiomePlatformStyle';
 import { WorldGenerator } from '../src/world/WorldGenerator';
 
 function collect(generator: WorldGenerator, count = 160) { return Array.from({ length: count }, () => generator.nextBand()); }
