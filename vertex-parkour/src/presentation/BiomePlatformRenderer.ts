@@ -20,8 +20,6 @@ export function createBiomePlatformVisual(width: number, biome: BiomeId): Graphi
   if (silhouette === 'night-slab') {
     const half = width / 2;
     if (width < 60) {
-      // Small Violet platforms are now real world-space fragments, so draw each
-      // collider as one irregular shard rather than faking another split inside it.
       g.poly([-half - 3, -5, -half + 6, -9, half + 4, -6, half - 2, 5, -half + 2, 4]).fill({ color: 0x20263d, alpha: 0.98 });
       g.moveTo(-half + 3, -7).lineTo(half - 4, -6).stroke({ width: 2, color: 0xb49cff, alpha: 0.8 });
       g.poly([half + 1, 0, half + 7, -3, half + 5, 4]).fill({ color: 0x7969bc, alpha: 0.34 });
@@ -40,9 +38,21 @@ export function createBiomePlatformVisual(width: number, biome: BiomeId): Graphi
   }
 
   if (silhouette === 'pale-slab') {
-    g.poly([-width / 2 - 7, -7, width / 2 + 7, -7, width / 2, 4, -width / 2 + 3, 4]).fill({ color: 0x173437, alpha: 0.98 });
-    g.rect(-width / 2, -7, width, 3).fill(Palette.teal);
-    g.rect(-width / 2 + 8, -3, Math.max(12, width - 18), 2).fill({ color: Palette.tealSoft, alpha: 0.3 });
+    const half = width / 2;
+    g.poly([
+      -half - 5, -5,
+      -half + 4, -9,
+      -half + width * 0.34, -7,
+      -half + width * 0.54, -10,
+      half + 6, -5,
+      half - 4, 5,
+      half * 0.32, 8,
+      -half * 0.18, 6,
+      -half + 3, 4,
+    ]).fill({ color: 0x294858, alpha: 0.98 });
+    g.moveTo(-half + 2, -7).lineTo(-half + width * 0.36, -6).lineTo(-half + width * 0.55, -8).lineTo(half - 2, -5).stroke({ width: 2, color: 0xd9f7ff, alpha: 0.86 });
+    g.poly([-half + width * 0.28, -5, -half + width * 0.4, 2, -half + width * 0.51, -6]).stroke({ width: 1, color: 0xaedbe8, alpha: 0.42 });
+    g.rect(-half + 8, 8, Math.max(16, width - 16), 1).fill({ color: 0xd8f7ff, alpha: 0.14 });
     return g;
   }
 
