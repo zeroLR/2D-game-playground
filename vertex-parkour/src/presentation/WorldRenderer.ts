@@ -48,9 +48,20 @@ export class WorldRenderer {
     for (const entity of entities) {
       const view = this.views.get(entity.id); if (!view) continue;
       if (entity.type === 'platform') {
+        view.visible = entity.collapseState !== 'broken';
+        if (!view.visible) continue;
         view.x = entity.x; view.y = entity.y + cameraOffset;
         const route = routeForPlatform(entity, entities); const routeKind = entity.routeTheme ?? route?.kind ?? null; const biomeTint = getBiomeTheme(entity.biomeTheme).platformTint; const graphics = view as Graphics;
-        graphics.tint = routeKind ? mixTint(biomeTint, getRouteTheme(routeKind).platformTint, 0.58) : biomeTint; graphics.alpha = route?.locked ? 0.38 : 1;
+        graphics.tint = routeKind ? mixTint(biomeTint, getRouteTheme(routeKind).platformTint, 0.58) : biomeTint;
+        const baseAlpha = route?.locked ? 0.38 : 1;
+        if (entity.collapseState === 'cracking') {
+          const urgency = 1 - Math.max(0, Math.min(1, entity.collapseTimer));
+          graphics.alpha = baseAlpha * (0.92 - urgency * 0.28 + Math.sin(elapsed * 24) * 0.05);
+          view.rotation = Math.sin(elapsed * 31 + entity.id) * (0.008 + urgency * 0.018);
+          view.scale.set(1 - urgency * 0.05, 1 - urgency * 0.12);
+        } else {
+          graphics.alpha = baseAlpha; view.rotation = 0; view.scale.set(1);
+        }
         const wind = this.windViews.get(entity.id);
         if (wind) {
           wind.view.x = wind.field.x;
