@@ -3,10 +3,14 @@ import { applyManaReward, manaReward } from './patterns';
 
 export type ActionKind = 'place' | 'skill';
 export type TimedPosition = { pos: Pos; owner: Player; expiresAfterPlayer: Player };
+export type CombatResource = { mana: number };
+export type CombatResources = Record<Player, CombatResource>;
 
 export type CombatState = {
   board: Cell[][];
+  /** Player-one compatibility view for the M1 HUD. New domain code must use resources. */
   mana: number;
+  resources: CombatResources;
   activePlayer: Player;
   guards: TimedPosition[];
   seals: TimedPosition[];
@@ -20,8 +24,14 @@ export type ActionResult = { ok:boolean; state:CombatState; consumedTurn:boolean
 export const samePos=(a:Pos,b:Pos)=>a.row===b.row&&a.col===b.col;
 export function isSealed(state:CombatState,pos:Pos){return state.seals.some((effect)=>samePos(effect.pos,pos));}
 export function isGuarded(state:CombatState,pos:Pos){return state.guards.some((effect)=>samePos(effect.pos,pos));}
+export function getMana(state:CombatState,player:Player){return state.resources[player].mana;}
+export function setMana(state:CombatState,player:Player,mana:number):CombatState{
+  const next={...state,resources:{...state.resources,[player]:{mana}}};
+  return player===1?{...next,mana}:next;
+}
+export function spendMana(state:CombatState,player:Player,cost:number){return setMana(state,player,Math.max(0,getMana(state,player)-cost));}
 
-export function createCombatState(board:Cell[][],mana=0,activePlayer:Player=1):CombatState{return{board,mana,activePlayer,guards:[],seals:[]};}
+export function createCombatState(board:Cell[][],mana=0,activePlayer:Player=1):CombatState{return{board,mana,resources:{1:{mana},2:{mana:0}},activePlayer,guards:[],seals:[]};}
 
 export function executePlace(state: CombatState, action: PlaceAction): ActionResult {
   const {row,col}=action.at;
@@ -29,18 +39,10 @@ export function executePlace(state: CombatState, action: PlaceAction): ActionRes
   if(isSealed(state,action.at))return{ok:false,state,consumedTurn:false,won:false,manaGained:0,error:'sealed'};
   const board=state.board.map((line)=>[...line]);board[row][col]=state.activePlayer;
   const won=isWin(board,action.at,state.activePlayer);const reward=won?0:manaReward(board,action.at,state.activePlayer);
-  return{ok:true,state:{...state,board,mana:applyManaReward(state.mana,reward)},consumedTurn:true,won,manaGained:reward};
+  const next=setMana({...state,board},state.activePlayer,applyManaReward(getMana(state,state.activePlayer),reward));
+  return{ok:true,state:next,consumedTurn:true,won,manaGained:reward};
 }
 
-/** Called after a player completes a turn. Effects whose expiry player just acted are removed. */
-export function expireEffectsAfterTurn(state:CombatState,player:Player):CombatState{
-  return{...state,guards:state.guards.filter((e)=>e.expiresAfterPlayer!==player),seals:state.seals.filter((e)=>e.expiresAfterPlayer!==player)};
-}
-
-export function addGuard(state:CombatState,pos:Pos,owner:Player):CombatState{
-  return{...state,guards:[...state.guards.filter((e)=>!samePos(e.pos,pos)),{pos,owner,expiresAfterPlayer:owner===1?2:1}]};
-}
-
-export function addSeal(state:CombatState,pos:Pos,owner:Player):CombatState{
-  return{...state,seals:[...state.seals.filter((e)=>!samePos(e.pos,pos)),{pos,owner,expiresAfterPlayer:owner===1?2:1}]};
-}
+export function expireEffectsAfterTurn(state:CombatState,player:Player):CombatState{return{...state,guards:state.guards.filter((e)=>e.expiresAfterPlayer!==player),seals:state.seals.filter((e)=>e.expiresAfterPlayer!==player)};}
+export function addGuard(state:CombatState,pos:Pos,owner:Player):CombatState{return{...state,guards:[...state.guards.filter((e)=>!samePos(e.pos,pos)),{pos,owner,expiresAfterPlayer:owner===1?2:1}]};}
+export function addSeal(state:CombatState,pos:Pos,owner:Player):CombatState{return{...state,seals:[...state.seals.filter((e)=>!samePos(e.pos,pos)),{pos,owner,expiresAfterPlayer:owner===1?2:1}]};}
