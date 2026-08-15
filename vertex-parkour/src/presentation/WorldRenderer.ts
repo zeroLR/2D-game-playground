@@ -1,11 +1,13 @@
 import { Container, Graphics } from 'pixi.js';
 import type { EntityId, RouteEntity, WorldEntity } from '../world/WorldState';
+import { windFieldForPlatform } from '../world/WindField';
 import { createBiomePlatformVisual } from './BiomePlatformRenderer';
 import { getBiomeTheme, mixTint } from './BiomeTheme';
 import { createRouteVisual, updateRouteVisual } from './RouteRenderer';
 import { getRouteTheme } from './RouteTheme';
 import { createInterceptorVisual, createPulseGateVisual, updatePulseGateVisual } from './ThreatRenderer';
 import { createUpgradeVisual } from './UpgradeRenderer';
+import { createWindFieldVisual } from './WindFieldRenderer';
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
 function routeForPlatform(platform: Extract<WorldEntity, { type: 'platform' }>, entities: WorldEntity[]): RouteEntity | undefined { return entities.find((entity): entity is RouteEntity => entity.type === 'route' && Math.abs(entity.x - platform.x) < 40 && Math.abs(entity.y + 48 - platform.y) < 8); }
@@ -16,7 +18,12 @@ export class WorldRenderer {
   mount(entity: WorldEntity) {
     let view: Container;
     switch (entity.type) {
-      case 'platform': view = createBiomePlatformVisual(entity.width, entity.biomeTheme); break;
+      case 'platform': {
+        view = createBiomePlatformVisual(entity.width, entity.biomeTheme);
+        const wind = windFieldForPlatform(entity);
+        if (wind) view.addChild(createWindFieldVisual(wind));
+        break;
+      }
       case 'crystal': view = createCrystalVisual(); break;
       case 'drone': view = createDroneVisual(); break;
       case 'interceptor': view = createInterceptorVisual(entity.biomeTheme); break;
