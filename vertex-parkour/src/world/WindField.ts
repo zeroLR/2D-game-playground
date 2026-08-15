@@ -8,30 +8,38 @@ export type WindField = {
   forceX: number;
 };
 
-export const WIND_ACCELERATION = 215;
-export const WIND_MAX_HORIZONTAL_SPEED = 430;
+// Strong enough to visibly overcome ordinary air nudge over a short exposure,
+// while a committed Dash can still punch through the corridor.
+export const WIND_ACCELERATION = 1120;
+export const WIND_MAX_HORIZONTAL_SPEED = 460;
+const WIND_ANCHOR_INTERVAL = 9;
+
+function isWindAnchor(platform: PlatformEntity): boolean {
+  return platform.id % WIND_ANCHOR_INTERVAL === 0;
+}
 
 export function windFieldForPlatform(platform: PlatformEntity): WindField | null {
-  if (platform.biomeTheme !== 'pale-heights' || !platform.motion) return null;
-  const direction = ((platform.id + Math.round(platform.motion.phase * 10)) & 1) === 0 ? 1 : -1;
-  const strength = WIND_ACCELERATION * (platform.width >= 65 ? 0.9 : 1.08);
+  if (platform.biomeTheme !== 'pale-heights' || !platform.motion || !isWindAnchor(platform)) return null;
+
+  // The floe only provides a deterministic vertical anchor. The corridor itself
+  // spans the play space and remains fixed in world coordinates while the floe drifts.
+  const direction = Math.floor(Math.abs(platform.y) / 260) % 2 === 0 ? 1 : -1;
   return {
-    x: platform.x,
-    y: platform.y - 52,
-    halfWidth: Math.max(62, platform.width * 0.9),
-    halfHeight: 58,
-    forceX: direction * strength,
+    x: 180,
+    y: platform.y - 68,
+    halfWidth: 126,
+    halfHeight: 74,
+    forceX: direction * WIND_ACCELERATION,
   };
 }
 
 export function windAccelerationAt(platforms: readonly PlatformEntity[], playerX: number, playerY: number): number {
-  let acceleration = 0;
   for (const platform of platforms) {
     const field = windFieldForPlatform(platform);
     if (!field) continue;
-    if (Math.abs(playerX - field.x) <= field.halfWidth && Math.abs(playerY - field.y) <= field.halfHeight) acceleration += field.forceX;
+    if (Math.abs(playerX - field.x) <= field.halfWidth && Math.abs(playerY - field.y) <= field.halfHeight) return field.forceX;
   }
-  return Math.max(-WIND_ACCELERATION * 1.35, Math.min(WIND_ACCELERATION * 1.35, acceleration));
+  return 0;
 }
 
 export function applyWindVelocity(velocityX: number, acceleration: number, dt: number): number {
