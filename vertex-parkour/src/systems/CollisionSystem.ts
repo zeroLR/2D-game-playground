@@ -1,5 +1,6 @@
 import type { GameEventQueue } from '../domain/events';
 import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applySkill, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
+import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../presentation/RouteRenderer';
 import type { WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
@@ -37,7 +38,7 @@ export class CollisionSystem {
 
     for (const route of world.routes) {
       if (route.taken || route.locked) continue;
-      if (Math.abs(next.playerX - route.x) < 30 && Math.abs(next.playerY - route.y) < 36) {
+      if (Math.abs(next.playerX - route.x) <= ROUTE_ZONE_HALF_WIDTH && Math.abs(next.playerY - route.y) <= ROUTE_ZONE_HALF_HEIGHT) {
         world.commitRouteChoice(route.choiceId, route.id);
         break;
       }
