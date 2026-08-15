@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { WorldGenerator } from '../src/world/WorldGenerator';
+import type { BiomeId } from '../src/world/Biome';
 
-function generate(seed: number, biome: 'teal-ruins' | 'amber-district', count: number) {
+function generate(seed: number, biome: BiomeId, count: number) {
   const generator = new WorldGenerator(seed);
   generator.setBiome(biome);
   return Array.from({ length: count }, () => generator.nextBand());
@@ -22,5 +23,15 @@ describe('biome encounter vocabulary', () => {
     const tealMotion = teal.flatMap((band) => band.spawns).find((spawn) => spawn.type === 'platform' && spawn.motion);
     expect(amberMotion?.type === 'platform' && amberMotion.motion?.amplitude).toBeGreaterThan(tealMotion?.type === 'platform' && tealMotion.motion ? tealMotion.motion.amplitude : 0);
     expect(amberMotion?.type === 'platform' && amberMotion.motion?.speed).toBeGreaterThan(tealMotion?.type === 'platform' && tealMotion.motion ? tealMotion.motion.speed : 0);
+  });
+
+  it('Violet favors constrained edge and wall routing over Amber speed vocabulary', () => {
+    const violet = generate(424242, 'violet-zone', 480)
+      .filter((band) => !['upgrade-choice', 'route-choice', 'treasure', 'elite', 'rest-route', 'climax'].includes(band.encounter));
+    const counts = violet.reduce<Record<string, number>>((acc, band) => {
+      if (band.encounterStep === 0) acc[band.encounter] = (acc[band.encounter] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect((counts['wall-rescue'] ?? 0) + (counts['edge-read'] ?? 0)).toBeGreaterThan((counts['dash-chain'] ?? 0) + (counts['moving-window'] ?? 0));
   });
 });
