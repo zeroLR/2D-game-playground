@@ -1,9 +1,7 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../world/RouteChoice';
 import type { RouteKind } from '../world/WorldGenerator';
 import { Palette } from './visuals';
-
-export const ROUTE_ZONE_HALF_WIDTH = 86;
-export const ROUTE_ZONE_HALF_HEIGHT = 92;
 
 const META: Record<RouteKind, { label: string; detail: string; accent: number; hint: string }> = {
   treasure: { label: 'TREASURE', detail: 'REWARD ROUTE', accent: Palette.gold, hint: 'ENTER FOR CRYSTALS' },
