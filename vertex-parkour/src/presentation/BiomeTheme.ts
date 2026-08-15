@@ -30,6 +30,13 @@ const THEMES: Record<BiomeId, BiomeTheme> = {
     ambientAlpha: 0.105,
     mote: 0xb792ff,
   },
+  'pale-heights': {
+    name: 'PALE HEIGHTS',
+    platformTint: 0xe8fbff,
+    ambient: 0x31546a,
+    ambientAlpha: 0.085,
+    mote: 0xd7f6ff,
+  },
 };
 
 export function getBiomeTheme(id: BiomeId): BiomeTheme { return THEMES[id]; }
