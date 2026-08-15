@@ -21,7 +21,7 @@ export class WorldLifecycleSystem {
     return this.waitingForRouteSelection ? null : this.state.getActiveRoute();
   }
 
-  updateMotion(elapsed: number) {
+  updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
     for (const platform of this.state.platforms) {
       const motion = platform.motion;
       if (!motion) continue;
@@ -30,6 +30,18 @@ export class WorldLifecycleSystem {
     for (const drone of this.state.drones) {
       if (drone.destroyed) continue;
       drone.x = drone.originX + Math.sin(elapsed * drone.patrolSpeed + drone.phase) * drone.patrolAmplitude;
+    }
+    for (const gate of this.state.pulseGates) {
+      const normalized = ((elapsed + gate.phase) % gate.period) / gate.period;
+      gate.active = normalized < gate.activeRatio;
+    }
+    for (const interceptor of this.state.interceptors) {
+      if (interceptor.destroyed) continue;
+      const tracking = Math.abs(playerY - interceptor.y) <= interceptor.trackingRange;
+      const targetX = tracking ? playerX : interceptor.originX;
+      const delta = targetX - interceptor.x;
+      const step = Math.sign(delta) * Math.min(Math.abs(delta), interceptor.maxSpeed * dt);
+      interceptor.x = Math.max(58, Math.min(302, interceptor.x + step));
     }
   }
 
