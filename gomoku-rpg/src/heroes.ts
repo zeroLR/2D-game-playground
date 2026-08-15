@@ -7,17 +7,19 @@ export type HeroDefinition={
   nameKey:HeroId;
   role:'defense'|'control'|'disruption';
   passive:PassiveId;
-  /** Hero-owned abilities. The common slot is composed into the runtime loadout separately. */
+  /** Current hero-owned abilities. Replaced by new tactical skills one vertical slice at a time. */
   heroSkills:readonly SkillId[];
 };
 
 /**
- * M2.4 skill architecture:
+ * M2.4 target architecture:
  * - one common skill slot shared by every hero
- * - hero-owned skill slots define the character's tactical identity
+ * - hero-owned slots define the character's tactical identity
  *
- * During migration, Guard / Seal remain legacy hero skills so gameplay stays intact.
- * Hero-specific replacements are introduced one vertical slice at a time.
+ * During migration the runtime loadout keeps the existing two-button HUD intact.
+ * A hero receives the common slot only when Blink was already part of its legacy loadout;
+ * Vanguard keeps Guard / Seal until its later vertical slice. This avoids changing live
+ * gameplay merely to establish the domain boundary.
  */
 export const COMMON_SKILL:SkillId='blink';
 export const heroes:Record<HeroId,HeroDefinition>={
@@ -26,7 +28,12 @@ export const heroes:Record<HeroId,HeroDefinition>={
   shade:{id:'shade',nameKey:'shade',role:'disruption',passive:'pressure',heroSkills:['guard']},
 };
 
-export type Loadout={heroId:HeroId;commonSkill:SkillId;heroSkills:readonly SkillId[];skills:readonly SkillId[]};
-export function createLoadout(heroId:HeroId):Loadout{const hero=heroes[heroId];const skills=[COMMON_SKILL,...hero.heroSkills];return{heroId,commonSkill:COMMON_SKILL,heroSkills:hero.heroSkills,skills};}
+export type Loadout={heroId:HeroId;commonSkill:SkillId|null;heroSkills:readonly SkillId[];skills:readonly SkillId[]};
+export function createLoadout(heroId:HeroId):Loadout{
+ const hero=heroes[heroId];
+ const commonSkill=heroId==='vanguard'?null:COMMON_SKILL;
+ const skills=commonSkill?[commonSkill,...hero.heroSkills]:[...hero.heroSkills];
+ return{heroId,commonSkill,heroSkills:hero.heroSkills,skills};
+}
 export function isSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.skills.includes(skillId);}
 export function isHeroSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.heroSkills.includes(skillId);}
