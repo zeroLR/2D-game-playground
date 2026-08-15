@@ -1,6 +1,8 @@
+import { applySelectedCharacter } from './characters';
+
 export type UpgradeDomain='PLAYER'|'WEAPON'|'TOWER'|'SYSTEM';
 export interface RunModifiers{playerDamage:number;fireRate:number;moveSpeed:number;maxHp:number;contactResist:number;killHeal:number;airDamage:number;weaponPierce:number;weaponKnock:number;ballistic:number;energy:number;towerDamage:number;towerRate:number;towerRange:number;towerHp:number;repairPower:number;autoRepair:number;buildDiscount:number;killCredits:number;coreShield:number;extraPads:number;laneTransfer:number;}
-export const defaultModifiers=():RunModifiers=>({playerDamage:1,fireRate:1,moveSpeed:1,maxHp:100,contactResist:0,killHeal:0,airDamage:1,weaponPierce:0,weaponKnock:1,ballistic:1,energy:1,towerDamage:1,towerRate:1,towerRange:1,towerHp:1,repairPower:1,autoRepair:0,buildDiscount:0,killCredits:0,coreShield:0,extraPads:0,laneTransfer:1});
+export const defaultModifiers=():RunModifiers=>applySelectedCharacter({playerDamage:1,fireRate:1,moveSpeed:1,maxHp:100,contactResist:0,killHeal:0,airDamage:1,weaponPierce:0,weaponKnock:1,ballistic:1,energy:1,towerDamage:1,towerRate:1,towerRange:1,towerHp:1,repairPower:1,autoRepair:0,buildDiscount:0,killCredits:0,coreShield:0,extraPads:0,laneTransfer:1});
 export interface Upgrade{id:string;name:string;domain:UpgradeDomain;description:string;apply:(m:RunModifiers)=>void;}
 const u=(id:string,name:string,domain:UpgradeDomain,description:string,apply:(m:RunModifiers)=>void):Upgrade=>({id,name,domain,description,apply});
 export const UPGRADES:readonly Upgrade[]=[
