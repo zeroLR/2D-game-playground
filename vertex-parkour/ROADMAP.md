@@ -70,7 +70,6 @@ Implemented:
 Remaining M6.2:
 - tune Skill / Route / Climax spacing from mobile playtests
 - evaluate gap/width pressure and Rebound Tier 3 only after the full pacing loop is played end-to-end
-- define how Climax hands off into the first biome transition during M7
 
 ## M6.3 — More Enemies / Traversal Threats ✅
 Threats primarily force movement decisions rather than creating stationary combat encounters.
@@ -84,9 +83,25 @@ Implemented threat vocabulary:
 
 M6.3 intentionally does not rebalance damage, Rebound, gaps, widths, route cadence or enemy rewards. Those remain deferred until representative content is played end-to-end.
 
-# M7 — Environments / Biomes
+# M7 — Environments / Biomes 🚧
 Goal: a run visibly and mechanically progresses through multiple environments.
-Initial directions: Teal Ruins / Vertical City, Sunset / Amber District, Night / Violet Zone, Ice / Pale Heights. Each biome needs unique composition/palette plus encounter or hazard vocabulary shift; avoid cosmetic-only recolors.
+
+## M7.1 — Biome Foundation 🚧
+Implemented foundation:
+- run starts in **Teal Ruins**
+- first completed Climax hands off into **Amber District**
+- generated platforms snapshot their biome identity, preserving a visible vertical boundary instead of recoloring old geometry
+- Biome palette is layered beneath Route palette so Treasure / Elite / Rest / Skill remain readable inside each biome
+- environment ambience and motes inherit biome identity while Route mood remains a local overlay
+
+Remaining M7.1:
+- mobile visual validation of the Teal → Amber handoff
+- add a short transition treatment only if the palette/composition boundary is not readable enough
+
+## M7.2 — Biome Encounter Vocabulary
+Add biome-specific composition and hazard/encounter bias so biome changes are not cosmetic-only. Amber should alter traversal vocabulary before Night / Violet Zone and Ice / Pale Heights are added.
+
+Future directions: Night / Violet Zone, Ice / Pale Heights.
 
 # M8 — Relic System
 Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats.
@@ -111,5 +126,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M5 Run Build System: mechanics implemented; balance/option weighting deferred until representative content pressure
 - M6.1 Route Node Types: complete
 - M6.2 Encounter Deck + Pacing Director: mechanics implemented; cadence/balance deferred
-- M6.3 More Enemies / Traversal Threats: threat vocabulary and Elite/Climax composition implemented; mobile playtest pending
-- M7–M12: not started
+- M6.3 More Enemies / Traversal Threats: complete; mobile playtest pending
+- M7.1 Biome Foundation: in progress; Teal Ruins → Amber District handoff implemented
+- M7.2–M12: not started
