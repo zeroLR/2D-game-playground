@@ -17,15 +17,23 @@ const AMBER_DECKS: Record<PacingPhase, WeightedEncounter[]> = {
   pressure: [{ type: 'recovery', weight: 1 }, { type: 'dash-chain', weight: 5 }, { type: 'edge-read', weight: 5 }, { type: 'wall-rescue', weight: 2 }, { type: 'moving-window', weight: 6 }],
 };
 
-// Violet shifts the rhythm away from Amber's speed/cross-lane identity toward
-// constrained routing: walls and edge reads dominate while moving windows become punctuation.
 const VIOLET_DECKS: Record<PacingPhase, WeightedEncounter[]> = {
   warmup: [{ type: 'recovery', weight: 2 }, { type: 'dash-chain', weight: 2 }, { type: 'edge-read', weight: 4 }, { type: 'wall-rescue', weight: 4 }, { type: 'moving-window', weight: 1 }],
   flow: [{ type: 'recovery', weight: 1 }, { type: 'dash-chain', weight: 2 }, { type: 'edge-read', weight: 5 }, { type: 'wall-rescue', weight: 6 }, { type: 'moving-window', weight: 3 }],
   pressure: [{ type: 'recovery', weight: 1 }, { type: 'dash-chain', weight: 2 }, { type: 'edge-read', weight: 6 }, { type: 'wall-rescue', weight: 7 }, { type: 'moving-window', weight: 4 }],
 };
 
+// Pale Heights opens the space back up after Violet. Its identity is exposed,
+// aerial timing: moving windows and long dash transfers dominate, while walls
+// become rare so the player reads motion and commits across open lanes.
+const PALE_DECKS: Record<PacingPhase, WeightedEncounter[]> = {
+  warmup: [{ type: 'recovery', weight: 2 }, { type: 'dash-chain', weight: 4 }, { type: 'edge-read', weight: 1 }, { type: 'wall-rescue', weight: 1 }, { type: 'moving-window', weight: 5 }],
+  flow: [{ type: 'recovery', weight: 1 }, { type: 'dash-chain', weight: 5 }, { type: 'edge-read', weight: 2 }, { type: 'wall-rescue', weight: 1 }, { type: 'moving-window', weight: 7 }],
+  pressure: [{ type: 'recovery', weight: 1 }, { type: 'dash-chain', weight: 6 }, { type: 'edge-read', weight: 2 }, { type: 'wall-rescue', weight: 1 }, { type: 'moving-window', weight: 8 }],
+};
+
 function deckFor(biome: BiomeId, phase: PacingPhase) {
+  if (biome === 'pale-heights') return PALE_DECKS[phase];
   if (biome === 'violet-zone') return VIOLET_DECKS[phase];
   if (biome === 'amber-district') return AMBER_DECKS[phase];
   return TEAL_DECKS[phase];
