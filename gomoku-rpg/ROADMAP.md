@@ -49,33 +49,18 @@ Every turn performs exactly one primary action:
 Skills consume tempo. A skill never grants a free normal placement unless explicitly designed to do so later.
 
 ### M1.3 Skill framework
-Create a data-driven skill boundary with:
-- id
-- Mana cost
-- target type
-- legal target calculation
-- execution
-- localized description
-
-M1 skill vocabulary:
-- **Blink** — move one friendly stone; existing prototype skill
-- **Guard** — protect one friendly stone from one hostile skill effect
-- **Seal** — make one empty intersection unavailable for one opponent turn
-
-Direct unconditional stone destruction is intentionally excluded from M1 because it can dominate Gomoku threat structure.
+Create a data-driven skill boundary with id, Mana cost, target type, legal target calculation, execution, and localized description.
 
 ### M1.4 Board feedback
 - legal target highlight
 - selected source / destination state
 - invalid target feedback
 - Mana gain feedback
-- 3-line / 4-line pattern feedback
 - winning five-line highlight
 - CPU thinking feedback
-- restrained animation / particle / haptic-ready event hooks
 
 ### M1 exit criteria
-The player must encounter real situations where using a skill instead of placing a stone is a defensible choice. If normal placement is almost always superior, the combat economy must be redesigned before M2.
+The player must encounter real situations where using a skill instead of placing a stone is a defensible choice.
 
 ---
 
@@ -84,17 +69,17 @@ The player must encounter real situations where using a skill instead of placing
 **Goal:** prove that hero choice changes how the board is read and played.
 
 First three abstract hero archetypes:
-- **Vanguard** — defensive stability; Guard-oriented
-- **Arcanist** — board manipulation; Blink / Seal-oriented
+- **Vanguard** — structure advancement and stability
+- **Arcanist** — board manipulation / tempo
 - **Shade** — positional disruption and pressure
 
-Add:
-- title / mode flow
-- hero selection
-- passive ability framework
-- two active skills per hero
-- localized hero / skill descriptions
-- pre-match loadout boundary
+### M2.4 playtest-driven skill redesign
+- Common skill boundary: Blink
+- Shade vertical slice: Pressure + Corrupt
+- Vanguard vertical slice: Fortified + Charge
+- Arcanist vertical slice: pending
+
+**Deferred — Bulwark:** the defensive cluster-Guard design is retained but unequipped. Current CPU has no hostile active skills, so playtesting showed no meaningful reason to spend a turn and 3 Mana on it. Re-evaluate Bulwark after the CPU Skill System exists and can actively disrupt player structures.
 
 Exit criterion: players should describe different strategic priorities for each hero, not merely different visual effects.
 
@@ -169,8 +154,6 @@ First version:
 
 Server owns validation of turn, Mana, legal actions, skill targets, and victory state.
 
-Matchmaking, ranking, Elo and seasons are explicitly later concerns.
-
 ---
 
 ## M7 — Polish & Release
@@ -209,7 +192,7 @@ Polish:
 
 ## Deferred until validated
 
-Do not pull these forward merely because they are conventional RPG features:
+- **Bulwark** — re-evaluate after CPU Skill System can threaten protected structures
 - online matchmaking
 - ranked seasons
 - account system
@@ -217,6 +200,5 @@ Do not pull these forward merely because they are conventional RPG features:
 - character levels / ATK / DEF progression
 - narrative campaign
 - large hero roster
-- unconditional stone-destruction skills
 
 The roadmap should advance through playtest evidence, not feature count.
