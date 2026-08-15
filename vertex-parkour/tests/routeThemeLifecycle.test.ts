@@ -33,12 +33,13 @@ describe('persistent route theme lifecycle', () => {
     const oldPlatformIds = new Set(lifecycle.state.platforms.map((platform) => platform.id));
     lifecycle.state.commitRouteChoice(selected.choiceId, selected.id);
 
-    lifecycle.update(10_000);
-
-    const newlyGenerated = lifecycle.state.platforms.slice(platformCountAtChoice);
-    expect(newlyGenerated.some((platform) => platform.routeTheme === selected.kind)).toBe(true);
+    lifecycle.update(-10_000);
     expect(lifecycle.state.getActiveRoute()).toBe(selected.kind);
     expect(lifecycle.getVisualRoute()).toBe(selected.kind);
+
+    lifecycle.update(10_000);
+    const newlyGenerated = lifecycle.state.platforms.slice(platformCountAtChoice);
+    expect(newlyGenerated.some((platform) => platform.routeTheme === selected.kind)).toBe(true);
     expect(lifecycle.state.platforms.filter((platform) => oldPlatformIds.has(platform.id)).every((platform) => platform.routeTheme === null)).toBe(true);
   });
 });
