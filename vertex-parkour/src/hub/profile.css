@@ -1,0 +1,121 @@
+.profile-heading { max-width: 720px; }
+
+.runner-profile-stage {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.15fr) minmax(260px, .85fr);
+  min-height: 540px;
+  overflow: hidden;
+}
+
+.runner-art-stage {
+  position: relative;
+  min-height: 540px;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-right: 1px solid var(--hub-line);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(112,216,204,.15), transparent 36%),
+    radial-gradient(circle at 50% 80%, rgba(230,207,131,.06), transparent 30%),
+    linear-gradient(160deg, rgba(18,48,51,.64), rgba(7,20,25,.4));
+}
+
+.runner-art-stage::before {
+  content: '';
+  position: absolute;
+  inset: 8% 9% 15%;
+  border: 1px solid rgba(112,216,204,.09);
+  clip-path: polygon(50% 0, 100% 82%, 82% 100%, 18% 100%, 0 82%);
+}
+
+.runner-art-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 6px, rgba(145,218,210,.018) 7px);
+}
+
+.runner-stage-mark { position: absolute; inset: 0; pointer-events: none; }
+.runner-stage-mark i { position: absolute; left: 50%; top: 49%; width: 72%; height: 1px; transform-origin: center; background: linear-gradient(90deg, transparent, rgba(112,216,204,.17), transparent); }
+.runner-stage-mark i:nth-child(1) { transform: translate(-50%,-50%) rotate(58deg); }
+.runner-stage-mark i:nth-child(2) { transform: translate(-50%,-50%) rotate(-58deg); }
+.runner-stage-mark i:nth-child(3) { width: 36%; transform: translate(-50%,-50%); background: linear-gradient(90deg, transparent, rgba(230,207,131,.18), transparent); }
+
+.runner-profile-art {
+  position: relative;
+  z-index: 2;
+  width: min(94%, 430px);
+  height: auto;
+  max-height: 510px;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 32px rgba(0,0,0,.34));
+  transform: translateY(10px);
+}
+
+.runner-art-caption {
+  position: absolute;
+  z-index: 3;
+  left: 24px;
+  bottom: 20px;
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid var(--hub-teal);
+}
+.runner-art-caption span { color: var(--hub-teal); font-size: 6px; letter-spacing: 1.8px; }
+.runner-art-caption b { color: #b9d0cc; font-size: 8px; letter-spacing: 1.4px; font-weight: 600; }
+
+.runner-profile-copy {
+  align-self: center;
+  padding: 46px 42px;
+}
+.runner-profile-copy h3 { margin: 12px 0 6px; font-size: clamp(44px, 7vw, 70px); font-weight: 250; letter-spacing: .12em; }
+.runner-subtitle { color: #91aaa6; font-size: 8px; letter-spacing: 1.3px; margin-bottom: 24px; }
+.runner-profile-copy p { color: #8fa8a5; font-size: 12px; line-height: 1.8; max-width: 390px; }
+.profile-rule { height: 1px; margin: 28px 0 18px; background: linear-gradient(90deg, var(--hub-line), transparent); }
+.stat-list { display: grid; gap: 0; }
+.stat-list > div { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 48px; border-bottom: 1px solid rgba(140,203,195,.08); }
+.stat-list small { color: #6d8d89; font-size: 7px; letter-spacing: 1.7px; }
+.stat-list b { color: #d5ddd7; font-size: 9px; letter-spacing: 3px; font-weight: 500; }
+
+.runner-roster-section { margin-top: 20px; }
+.runner-roster-label { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; color: #8da8a4; }
+.runner-roster-label span { font-size: 8px; letter-spacing: 2.2px; }
+.runner-roster-label i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(112,216,204,.25), transparent); }
+.runner-roster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.runner-roster-card { min-height: 205px; padding: 18px; display: grid; place-items: center; align-content: center; gap: 9px; border: 1px solid rgba(139,190,185,.10); background: rgba(10,28,32,.42); color: #5d7774; text-align: center; }
+.runner-roster-card.is-active { border-color: rgba(112,216,204,.55); background: radial-gradient(circle at 50% 28%, rgba(112,216,204,.10), transparent 48%), rgba(10,31,35,.64); }
+.runner-roster-card img { width: 118px; height: 130px; object-fit: contain; object-position: center 25%; }
+.runner-roster-card b { color: #dce5df; font-size: 13px; letter-spacing: 2.5px; font-weight: 450; }
+.runner-roster-card small { color: #63817e; font-size: 6px; letter-spacing: 1.3px; }
+.locked-runner { position: relative; width: 106px; height: 116px; display: grid; place-items: center; color: #2d4544; font-size: 58px; background: radial-gradient(circle, rgba(105,145,141,.08), transparent 65%); }
+.locked-runner span { position: absolute; font-size: 18px; color: #7e8c87; }
+
+.runner-archive-note { margin-top: 12px; padding: 18px 22px; }
+.runner-archive-note span { color: var(--hub-teal); font-size: 7px; letter-spacing: 1.5px; }
+.runner-archive-note p { margin: 8px 0 0; color: #6f8c88; font-size: 9px; line-height: 1.6; }
+
+@media (max-width: 720px) {
+  .runner-profile-stage { grid-template-columns: 1fr; }
+  .runner-art-stage { min-height: 390px; border-right: 0; border-bottom: 1px solid var(--hub-line); }
+  .runner-profile-art { width: min(88%, 350px); max-height: 365px; transform: translateY(7px); }
+  .runner-profile-copy { padding: 28px 24px 30px; }
+  .runner-profile-copy h3 { font-size: 42px; }
+  .runner-roster { grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+  .runner-roster-card { min-height: 150px; padding: 10px 6px; }
+  .runner-roster-card img { width: 78px; height: 88px; }
+  .runner-roster-card b { font-size: 10px; }
+  .locked-runner { width: 72px; height: 78px; font-size: 40px; }
+}
+
+@media (max-width: 430px) {
+  .runner-art-stage { min-height: 350px; }
+  .runner-profile-art { max-height: 335px; }
+  .runner-art-caption { left: 15px; bottom: 14px; }
+  .stat-list > div { min-height: 44px; }
+  .stat-list b { font-size: 8px; letter-spacing: 2px; }
+  .runner-roster-card { min-height: 132px; }
+  .runner-roster-card img { width: 68px; height: 76px; }
+  .runner-roster-card small { font-size: 5px; }
+}
