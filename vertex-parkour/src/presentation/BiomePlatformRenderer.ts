@@ -39,20 +39,19 @@ export function createBiomePlatformVisual(width: number, biome: BiomeId): Graphi
 
   if (silhouette === 'pale-slab') {
     const half = width / 2;
-    g.poly([
-      -half - 5, -5,
-      -half + 4, -9,
-      -half + width * 0.34, -7,
-      -half + width * 0.54, -10,
-      half + 6, -5,
-      half - 4, 5,
-      half * 0.32, 8,
-      -half * 0.18, 6,
-      -half + 3, 4,
-    ]).fill({ color: 0x294858, alpha: 0.98 });
+    g.poly([-half - 5, -5, -half + 4, -9, -half + width * 0.34, -7, -half + width * 0.54, -10, half + 6, -5, half - 4, 5, half * 0.32, 8, -half * 0.18, 6, -half + 3, 4]).fill({ color: 0x294858, alpha: 0.98 });
     g.moveTo(-half + 2, -7).lineTo(-half + width * 0.36, -6).lineTo(-half + width * 0.55, -8).lineTo(half - 2, -5).stroke({ width: 2, color: 0xd9f7ff, alpha: 0.86 });
     g.poly([-half + width * 0.28, -5, -half + width * 0.4, 2, -half + width * 0.51, -6]).stroke({ width: 1, color: 0xaedbe8, alpha: 0.42 });
     g.rect(-half + 8, 8, Math.max(16, width - 16), 1).fill({ color: 0xd8f7ff, alpha: 0.14 });
+    return g;
+  }
+
+  if (silhouette === 'crown-slab') {
+    const half = width / 2;
+    g.poly([-half - 5, -5, -half + 5, -10, -half + width * 0.28, -7, -half + width * 0.5, -12, half - width * 0.18, -7, half + 6, -4, half - 3, 6, -half + 3, 5]).fill({ color: 0x302640, alpha: 0.98 });
+    g.moveTo(-half + 3, -8).lineTo(-half + width * 0.28, -6).lineTo(-half + width * 0.5, -10).lineTo(half - 3, -5).stroke({ width: 2, color: 0xffdf82, alpha: 0.9 });
+    g.moveTo(-half + width * 0.48, -8).lineTo(-half + width * 0.56, 2).lineTo(-half + width * 0.66, -6).stroke({ width: 1, color: 0xd2b4ff, alpha: 0.55 });
+    g.rect(-half + 8, 7, Math.max(16, width - 16), 1).fill({ color: 0xffe7a0, alpha: 0.2 });
     return g;
   }
 
