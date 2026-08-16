@@ -3,6 +3,8 @@ import { GameRuntime, LOGICAL_H, LOGICAL_W } from './game/GameRuntime';
 import { GameHub } from './hub/GameHub';
 import './hub/hub.css';
 
+const AUTOSTART_KEY = 'vertex-autostart-run';
+
 async function bootstrap() {
   const app = await createApplication(LOGICAL_W, LOGICAL_H);
   const host = document.querySelector<HTMLElement>('#app')!;
@@ -12,14 +14,25 @@ async function bootstrap() {
   runtime.start();
   app.ticker.stop();
 
-  let activeRun = false;
+  let activeRun = sessionStorage.getItem(AUTOSTART_KEY) === '1';
+  sessionStorage.removeItem(AUTOSTART_KEY);
+
   const resumeGameplay = () => {
     activeRun = true;
     app.ticker.start();
   };
 
+  const enterChapter = () => {
+    if (activeRun) {
+      sessionStorage.setItem(AUTOSTART_KEY, '1');
+      window.location.reload();
+      return;
+    }
+    resumeGameplay();
+  };
+
   const hub = new GameHub(host, {
-    onEnterChapter: resumeGameplay,
+    onEnterChapter: enterChapter,
     onResumeRun: resumeGameplay,
     hasActiveRun: () => activeRun,
   });
@@ -31,6 +44,11 @@ async function bootstrap() {
     if (hub.root.hidden) app.ticker.start();
     else app.ticker.stop();
   }).observe(hub.root, { attributes: true, attributeFilter: ['hidden'] });
+
+  if (activeRun) {
+    hub.showGame();
+    app.ticker.start();
+  }
 }
 
 void bootstrap();
