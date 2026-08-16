@@ -30,6 +30,17 @@ function chargeScore(state:CombatState,action:CpuSkillAction){
  // Charge should be chosen for material board restructuring, not merely because Mana is available.
  return disrupted*1.25+improved*1.05+(pushedEnemy?240:0)-180;
 }
+function phaseScore(state:CombatState,action:CpuSkillAction){
+ if(action.skillId!=='phase'||!action.source)return 0;
+ const beforePlayer=boardThreat(state,PLAYER),beforeCpu=boardThreat(state,CPU);
+ const next=skills.phase.execute({state,player:CPU},action.target,action.source);
+ if(isWin(next.board,action.target,CPU))return 1_000_000;
+ const afterPlayer=boardThreat(next,PLAYER),afterCpu=boardThreat(next,CPU);
+ const disrupted=Math.max(0,beforePlayer-afterPlayer),improved=Math.max(0,afterCpu-beforeCpu);
+ // Phase spends a turn and moves existing material, so only meaningful tactical restructuring should beat placement.
+ return disrupted*1.3+improved*1.2+centerScore(action.target)-220;
+}
+function skillScore(state:CombatState,action:CpuSkillAction){if(action.skillId==='charge')return chargeScore(state,action);if(action.skillId==='phase')return phaseScore(state,action);return 0;}
 
 export function scoreCpuAction(state:CombatState,action:CpuAction):number{
  if(action.kind==='place'){
@@ -37,7 +48,7 @@ export function scoreCpuAction(state:CombatState,action:CpuAction):number{
   if(attack>=100000)return 1_000_000;if(defense>=100000)return 900_000;
   return attack*1.05+defense*1.15+centerScore(action.at);
  }
- return chargeScore(state,action);
+ return skillScore(state,action);
 }
 
 export function chooseCpuAction(state:CombatState,candidates:readonly CpuAction[]):ScoredCpuAction|null{
