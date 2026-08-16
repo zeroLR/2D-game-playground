@@ -79,7 +79,7 @@ describe('R7 match runtime skills',()=>{
   expect(after.turn.phase).toBe('cpu');
  });
  it('keeps the skill selected after an illegal target',()=>{
-  const h=harness('arcanist',()=>createCombatState(boardWith([[4,4,1]]),3));
+  const h=harness('arcanist',()=>createCombatState(boardWith([[0,0,2],[4,4,1]]),3));
   h.runtime.selectSkill('phase');
   h.runtime.tapCell({row:0,col:0});
   expect(h.kinds()).toEqual(['invalid']);
