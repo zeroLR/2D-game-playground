@@ -28,8 +28,11 @@ describe('EncounterDirector', () => {
     expect(new EncounterDirector().next(() => 0.85, 'pale-heights')).toBe('moving-window');
   });
   it('makes Storm Crown a mixed mastery deck instead of inheriting Pale specialization', () => {
-    expect(new EncounterDirector().next(() => 0.48, 'pale-heights')).toBe('dash-chain');
-    expect(new EncounterDirector().next(() => 0.48, 'storm-crown')).toBe('edge-read');
+    // Pale warmup weights total 13: at 0.48 the roll lands in edge-read.
+    // Storm warmup weights total 16: the same roll remains in edge-read, so use
+    // a boundary that demonstrates the actual distribution difference instead.
+    expect(new EncounterDirector().next(() => 0.4, 'pale-heights')).toBe('dash-chain');
+    expect(new EncounterDirector().next(() => 0.4, 'storm-crown')).toBe('edge-read');
   });
   it('reset returns the director to warmup', () => {
     const director = new EncounterDirector(); for (let i = 0; i < 12; i += 1) director.next(() => 0.5);
