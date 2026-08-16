@@ -19,6 +19,7 @@ describe('R1 skill resolution',()=>{
  it('rejects a two-stage skill without a legal source',()=>{const b=createBoard();b[4][4]=1;const r=resolveSkillAction(createCombatState(b,2),'vanguard',1,'blink',{row:5,col:5});expect(r.ok).toBe(false);expect(r.error).toBe('invalid-target');});
  it('applies Flow after a resolved skill',()=>{const r=resolveSkillAction(createCombatState(createBoard(),2),'arcanist',1,'seal',{row:4,col:4});expect(r.passiveTriggered).toBe(true);expect(r.passiveMana).toBe(1);expect(getMana(r.state,1)).toBe(1);});
  it('resolves Corrupt into a dead zone',()=>{const b=createBoard();b[4][4]=1;b[4][5]=2;const target={row:4,col:5};const r=resolveSkillAction(createCombatState(b,3),'shade',1,'corrupt',target);expect(r.ok).toBe(true);expect(isCorrupted(r.state,target)).toBe(true);});
+ it('reports a player victory when Charge completes five in a row',()=>{const b=createBoard();for(let c=0;c<4;c++)b[4][c]=1;b[3][4]=1;const r=resolveSkillAction(createCombatState(b,3),'vanguard',1,'charge',{row:4,col:4},{row:3,col:4});expect(r.ok).toBe(true);expect(r.state.board[4][4]).toBe(1);expect(r.won).toBe(true);});
 });
 
 describe('R1 turn consumption',()=>{
