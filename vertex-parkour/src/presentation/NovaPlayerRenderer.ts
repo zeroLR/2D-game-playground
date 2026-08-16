@@ -2,7 +2,7 @@ import { AnimatedSprite, Assets, Container, Graphics, type Texture } from 'pixi.
 import { resolveNovaAnimationState, type NovaAnimationState } from './NovaAnimationState';
 import { redrawPlayer } from './visuals';
 
-const FRAME_SCALE = 0.2;
+const FRAME_SCALE = 0.5;
 const FRAME_ANCHOR_Y = 0.90625;
 
 const NOVA_FRAME_URLS: Record<NovaAnimationState, string[]> = {
