@@ -12,8 +12,8 @@ Route choices, encounter pacing, phase variants, Climax packets and traversal th
 - Patrol Drone, Pulse Gate and Interceptor traversal threats
 - Elite and Climax mixed-mechanic composition
 
-# M7 — Environments / Biomes 🚧
-Goal: a run visibly and mechanically progresses through multiple environments and reaches a defined Chapter 1 endpoint.
+# M7 — Environments / Biomes / Chapter Shell 🚧
+Goal: a run visibly and mechanically progresses through multiple environments, reaches a defined Chapter 1 endpoint, and is framed by a coherent game shell.
 
 ## M7.1–M7.4 — Biome progression ✅
 - Teal Ruins → Amber District → Violet Zone → Pale Heights
@@ -26,35 +26,35 @@ Goal: a run visibly and mechanically progresses through multiple environments an
 - Violet: fragmented traversal / pursuit ecology
 - Pale: moving ice floes / wind corridors / collapsing ice
 
-## M7.6 — Storm Crown / Chapter 1 Endgame 🚧
+## M7.6 — Storm Crown / Chapter 1 Endgame ✅ first-pass
 - Storm Crown is the terminal Chapter 1 biome and remixes prior traversal vocabulary
 - Storm Surge is its signature sustained environmental pressure
-
-### Slice 3A — End Condition Architecture ✅
 - explicit RunPhase state: `running → final-climax → final-ascent → chapter-clear`
 - first Storm Crown Climax becomes the terminal procedural Climax
-- ordinary procedural generation stops when that Climax completes
-- `final-ascent` is the handoff point for authored endgame content
-- guarded `markChapterClear()` contract reserved for Summit landing
+- authored Final Ascent takes over after procedural generation locks
+- Summit landing is the explicit Chapter 1 clear condition
+- clear state stops gameplay pressure and provides first-pass completion presentation
 
-### Slice 3B — Final Ascent Set Piece 🚧
-- entering `final-ascent` seeds one finite authored sequence instead of returning to procedural generation
-- sequence remixes Storm Gate timing, fragmented transfer, wall recovery, moving-platform timing, Interceptor pursuit and committed edge traversal
-- no Route Choice, Skill Choice or Crystal diversion appears inside the capstone sequence
-- final band is a wide stable Summit Approach shelf; it is intentionally not the chapter exit yet
-- lifecycle exposes Summit Approach Y for Slice 3C handoff
+## M7.7 — Game Hub / Product Shell 🚧
+Build a complete shell around the playable chapter while leaving future progression systems clearly marked as prototypes.
 
-Next M7.6 slice:
-- **3C Summit + Chapter Clear** — chapter-exit entity, landing detection, clear presentation and run handoff
+- **Home / Start Menu** — branded entry point, resume active ascent, access all game areas
+- **Character Profile** — Nova current runner profile; Kai/Lumen future M10 previews only
+- **Talent Matrix (mock)** — node/tree presentation shell reserved for M9 persistent progression
+- **Ascension Gate** — Chapter 1 route preview and actual gameplay entry/restart point
+- **Relic Archive (mock)** — loadout/collection language reserved for M8 relic mechanics
+- **Settings** — local shell preferences and control reference
+- Hub pauses Pixi gameplay while open; gameplay resumes only when returning to the run
+- visual language must remain consistent with VERTEX: dark atmospheric field, fine geometry, restrained teal/gold/violet accents, low-noise typography
 
 # M8 — Relic System
-Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats.
+Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats. The M7.7 Relic Archive is presentation-only until this milestone.
 
 # M9 — Meta Progression + Talent Tree
-Unlock Skills, Relics, starting options, route/biome variants and limited QoL. Avoid large permanent raw-stat inflation.
+Unlock Skills, Relics, starting options, route/biome variants and limited QoL. Avoid large permanent raw-stat inflation. The M7.7 Talent Matrix is presentation-only until this milestone.
 
 # M10 — Character System
-Characters create distinct starting identities/build biases while sharing core controls: Nova (Dash), Kai (Kill/aggressive routing), Lumen (Flow/control).
+Characters create distinct starting identities/build biases while sharing core controls: Nova (Dash), Kai (Kill/aggressive routing), Lumen (Flow/control). M7.7 exposes their shell but only Nova maps to current gameplay.
 
 # M11 — Run Summary + Product Loop
 Score, duration, Flow peak, enemies defeated, Skills, Relics, biome/route progress, damage taken, persistent reward.
@@ -71,6 +71,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M1–M4: complete
 - M5: mechanics implemented; balance deferred
 - M6: traversal vocabulary implemented; balance deferred
-- M7.1–M7.5: first-pass biome progression/ecosystem implemented
-- M7.6 Storm Crown: foundation + Storm Surge + end-condition architecture implemented; authored final ascent in progress
+- M7.1–M7.6: first-pass Chapter 1 gameplay loop complete
+- M7.7: Game Hub/product shell in progress
 - M8–M12: not started
