@@ -9,34 +9,11 @@ export type BiomeTheme = {
 };
 
 const THEMES: Record<BiomeId, BiomeTheme> = {
-  'teal-ruins': {
-    name: 'TEAL RUINS',
-    platformTint: 0xb7fff1,
-    ambient: 0x123f46,
-    ambientAlpha: 0.055,
-    mote: 0x74d9ce,
-  },
-  'amber-district': {
-    name: 'AMBER DISTRICT',
-    platformTint: 0xffc979,
-    ambient: 0x6b3517,
-    ambientAlpha: 0.095,
-    mote: 0xffb85c,
-  },
-  'violet-zone': {
-    name: 'NIGHT / VIOLET ZONE',
-    platformTint: 0xc3a6ff,
-    ambient: 0x26194f,
-    ambientAlpha: 0.105,
-    mote: 0xb792ff,
-  },
-  'pale-heights': {
-    name: 'PALE HEIGHTS',
-    platformTint: 0xe8fbff,
-    ambient: 0x31546a,
-    ambientAlpha: 0.085,
-    mote: 0xd7f6ff,
-  },
+  'teal-ruins': { name: 'TEAL RUINS', platformTint: 0xb7fff1, ambient: 0x123f46, ambientAlpha: 0.055, mote: 0x74d9ce },
+  'amber-district': { name: 'AMBER DISTRICT', platformTint: 0xffc979, ambient: 0x6b3517, ambientAlpha: 0.095, mote: 0xffb85c },
+  'violet-zone': { name: 'NIGHT / VIOLET ZONE', platformTint: 0xc3a6ff, ambient: 0x26194f, ambientAlpha: 0.105, mote: 0xb792ff },
+  'pale-heights': { name: 'PALE HEIGHTS', platformTint: 0xe8fbff, ambient: 0x31546a, ambientAlpha: 0.085, mote: 0xd7f6ff },
+  'storm-crown': { name: 'STORM CROWN', platformTint: 0xfff1b8, ambient: 0x3a2858, ambientAlpha: 0.14, mote: 0xffd978 },
 };
 
 export function getBiomeTheme(id: BiomeId): BiomeTheme { return THEMES[id]; }
