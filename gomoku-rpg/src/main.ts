@@ -16,69 +16,20 @@ const app=new Application();
 await app.init({resizeTo:window,antialias:true,background:'#f3efe7',resolution:Math.min(devicePixelRatio,2)});
 document.querySelector('#app')!.appendChild(app.canvas);
 const root=new Container();app.stage.addChild(root);
-
-type Screen='hero-select'|'match';
-let screen:Screen='hero-select';
-let locale:Locale=loadLocale();
-let summaryCopied=false;
-
+type Screen='hero-select'|'match';let screen:Screen='hero-select';let locale:Locale=loadLocale();let summaryCopied=false;
 const feedback=createCombatFeedback(()=>render());
 const runtime=createMatchRuntime({heroId:'arcanist',schedule:setTimeout,cancel:clearTimeout,onChange:()=>render(),onEvent:applyEvent});
-
-/** Runtime says what happened; the feedback layer decides how long it stays on screen. */
-function applyEvent(event:MatchEvent){
-  switch(event.kind){
-    case 'reset':return feedback.clear();
-    case 'move':return feedback.markMove(event.at);
-    case 'mana-gain':return feedback.showManaGain(event.amount,event.fromSkill?FEEDBACK_MS.manaSkill:FEEDBACK_MS.manaPlace);
-    case 'passive':return feedback.showPassiveTriggered(event.at);
-    case 'action':return feedback.showAction(event.at);
-    case 'invalid':return feedback.showInvalidTarget(event.at);
-    case 'winning-line':return feedback.markWinningLine(event.cells);
-  }
-}
-
+function applyEvent(event:MatchEvent){switch(event.kind){case 'reset':return feedback.clear();case 'move':return feedback.markMove(event.at);case 'mana-gain':return feedback.showManaGain(event.amount,event.fromSkill?FEEDBACK_MS.manaSkill:FEEDBACK_MS.manaPlace);case 'passive':return feedback.showPassiveTriggered(event.at);case 'action':return feedback.showAction(event.at);case 'invalid':return feedback.showInvalidTarget(event.at);case 'winning-line':return feedback.markWinningLine(event.cells);}}
 const view=():ViewContext=>({root,locale});
-
-function drawHeroSelect(){
-  const ctx=view();
-  prepareStage(root,app.screen.width,app.screen.height);
-  renderHeroSelect(ctx,{selectedHero:runtime.heroId(),onSelectHero,onStart:startBattle,onToggleLocale:toggleLocale});
-  renderFooter(ctx);
-}
-
+function drawHeroSelect(){const ctx=view();prepareStage(root,app.screen.width,app.screen.height);renderHeroSelect(ctx,{selectedHero:runtime.heroId(),onSelectHero,onStart:startBattle,onToggleLocale:toggleLocale});renderFooter(ctx);}
 function drawMatch(){
-  const ctx=view(),match=runtime.snapshot(),marks=feedback.state();
-  prepareStage(root,app.screen.width,app.screen.height);
-  renderHudTop(ctx,{turn:match.turn.turn,onToggleLocale:toggleLocale});
-  renderBoard(ctx,{state:match.state,highlights:match.highlights,feedback:marks,onCell:onCell});
-  renderHudPanel(ctx,{hero:match.hero,mana:match.mana,status:match.status,manaPulse:marks.manaPulse>0,passivePulse:!!marks.passivePulse,passiveBanner:marks.passiveBanner});
-  if(match.turn.status==='playing')renderSkillBar(ctx,{items:match.skillBar,onSelect:onSelectSkill});
-  else renderMatchOverBar(ctx,{summaryCopied,onRestart:restart,onChooseHero:chooseHero,onCopySummary:copySummary});
-  renderFooter(ctx);
+ const ctx=view(),match=runtime.snapshot(),marks=feedback.state();prepareStage(root,app.screen.width,app.screen.height);
+ renderHudTop(ctx,{turn:match.turn.turn,cpuHero:match.cpuHero,cpuMana:match.cpuMana,onToggleLocale:toggleLocale});
+ renderBoard(ctx,{state:match.state,highlights:match.highlights,feedback:marks,onCell:onCell});
+ renderHudPanel(ctx,{hero:match.hero,mana:match.mana,status:match.status,manaPulse:marks.manaPulse>0,passivePulse:!!marks.passivePulse,passiveBanner:marks.passiveBanner});
+ if(match.turn.status==='playing')renderSkillBar(ctx,{items:match.skillBar,onSelect:onSelectSkill});else renderMatchOverBar(ctx,{summaryCopied,onRestart:restart,onChooseHero:chooseHero,onCopySummary:copySummary});renderFooter(ctx);
 }
-
 function render(){screen==='hero-select'?drawHeroSelect():drawMatch();}
-
-function onSelectHero(heroId:HeroId){runtime.selectHero(heroId);render();}
-function onSelectSkill(skillId:SkillId){runtime.selectSkill(skillId);}
-function onCell(pos:Parameters<typeof runtime.tapCell>[0]){runtime.tapCell(pos);}
-function toggleLocale(){locale=nextLocale(locale);saveLocale(locale);render();}
-function startBattle(){runtime.reset();summaryCopied=false;screen='match';render();}
-function chooseHero(){runtime.reset();summaryCopied=false;screen='hero-select';render();}
-function restart(){runtime.reset();summaryCopied=false;render();}
-
-async function copySummary(){
-  const text=summaryText(runtime.metrics());
-  console.info('[Gomoku RPG playtest metrics]',text);
-  try{
-    await navigator.clipboard.writeText(text);
-    summaryCopied=true;render();
-    setTimeout(()=>{summaryCopied=false;render();},1200);
-  }catch{
-    window.prompt(locale==='en'?'Copy playtest metrics':'複製遊戲測試數據',text);
-  }
-}
-
-render();
-window.addEventListener('resize',render);
+function onSelectHero(heroId:HeroId){runtime.selectHero(heroId);render();}function onSelectSkill(skillId:SkillId){runtime.selectSkill(skillId);}function onCell(pos:Parameters<typeof runtime.tapCell>[0]){runtime.tapCell(pos);}function toggleLocale(){locale=nextLocale(locale);saveLocale(locale);render();}function startBattle(){runtime.reset();summaryCopied=false;screen='match';render();}function chooseHero(){runtime.reset();summaryCopied=false;screen='hero-select';render();}function restart(){runtime.reset();summaryCopied=false;render();}
+async function copySummary(){const text=summaryText(runtime.metrics());console.info('[Gomoku RPG playtest metrics]',text);try{await navigator.clipboard.writeText(text);summaryCopied=true;render();setTimeout(()=>{summaryCopied=false;render();},1200);}catch{window.prompt(locale==='en'?'Copy playtest metrics':'複製遊戲測試數據',text);}}
+render();window.addEventListener('resize',render);
