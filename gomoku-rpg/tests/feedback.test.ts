@@ -11,7 +11,7 @@ function manualScheduler(){
 describe('R6 combat feedback',()=>{
  it('starts with nothing to draw',()=>{
   const feedback=createCombatFeedback(()=>{});
-  expect(feedback.state()).toEqual({lastMove:null,winCells:[],actionPulse:null,passivePulse:null,flash:null,manaPulse:0,passiveBanner:false});
+  expect(feedback.state()).toEqual({lastMove:null,winCells:[],actionPulse:null,passivePulse:null,flash:null,manaPulse:0,passiveBanner:false,skillTrail:null});
  });
  it('retires an action pulse after its timer',()=>{
   const clock=manualScheduler();let renders=0;
@@ -54,6 +54,6 @@ describe('R6 combat feedback',()=>{
   feedback.showInvalidTarget({row:0,col:0});
   feedback.markMove({row:1,col:1});
   feedback.clear();
-  expect(feedback.state()).toEqual({lastMove:null,winCells:[],actionPulse:null,passivePulse:null,flash:null,manaPulse:0,passiveBanner:false});
+  expect(feedback.state()).toEqual({lastMove:null,winCells:[],actionPulse:null,passivePulse:null,flash:null,manaPulse:0,passiveBanner:false,skillTrail:null});
  });
 });
