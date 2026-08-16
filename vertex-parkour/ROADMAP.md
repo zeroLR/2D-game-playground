@@ -30,16 +30,21 @@ Goal: a run visibly and mechanically progresses through multiple environments an
 - Storm Crown is the terminal Chapter 1 biome and remixes prior traversal vocabulary
 - Storm Surge is its signature sustained environmental pressure
 
-### Slice 3A — End Condition Architecture 🚧
-- introduce explicit RunPhase state: `running → final-climax → final-ascent → chapter-clear`
-- the first Storm Crown Climax becomes the terminal procedural Climax
-- after that Climax completes, ordinary procedural world generation stops
-- expose `final-ascent` as the handoff point for the authored endgame sequence
-- expose a guarded `markChapterClear()` contract for the future Summit / chapter-exit landing
-- reset returns the run to normal procedural generation
+### Slice 3A — End Condition Architecture ✅
+- explicit RunPhase state: `running → final-climax → final-ascent → chapter-clear`
+- first Storm Crown Climax becomes the terminal procedural Climax
+- ordinary procedural generation stops when that Climax completes
+- `final-ascent` is the handoff point for authored endgame content
+- guarded `markChapterClear()` contract reserved for Summit landing
 
-Next M7.6 slices:
-- **3B Final Climax / Final Ascent Set Piece** — authored endgame traversal after procedural generation locks
+### Slice 3B — Final Ascent Set Piece 🚧
+- entering `final-ascent` seeds one finite authored sequence instead of returning to procedural generation
+- sequence remixes Storm Gate timing, fragmented transfer, wall recovery, moving-platform timing, Interceptor pursuit and committed edge traversal
+- no Route Choice, Skill Choice or Crystal diversion appears inside the capstone sequence
+- final band is a wide stable Summit Approach shelf; it is intentionally not the chapter exit yet
+- lifecycle exposes Summit Approach Y for Slice 3C handoff
+
+Next M7.6 slice:
 - **3C Summit + Chapter Clear** — chapter-exit entity, landing detection, clear presentation and run handoff
 
 # M8 — Relic System
@@ -67,5 +72,5 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M5: mechanics implemented; balance deferred
 - M6: traversal vocabulary implemented; balance deferred
 - M7.1–M7.5: first-pass biome progression/ecosystem implemented
-- M7.6 Storm Crown: foundation + Storm Surge implemented; Chapter 1 end condition in progress
+- M7.6 Storm Crown: foundation + Storm Surge + end-condition architecture implemented; authored final ascent in progress
 - M8–M12: not started
