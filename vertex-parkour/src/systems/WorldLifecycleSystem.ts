@@ -24,7 +24,8 @@ export class WorldLifecycleSystem {
   getVisualBiome(): BiomeId { return this.state.getActiveBiome(); }
 
   updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
-    for (const platform of this.state.platforms) { const motion = platform.motion; if (!motion) continue; platform.x = motion.originX + Math.sin(elapsed * motion.speed + motion.phase) * motion.amplitude; }
+    this.state.updatePlatformCollapse(dt);
+    for (const platform of this.state.platforms) { const motion = platform.motion; if (!motion || platform.collapseState === 'broken') continue; platform.x = motion.originX + Math.sin(elapsed * motion.speed + motion.phase) * motion.amplitude; }
     for (const drone of this.state.drones) { if (drone.destroyed) continue; drone.x = drone.originX + Math.sin(elapsed * drone.patrolSpeed + drone.phase) * drone.patrolAmplitude; }
     for (const gate of this.state.pulseGates) { const normalized = ((elapsed + gate.phase) % gate.period) / gate.period; gate.active = normalized < gate.activeRatio; }
     for (const interceptor of this.state.interceptors) {

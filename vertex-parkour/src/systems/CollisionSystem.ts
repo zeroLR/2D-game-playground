@@ -22,8 +22,10 @@ export class CollisionSystem {
     if (next.velocityY >= 0 && next.landingTime <= 0) {
       const nextFeet = next.playerY + PLAYER_FEET_OFFSET;
       for (const platform of world.platforms) {
+        if (platform.collapseState === 'broken') continue;
         if (Math.abs(next.playerX - platform.x) <= platform.width / 2 + LANDING_EDGE_ASSIST && previousFeet <= platform.y + 4 && nextFeet >= platform.y - 2) {
           next = applyLanding(next, platform.y);
+          world.triggerPlatformCollapse(platform.id);
           events.emit({ type: 'landed', x: next.playerX, y: next.playerY + cameraOffset });
           break;
         }
