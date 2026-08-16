@@ -9,6 +9,7 @@ export type GameHubOptions = {
 type HubSettings = { reducedMotion: boolean; highContrast: boolean };
 
 const SETTINGS_KEY = 'vertex-hub-settings-v1';
+const NOVA_PROFILE_URL = new URL('./assets/nova-profile.svg', import.meta.url).href;
 
 function loadSettings(): HubSettings {
   try {
@@ -112,14 +113,39 @@ export class GameHub {
 
   private profilePage() {
     return `
-      <section class="page-heading"><span>RUNNER / 01</span><h2>CHARACTER PROFILE</h2><p>Current gameplay identity. Additional runners remain future M10 content.</p></section>
-      <section class="runner-card panel-cut">
-        <div class="runner-portrait"><div class="runner-sigil">△</div><div class="scanline"></div></div>
-        <div class="runner-copy"><span class="tag teal">ACTIVE RUNNER</span><h3>NOVA</h3><p>Balanced ascender built around clean Dash commitment and sustained Flow.</p>
-          <div class="stat-grid"><div><small>MOBILITY</small><b>◆◆◆◆◇</b></div><div><small>CONTROL</small><b>◆◆◆◇◇</b></div><div><small>FLOW</small><b>◆◆◆◆◇</b></div><div><small>RISK</small><b>◆◆◆◇◇</b></div></div>
+      <section class="page-heading profile-heading"><span>RUNNER / 01</span><h2>CHARACTER PROFILE</h2><p>Current gameplay identity. Additional runners remain future M10 content.</p></section>
+      <section class="runner-profile-stage panel-cut">
+        <div class="runner-art-stage">
+          <div class="runner-stage-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+          <img class="runner-profile-art" src="${NOVA_PROFILE_URL}" alt="Nova, the active VERTEX runner" />
+          <div class="runner-art-caption"><span>ACTIVE RUNNER</span><b>01 · NOVA</b></div>
+        </div>
+        <div class="runner-profile-copy">
+          <span class="tag teal">ACTIVE RUNNER</span>
+          <h3>NOVA</h3>
+          <div class="runner-subtitle">◆ THE ASCENT BEGINS</div>
+          <p>Balanced ascender built around clean Dash commitment and sustained Flow.</p>
+          <div class="profile-rule"></div>
+          <div class="stat-list">
+            <div><small>MOBILITY</small><b>◆ ◆ ◆ ◆ ◇</b></div>
+            <div><small>CONTROL</small><b>◆ ◆ ◆ ◇ ◇</b></div>
+            <div><small>FLOW</small><b>◆ ◆ ◆ ◆ ◇</b></div>
+            <div><small>RISK</small><b>◆ ◆ ◆ ◇ ◇</b></div>
+          </div>
         </div>
       </section>
-      <div class="runner-previews"><article><span>LOCKED</span><b>KAI</b><small>AGGRESSION / KILL ROUTING</small></article><article><span>LOCKED</span><b>LUMEN</b><small>FLOW / CONTROL</small></article></div>`;
+      <section class="runner-roster-section">
+        <div class="runner-roster-label"><span>RUNNER ROSTER</span><i></i></div>
+        <div class="runner-roster">
+          <article class="runner-roster-card is-active">
+            <img src="${NOVA_PROFILE_URL}" alt="Nova" />
+            <b>NOVA</b><small>ACTIVE</small>
+          </article>
+          <article class="runner-roster-card is-locked"><div class="locked-runner">△<span>⌑</span></div><b>KAI</b><small>LOCKED · AGGRESSION</small></article>
+          <article class="runner-roster-card is-locked"><div class="locked-runner">◇<span>⌑</span></div><b>LUMEN</b><small>LOCKED · CONTROL</small></article>
+        </div>
+      </section>
+      <section class="runner-archive-note panel-cut"><span>◉ &nbsp; RUNNER ARCHIVE PROTOCOL</span><p>Additional runner identities are sealed within the Protocol. Ascend further to unlock.</p></section>`;
   }
 
   private talentPage() {
