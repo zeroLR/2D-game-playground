@@ -19,7 +19,6 @@ function linePotential(state:CombatState,p:Pos,player:Player){
  if(length>=5)return 100000;if(length===4)return 18000+open*100;if(length===3)return 3200+open*40;if(length===2)return 280+open*10;return 12;
 }
 function boardThreat(state:CombatState,player:Player){let best=0;state.board.forEach((row,r)=>row.forEach((cell,c)=>{if(cell===0)best=Math.max(best,linePotential(state,{row:r,col:c},player));}));return best;}
-function winningReplies(state:CombatState,player:Player){let count=0;state.board.forEach((row,r)=>row.forEach((cell,c)=>{if(cell!==0)return;const pos={row:r,col:c};state.board[r][c]=player;if(isWin(state.board,pos,player))count++;state.board[r][c]=0;}));return count;}
 function chargeScore(state:CombatState,action:CpuSkillAction){
  if(action.skillId!=='charge'||!action.source)return 0;
  const beforePlayer=boardThreat(state,PLAYER),beforeCpu=boardThreat(state,CPU);
@@ -31,15 +30,13 @@ function chargeScore(state:CombatState,action:CpuSkillAction){
  return disrupted*1.25+improved*1.05+(pushedEnemy?240:0)-180;
 }
 function phaseScore(state:CombatState,action:CpuSkillAction){
- if(action.skillId!=='phase'||!action.source)return 0;
- const beforePlayer=boardThreat(state,PLAYER),beforeCpu=boardThreat(state,CPU);
- const next=skills.phase.execute({state,player:CPU},action.target,action.source);
- const replies=winningReplies(next,CPU);
- const afterPlayer=boardThreat(next,PLAYER),afterCpu=boardThreat(next,CPU);
- const disrupted=Math.max(0,beforePlayer-afterPlayer),improved=Math.max(0,afterCpu-beforeCpu);
- // Phase is a setup action: a true fork (2+ winning replies) is its premium outcome, never an instant win.
- const forkBonus=replies>=2?120_000:replies===1?8_000:0;
- return forkBonus+disrupted*1.1+improved*1.15+centerScore(action.target)-220;
+ if(action.skillId!=='phase')return 0;
+ // Arcane Command trades this turn for control of the opponent's next stone.
+ // Prefer low-value cells for the player; never override immediate win/block placement priorities.
+ const giftedPlayerValue=linePotential(state,action.target,PLAYER);
+ const cpuValue=linePotential(state,action.target,CPU);
+ if(giftedPlayerValue>=100000)return -1_000_000;
+ return 4200-giftedPlayerValue*0.9-cpuValue*0.15-centerScore(action.target)*0.5;
 }
 function skillScore(state:CombatState,action:CpuSkillAction){if(action.skillId==='charge')return chargeScore(state,action);if(action.skillId==='phase')return phaseScore(state,action);return 0;}
 
