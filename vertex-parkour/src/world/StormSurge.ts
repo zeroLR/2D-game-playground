@@ -13,7 +13,10 @@ const WARNING = 1.2;
 const ACTIVE = 3.5;
 const RECOVERY = 2.0;
 const CYCLE = CALM + WARNING + ACTIVE + RECOVERY;
-const MAX_FORCE = 980;
+// Movement drag is intentionally strong in normal traversal. Storm Crown needs
+// to beat that drag for several seconds so the surge changes route choice rather
+// than reading as a tiny impulse between jumps.
+const MAX_FORCE = 3600;
 const MAX_SURGE_VELOCITY = 720;
 
 export function stormSurgeFrame(elapsed: number, biome: BiomeId): StormSurgeFrame {
