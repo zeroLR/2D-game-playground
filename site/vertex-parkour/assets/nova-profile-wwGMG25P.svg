@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 560" role="img" aria-labelledby="title desc">
+  <title id="title">Nova</title>
+  <desc id="desc">VERTEX runner Nova wearing a white angular hood, dark mantle, teal scarf and short black coat, standing on a floating stone platform.</desc>
+  <defs>
+    <linearGradient id="hoodWhite" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="0.62" stop-color="#e9e3d8"/>
+      <stop offset="1" stop-color="#cfc9bf"/>
+    </linearGradient>
+    <linearGradient id="hoodDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#293036"/>
+      <stop offset="1" stop-color="#10171d"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#31383d"/>
+      <stop offset="1" stop-color="#171d22"/>
+    </linearGradient>
+    <linearGradient id="scarf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a8e89"/>
+      <stop offset="1" stop-color="#14534f"/>
+    </linearGradient>
+    <radialGradient id="aura">
+      <stop offset="0" stop-color="#72d8cc" stop-opacity=".18"/>
+      <stop offset=".55" stop-color="#72d8cc" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#72d8cc" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+
+  <ellipse cx="210" cy="292" rx="175" ry="216" fill="url(#aura)"/>
+  <path d="M210 38 321 230 210 422 99 230Z" fill="none" stroke="#70d8cc" stroke-opacity=".16" stroke-width="1.5"/>
+  <path d="M210 83 294 230 210 377 126 230Z" fill="none" stroke="#e4cf89" stroke-opacity=".10"/>
+
+  <!-- scarf tails -->
+  <path d="M153 278c-23 12-54 23-83 21 23-13 40-27 54-46 14 6 24 15 29 25Z" fill="#185d58"/>
+  <path d="M152 289c-28 22-53 35-82 38 20-18 36-37 45-57 18 3 29 9 37 19Z" fill="#21756f"/>
+
+  <!-- legs -->
+  <path d="M172 411c8-3 19-3 27 0l-8 69h-35Z" fill="#151b21"/>
+  <path d="M225 411c8-3 19-3 27 0l14 69h-36Z" fill="#11171d"/>
+  <path d="M151 476c14-8 28-8 42-1l-3 17h-52Z" fill="#0e1419"/>
+  <path d="M228 475c13-7 27-7 40 1l12 16h-54Z" fill="#0e1419"/>
+
+  <!-- body / coat -->
+  <path d="M138 300c18-23 48-34 72-34 31 0 60 12 76 36l-17 120c-17 12-39 20-62 20-29 0-54-8-70-21Z" fill="url(#coat)" stroke="#6d7778" stroke-opacity=".4"/>
+  <path d="M210 313v113" stroke="#b7c3bf" stroke-opacity=".35"/>
+  <path d="M167 367 140 420l-20-12 19-71Z" fill="#252c31"/>
+  <path d="m264 363 34 48-19 14-35-62Z" fill="#20272c"/>
+  <path d="m193 334 17 18 17-18-17 34Z" fill="#ece6d9" opacity=".92"/>
+
+  <!-- hood dark side -->
+  <path d="M215 113c51 2 91 41 113 94l-27 106-75-12-21-121Z" fill="url(#hoodDark)" stroke="#899192" stroke-opacity=".45"/>
+  <path d="M270 137c29 18 50 44 64 74l-23 27-54-37Z" fill="#171d23" opacity=".9"/>
+
+  <!-- main white hood / mask -->
+  <path d="M191 73 95 303l114-7 91-53-89-164Z" fill="url(#hoodWhite)" stroke="#fff8e9" stroke-opacity=".72" stroke-width="2"/>
+  <path d="M191 73 209 296 95 303Z" fill="#f2ede4" opacity=".78"/>
+  <path d="M210 296 300 243l-40-74-52 20Z" fill="#e7e0d5" opacity=".86"/>
+  <path d="M118 270c13-4 23-12 31-23l12 22-14 31-31 2Z" fill="#cbc8c0" opacity=".75"/>
+
+  <!-- face openings -->
+  <ellipse cx="218" cy="222" rx="16" ry="22" fill="#0b1014"/>
+  <ellipse cx="266" cy="224" rx="8" ry="12" fill="#0b1014"/>
+  <ellipse cx="214" cy="215" rx="4" ry="6" fill="#70d8cc" opacity=".65"/>
+
+  <!-- scarf -->
+  <path d="M128 289c36 19 111 26 162-4l-1 37c-41 29-115 31-169 1Z" fill="url(#scarf)" stroke="#3ca39a" stroke-opacity=".45"/>
+  <path d="M144 300c36 14 93 18 131-3" fill="none" stroke="#8ee7dd" stroke-opacity=".18" stroke-width="3"/>
+
+  <!-- small seams / wear -->
+  <path d="M137 246l12-9 6 18-8 11" fill="none" stroke="#7a817f" stroke-opacity=".45"/>
+  <path d="M191 116 181 163" stroke="#a6a29a" stroke-opacity=".24"/>
+  <path d="M241 176 257 161" stroke="#ffffff" stroke-opacity=".16"/>
+
+  <!-- platform -->
+  <ellipse cx="210" cy="502" rx="112" ry="15" fill="#70d8cc" opacity=".08" filter="url(#softGlow)"/>
+  <path d="M79 494 126 472l87 8 84-11 44 25-32 39-88 10-93-7Z" fill="#1d292e" stroke="#6f8583" stroke-opacity=".45"/>
+  <path d="m79 494 133 14 129-14" fill="none" stroke="#a0bab6" stroke-opacity=".32"/>
+  <path d="m140 488 28 17 22-18 32 19 31-24 24 19" fill="none" stroke="#405a5a" stroke-width="2"/>
+  <path d="M126 503 108 526m89-20-11 32m81-35 15 27" stroke="#0c161a" stroke-width="3" opacity=".8"/>
+
+  <circle cx="75" cy="202" r="2" fill="#e6cf83" opacity=".65"/>
+  <circle cx="329" cy="171" r="2" fill="#70d8cc" opacity=".6"/>
+  <circle cx="312" cy="340" r="1.5" fill="#e6cf83" opacity=".55"/>
+</svg>
