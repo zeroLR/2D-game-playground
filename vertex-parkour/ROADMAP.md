@@ -9,54 +9,38 @@ Skills, tiers and synergy mechanics are implemented. Remaining work is build-awa
 Route choices, encounter pacing, phase variants, Climax packets and traversal threats are implemented. Global cadence and numerical balance remain deferred.
 
 ## M6.3 — More Enemies / Traversal Threats ✅
-- **Patrol Drone** — horizontal patrol obstacle and Dash target
-- **Pulse Gate / lane denial** — timed active/inactive passage that asks the player to wait, reroute or commit
-- **Interceptor / pursuit** — begins horizontal pursuit only while the player is within its local vertical activation range; Dash can destroy it and preserve existing enemy-kill build interactions
-- **Elite composition** — combines Pulse Gate → Interceptor → Patrol Drone / Crystal recovery so each threat role changes the next movement decision
-- **Climax composition** — layers timing, pursuit, moving platform, wall recovery and Patrol Drone pressure while retaining a wide Crystal rest exit
+- Patrol Drone, Pulse Gate and Interceptor traversal threats
+- Elite and Climax mixed-mechanic composition
 
 # M7 — Environments / Biomes 🚧
-Goal: a run visibly and mechanically progresses through multiple environments.
+Goal: a run visibly and mechanically progresses through multiple environments and reaches a defined Chapter 1 endpoint.
 
-## M7.1 — Biome Foundation ✅
-- Teal → Amber → Violet → Pale chapter progression
-- generated platforms snapshot biome identity
+## M7.1–M7.4 — Biome progression ✅
+- Teal Ruins → Amber District → Violet Zone → Pale Heights
+- generated entities snapshot biome identity
 - Biome palette layers beneath Route palette
 
-## M7.2 — Amber District Vocabulary ✅
-- Amber favors Dash Chain / Edge Read / Moving Window
-- ordinary packets introduce Pulse Gate and Interceptor machinery
-- stronger cross-lane and moving-platform rhythm
+## M7.5 — Biome Ecosystem Identity Pass ✅ first-pass
+- Teal: broken ruin slabs / foundational traversal
+- Amber: industrial decks / timing machinery
+- Violet: fragmented traversal / pursuit ecology
+- Pale: moving ice floes / wind corridors / collapsing ice
 
-## M7.3 — Night / Violet Zone ✅
-- violet/lavender palette
-- Wall Rescue + Edge Read bias creates constrained routing
+## M7.6 — Storm Crown / Chapter 1 Endgame 🚧
+- Storm Crown is the terminal Chapter 1 biome and remixes prior traversal vocabulary
+- Storm Surge is its signature sustained environmental pressure
 
-## M7.4 — Pale Heights ✅
-- pale ice/cyan identity
-- Moving Window + Dash Chain bias creates exposed aerial timing
+### Slice 3A — End Condition Architecture 🚧
+- introduce explicit RunPhase state: `running → final-climax → final-ascent → chapter-clear`
+- the first Storm Crown Climax becomes the terminal procedural Climax
+- after that Climax completes, ordinary procedural world generation stops
+- expose `final-ascent` as the handoff point for the authored endgame sequence
+- expose a guarded `markChapterClear()` contract for the future Summit / chapter-exit landing
+- reset returns the run to normal procedural generation
 
-## M7.5 — Biome Ecosystem Identity Pass 🚧
-Palette and encounter weighting alone did not make biome transitions readable enough in mobile playtests. Each biome must own recognizable geometry, threat ecology and traversal language.
-
-### Slice A — Teal → Amber vertical slice 🚧
-- **Teal Ruins** platforms use irregular/broken ruin slabs rather than a generic uniform deck
-- **Amber District** platforms use squared mechanical decks, end brackets and repeating underside machinery marks
-- Amber retains its existing machinery ecology: Pulse Gates, Interceptors and more moving platforms
-- deterministic tests require Amber to contain more industrial threats and moving machinery than the same-seed Teal run
-- acceptance criterion: Teal → Amber should remain recognizable with the progress rail hidden and without relying on palette alone
-
-### Planned ecosystem identities
-- **Teal Ruins** — stable broken masonry, Scout/Patrol Drone, readable foundational traversal
-- **Amber District** — rails/mechanical decks, Pulse Gate, Interceptor, moving machinery and timing
-- **Violet Zone** — constrained/phase-like geometry, pursuit ecology and anomalous barriers
-- **Pale Heights** — exposed ice/fragment geometry, environmental pressure, collapse/wind vocabulary
-
-Next M7 slices:
-- mobile validate Teal → Amber Slice A
-- Slice B: Violet ecosystem geometry + threat identity
-- Slice C: Pale ecosystem geometry + environmental threats
-- close M7 only when biome identity remains readable without the test rail
+Next M7.6 slices:
+- **3B Final Climax / Final Ascent Set Piece** — authored endgame traversal after procedural generation locks
+- **3C Summit + Chapter Clear** — chapter-exit entity, landing detection, clear presentation and run handoff
 
 # M8 — Relic System
 Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats.
@@ -82,6 +66,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M1–M4: complete
 - M5: mechanics implemented; balance deferred
 - M6: traversal vocabulary implemented; balance deferred
-- M7.1–M7.4: biome progression/content foundation complete
-- M7.5 Slice A Teal → Amber ecosystem: in progress
+- M7.1–M7.5: first-pass biome progression/ecosystem implemented
+- M7.6 Storm Crown: foundation + Storm Surge implemented; Chapter 1 end condition in progress
 - M8–M12: not started
