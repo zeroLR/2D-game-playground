@@ -44,11 +44,11 @@ describe('R7 match runtime loop',()=>{
   expect(h.kinds()).toEqual(['invalid']);
   expect(h.runtime.snapshot().turn).toMatchObject({turn:1,phase:'player'});
  });
- it('emits move, mana and action events for a scoring placement',()=>{
+ it('emits move, feedback, mana and action events for a scoring placement',()=>{
   const h=harness(undefined,()=>createCombatState(boardWith([[4,2,1],[4,3,1]])));
   h.runtime.tapCell({row:4,col:4});
-  expect(h.kinds()).toEqual(['move','mana-gain','action']);
-  expect(h.events[1]).toEqual({kind:'mana-gain',amount:1,fromSkill:false});
+  expect(h.kinds()).toEqual(['move','action-feedback','mana-gain','action']);
+  expect(h.events[2]).toEqual({kind:'mana-gain',amount:1,fromSkill:false});
  });
  it('ends the match on a winning placement and schedules no CPU turn',()=>{
   const h=harness(undefined,()=>createCombatState(boardWith([[4,0,1],[4,1,1],[4,2,1],[4,3,1]])));
