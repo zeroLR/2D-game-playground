@@ -1,4 +1,4 @@
-import { BOARD_SIZE, Player, Pos, longestLine } from '../game';
+import { BOARD_SIZE, Player, Pos, isWin, longestLine } from '../game';
 import { CombatState } from '../combat';
 import { SkillId, skills } from '../skills';
 
@@ -23,6 +23,7 @@ function chargeScore(state:CombatState,action:CpuSkillAction){
  if(action.skillId!=='charge'||!action.source)return 0;
  const beforePlayer=boardThreat(state,PLAYER),beforeCpu=boardThreat(state,CPU);
  const next=skills.charge.execute({state,player:CPU},action.target,action.source);
+ if(isWin(next.board,action.target,CPU))return 1_000_000;
  const afterPlayer=boardThreat(next,PLAYER),afterCpu=boardThreat(next,CPU);
  const disrupted=Math.max(0,beforePlayer-afterPlayer),improved=Math.max(0,afterCpu-beforeCpu);
  const pushedEnemy=state.board[action.target.row]?.[action.target.col]===PLAYER;
