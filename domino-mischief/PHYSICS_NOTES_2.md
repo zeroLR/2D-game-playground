@@ -1,0 +1,1 @@
+Chain propagation verification: downstream dominoes must remain awake for the whole run.
