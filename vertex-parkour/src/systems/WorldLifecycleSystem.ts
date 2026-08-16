@@ -1,4 +1,5 @@
 import type { WorldRenderer } from '../presentation/WorldRenderer';
+import { RunProgression, type RunPhase } from '../domain/RunProgression';
 import { nextBiome, type BiomeId } from '../world/Biome';
 import { biomeSpawnsForBand } from '../world/BiomeEcosystem';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
@@ -8,6 +9,7 @@ export class WorldLifecycleSystem {
   readonly state = new WorldState();
   private generator = new WorldGenerator(createRunSeed());
   private waitingForRouteSelection = false;
+  private readonly runProgression = new RunProgression();
 
   constructor(private readonly renderer: WorldRenderer) {}
 
@@ -15,13 +17,15 @@ export class WorldLifecycleSystem {
     this.generator.setBiome(this.state.getActiveBiome());
     this.spawn({ type: 'platform', x: 180, y: START_PLATFORM_Y, width: 122 }, null, this.state.getActiveBiome());
     for (let i = 0; i < 12; i += 1) {
-      if (this.waitingForRouteSelection) break;
+      if (this.waitingForRouteSelection || !this.runProgression.canGenerateProceduralWorld()) break;
       this.spawnBand();
     }
   }
 
   getVisualRoute(): RouteKind | null { return this.waitingForRouteSelection ? null : this.state.getActiveRoute(); }
   getVisualBiome(): BiomeId { return this.state.getActiveBiome(); }
+  getRunPhase(): RunPhase { return this.runProgression.getPhase(); }
+  markChapterClear() { this.runProgression.markChapterClear(); }
 
   updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
     this.state.updatePlatformCollapse(dt);
@@ -41,11 +45,11 @@ export class WorldLifecycleSystem {
   update(cameraOffset: number) {
     const selectedRoute = this.state.consumePendingRoute();
     if (selectedRoute) { this.generator.queueRoute(selectedRoute); this.waitingForRouteSelection = false; }
-    while (!this.waitingForRouteSelection && this.generator.getLastY() + cameraOffset > -150) this.spawnBand();
+    while (this.runProgression.canGenerateProceduralWorld() && !this.waitingForRouteSelection && this.generator.getLastY() + cameraOffset > -150) this.spawnBand();
   }
 
   reset() {
-    this.renderer.clear(); this.state.clear(); this.generator = new WorldGenerator(createRunSeed()); this.generator.setBiome(this.state.getActiveBiome()); this.waitingForRouteSelection = false; this.seedInitialWorld();
+    this.renderer.clear(); this.state.clear(); this.generator = new WorldGenerator(createRunSeed()); this.generator.setBiome(this.state.getActiveBiome()); this.waitingForRouteSelection = false; this.runProgression.reset(); this.seedInitialWorld();
   }
 
   private spawnBand() {
@@ -53,8 +57,11 @@ export class WorldLifecycleSystem {
     const routeTheme = this.themeForBand(band);
     const biomeTheme = this.state.getActiveBiome();
     for (const spawn of biomeSpawnsForBand(biomeTheme, band)) this.spawn(spawn, routeTheme, biomeTheme);
+
+    this.runProgression.observeEncounter(biomeTheme, band.encounter, band.encounterStep);
+
     if (band.encounter === 'route-choice' && band.encounterStep === 3) this.waitingForRouteSelection = true;
-    if (band.encounter === 'climax' && band.encounterStep === 3) this.advanceBiome();
+    if (band.encounter === 'climax' && band.encounterStep === 3 && this.runProgression.getPhase() === 'running') this.advanceBiome();
   }
 
   private advanceBiome() {
