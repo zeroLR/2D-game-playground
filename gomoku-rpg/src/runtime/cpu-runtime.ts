@@ -1,5 +1,5 @@
 import { Pos } from '../game';
-import { CombatState, getMana, isSealed } from '../combat';
+import { CombatState, forcedPlacementFor, getMana, isSealed, samePos } from '../combat';
 import { HeroId } from '../heroes';
 import { skills } from '../skills';
 import { resolvePlaceAction, resolveSkillAction } from './action-resolution';
@@ -7,11 +7,11 @@ import { CpuAction, chooseCpuAction } from './cpu-action-evaluator';
 
 export type CpuOutcome='moved'|'won'|'draw'|'blocked';
 export interface CpuResolution{outcome:CpuOutcome;state:CombatState;at:Pos|null;action:CpuAction|null;passiveTriggered:boolean}
-export function cpuLegalCells(state:CombatState):Pos[]{return state.board.flatMap((row,r)=>row.map((cell,c)=>({cell,pos:{row:r,col:c}}))).filter(({cell,pos})=>cell===0&&!isSealed(state,pos)).map(({pos})=>pos);}
+export function cpuLegalCells(state:CombatState):Pos[]{const forced=forcedPlacementFor(state,2);return state.board.flatMap((row,r)=>row.map((cell,c)=>({cell,pos:{row:r,col:c}}))).filter(({cell,pos})=>cell===0&&!isSealed(state,pos)&&(!forced||samePos(forced,pos))).map(({pos})=>pos);}
 export function cpuPlaceCandidates(state:CombatState):CpuAction[]{return cpuLegalCells(state).map((at)=>({kind:'place',at}));}
-function cpuSourceTargetSkillCandidates(state:CombatState,skillId:'charge'|'phase'):CpuAction[]{const skill=skills[skillId];if(getMana(state,2)<skill.cost||!skill.legalSources)return [];const context={state,player:2 as const};return skill.legalSources(context).flatMap((source)=>skill.legalTargets(context,source).map((target)=>({kind:'skill' as const,skillId,source,target})));}
+function cpuSourceTargetSkillCandidates(state:CombatState,skillId:'charge'):CpuAction[]{const skill=skills[skillId];if(getMana(state,2)<skill.cost||!skill.legalSources)return [];const context={state,player:2 as const};return skill.legalSources(context).flatMap((source)=>skill.legalTargets(context,source).map((target)=>({kind:'skill' as const,skillId,source,target})));}
 export function cpuChargeCandidates(state:CombatState):CpuAction[]{return cpuSourceTargetSkillCandidates(state,'charge');}
-export function cpuPhaseCandidates(state:CombatState):CpuAction[]{return cpuSourceTargetSkillCandidates(state,'phase');}
+export function cpuPhaseCandidates(state:CombatState):CpuAction[]{const skill=skills.phase;if(getMana(state,2)<skill.cost)return [];const context={state,player:2 as const};return skill.legalTargets(context).map((target)=>({kind:'skill' as const,skillId:'phase' as const,target}));}
 export function cpuActionCandidates(state:CombatState,heroId:HeroId):CpuAction[]{return [...cpuPlaceCandidates(state),...(heroId==='vanguard'?cpuChargeCandidates(state):[]),...(heroId==='arcanist'?cpuPhaseCandidates(state):[])];}
 
 /** CPU actions use the same hero-aware resolution as the player so passives, Mana refunds and win checks stay consistent. */
