@@ -1,39 +1,15 @@
 import { Graphics } from 'pixi.js';
 import { HeroDefinition } from '../heroes';
 import { MANA_CAP } from '../patterns';
+import { ActionHistoryEntry } from '../runtime/action-feedback';
 import { StatusKey } from '../runtime/presentation';
 import { getMessages } from '../i18n';
 import { ViewContext, CANVAS_CENTER, centeredLabel, diamond, gold, ink, label, muted, panel, parchment, violet } from './theme';
-
-export interface HudTopProps{turn:number;cpuHero:HeroDefinition;cpuMana:number;onToggleLocale:()=>void}
+export interface HudTopProps{turn:number;cpuHero:HeroDefinition;cpuMana:number;history:ActionHistoryEntry[];onToggleLocale:()=>void}
 export interface HudPanelProps{hero:HeroDefinition;mana:number;status:StatusKey;manaPulse:boolean;passivePulse:boolean;passiveBanner:boolean}
-
-/** Opponent identity is explicit now that CPU loadout affects available actions. */
-export function renderHudTop(ctx:ViewContext,{turn,cpuHero,cpuMana,onToggleLocale}:HudTopProps){
-  const m=getMessages(ctx.locale);
-  label(ctx,m.vsCpu,24,22,11,muted);
-  label(ctx,`${m.opponent} • ${m[cpuHero.nameKey]}`,24,55,13,ink,'600');
-  label(ctx,m[cpuHero.role],24,75,8,muted,'600');
-  renderLocaleToggle(ctx,292,18,onToggleLocale);
-  const enemy=new Graphics();diamond(enemy,328,72,32,0x1f1e27);diamond(enemy,328,72,13,violet,false);ctx.root.addChild(enemy);
-  label(ctx,`${m.mana} ${cpuMana}/${MANA_CAP}`,24,94,10,muted);
-  label(ctx,`${m.turn} ${String(turn).padStart(2,'0')}`,164,70,12,gold,'600');
-}
-
-export function renderLocaleToggle(ctx:ViewContext,x:number,y:number,onToggleLocale:()=>void){
-  const g=new Graphics().roundRect(x,y,74,28,7).fill(0xf8f5ef).stroke({color:0xd8c8a7,width:1});
-  g.eventMode='static';g.cursor='pointer';g.on('pointertap',onToggleLocale);ctx.root.addChild(g);
-  label(ctx,ctx.locale==='en'?'繁中':'EN',x+20,y+7,10,ink,'600');
-}
-
-export function renderHudPanel(ctx:ViewContext,{hero,mana,status,manaPulse,passivePulse,passiveBanner}:HudPanelProps){
-  const m=getMessages(ctx.locale),{root}=ctx;
-  if(passiveBanner){root.addChild(new Graphics().roundRect(119,455,152,26,13).fill({color:panel,alpha:.94}).stroke({color:gold,width:1}));centeredLabel(ctx,m[hero.passive],CANVAS_CENTER,462,9,gold,'600');}
-  root.addChild(new Graphics().roundRect(105,504,180,30,15).fill(panel));centeredLabel(ctx,m[status],CANVAS_CENTER,512,11,parchment,'600');
-  const avatar=new Graphics();diamond(avatar,55,581,34,0xffffff);diamond(avatar,55,581,13,gold,false);root.addChild(avatar);
-  label(ctx,m[hero.nameKey],105,548,13,ink,'600');label(ctx,m[hero.role],105,568,8,muted,'600');label(ctx,m.mana,105,588,9,manaPulse?gold:muted);
-  const pips=new Graphics();for(let i=0;i<MANA_CAP;i++)diamond(pips,155+i*18,595,manaPulse&&i<mana?7:6,i<mana?gold:0xbab4ac,i<mana);root.addChild(pips);
-  label(ctx,`${m.passive} • ${m[hero.passive]}`,105,614,8,passivePulse?gold:muted);
-}
-
+const coord=(p:{row:number;col:number})=>`${String.fromCharCode(65+p.col)}${p.row+1}`;
+export function renderHudTop(ctx:ViewContext,{turn,cpuHero,cpuMana,history,onToggleLocale}:HudTopProps){const m=getMessages(ctx.locale);label(ctx,m.vsCpu,24,22,11,muted);label(ctx,`${m.opponent} • ${m[cpuHero.nameKey]}`,24,55,13,ink,'600');label(ctx,m[cpuHero.role],24,75,8,muted,'600');renderLocaleToggle(ctx,292,18,onToggleLocale);const enemy=new Graphics();diamond(enemy,328,72,32,0x1f1e27);diamond(enemy,328,72,13,violet,false);ctx.root.addChild(enemy);label(ctx,`${m.mana} ${cpuMana}/${MANA_CAP}`,24,94,10,muted);label(ctx,`${m.turn} ${String(turn).padStart(2,'0')}`,164,70,12,gold,'600');renderActionHistory(ctx,history);}
+export function renderActionHistory(ctx:ViewContext,history:ActionHistoryEntry[]){const m=getMessages(ctx.locale);history.slice(-3).reverse().forEach((entry,i)=>{const actor=entry.actor==='cpu'?m.opponent:m.you;const action=entry.kind==='skill'&&entry.skillId?m[entry.skillId]:(ctx.locale==='en'?'PLACE':'落子');const path=entry.source?`${coord(entry.source)}→${coord(entry.at)}`:coord(entry.at);label(ctx,`${actor} · ${action} ${path}`,164,94+i*13,7,i===0?ink:muted,i===0?'600':'400');});}
+export function renderLocaleToggle(ctx:ViewContext,x:number,y:number,onToggleLocale:()=>void){const g=new Graphics().roundRect(x,y,74,28,7).fill(0xf8f5ef).stroke({color:0xd8c8a7,width:1});g.eventMode='static';g.cursor='pointer';g.on('pointertap',onToggleLocale);ctx.root.addChild(g);label(ctx,ctx.locale==='en'?'繁中':'EN',x+20,y+7,10,ink,'600');}
+export function renderHudPanel(ctx:ViewContext,{hero,mana,status,manaPulse,passivePulse,passiveBanner}:HudPanelProps){const m=getMessages(ctx.locale),{root}=ctx;if(passiveBanner){root.addChild(new Graphics().roundRect(119,455,152,26,13).fill({color:panel,alpha:.94}).stroke({color:gold,width:1}));centeredLabel(ctx,m[hero.passive],CANVAS_CENTER,462,9,gold,'600');}root.addChild(new Graphics().roundRect(105,504,180,30,15).fill(panel));centeredLabel(ctx,m[status],CANVAS_CENTER,512,11,parchment,'600');const avatar=new Graphics();diamond(avatar,55,581,34,0xffffff);diamond(avatar,55,581,13,gold,false);root.addChild(avatar);label(ctx,m[hero.nameKey],105,548,13,ink,'600');label(ctx,m[hero.role],105,568,8,muted,'600');label(ctx,m.mana,105,588,9,manaPulse?gold:muted);const pips=new Graphics();for(let i=0;i<MANA_CAP;i++)diamond(pips,155+i*18,595,manaPulse&&i<mana?7:6,i<mana?gold:0xbab4ac,i<mana);root.addChild(pips);label(ctx,`${m.passive} • ${m[hero.passive]}`,105,614,8,passivePulse?gold:muted);}
 export function renderFooter(ctx:ViewContext){centeredLabel(ctx,getMessages(ctx.locale).footer,CANVAS_CENTER,797,9,muted);}
