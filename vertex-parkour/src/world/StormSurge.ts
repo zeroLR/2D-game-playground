@@ -8,18 +8,21 @@ export type StormSurgeFrame = {
   forceX: number;
 };
 
-const CALM = 2.6;
-const WARNING = 0.9;
-const ACTIVE = 1.15;
-const RECOVERY = 1.35;
+const CALM = 3.4;
+const WARNING = 1.2;
+const ACTIVE = 3.5;
+const RECOVERY = 2.0;
 const CYCLE = CALM + WARNING + ACTIVE + RECOVERY;
-const MAX_FORCE = 430;
+const MAX_FORCE = 980;
+const MAX_SURGE_VELOCITY = 720;
 
 export function stormSurgeFrame(elapsed: number, biome: BiomeId): StormSurgeFrame {
   if (biome !== 'storm-crown') return { phase: 'calm', direction: 1, intensity: 0, forceX: 0 };
-  const cycleIndex = Math.floor(Math.max(0, elapsed) / CYCLE);
+  const safeElapsed = Math.max(0, elapsed);
+  const cycleIndex = Math.floor(safeElapsed / CYCLE);
   const direction = (cycleIndex % 2 === 0 ? 1 : -1) as -1 | 1;
-  const t = ((Math.max(0, elapsed) % CYCLE) + CYCLE) % CYCLE;
+  const t = safeElapsed % CYCLE;
+
   if (t < CALM) return { phase: 'calm', direction, intensity: 0, forceX: 0 };
   if (t < CALM + WARNING) {
     const intensity = (t - CALM) / WARNING;
@@ -27,14 +30,17 @@ export function stormSurgeFrame(elapsed: number, biome: BiomeId): StormSurgeFram
   }
   if (t < CALM + WARNING + ACTIVE) {
     const p = (t - CALM - WARNING) / ACTIVE;
-    const intensity = Math.sin(p * Math.PI) * 0.35 + 0.65;
+    const rampIn = Math.min(1, p / 0.18);
+    const rampOut = Math.min(1, (1 - p) / 0.18);
+    const intensity = 0.72 + 0.28 * Math.min(rampIn, rampOut);
     return { phase: 'active', direction, intensity, forceX: direction * MAX_FORCE * intensity };
   }
+
   const intensity = 1 - (t - CALM - WARNING - ACTIVE) / RECOVERY;
   return { phase: 'recovery', direction, intensity: Math.max(0, intensity), forceX: 0 };
 }
 
 export function applyStormSurgeVelocity(velocityX: number, frame: StormSurgeFrame, dt: number): number {
   if (frame.phase !== 'active' || dt <= 0) return velocityX;
-  return Math.max(-620, Math.min(620, velocityX + frame.forceX * dt));
+  return Math.max(-MAX_SURGE_VELOCITY, Math.min(MAX_SURGE_VELOCITY, velocityX + frame.forceX * dt));
 }
