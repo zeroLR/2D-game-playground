@@ -3,8 +3,9 @@ import { RunProgression, type RunPhase } from '../domain/RunProgression';
 import { nextBiome, type BiomeId } from '../world/Biome';
 import { biomeSpawnsForBand } from '../world/BiomeEcosystem';
 import { buildFinalAscent } from '../world/FinalAscent';
+import { buildSummitPlatform, isSummitLanding } from '../world/Summit';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
-import { WorldState } from '../world/WorldState';
+import { WorldState, type EntityId, type WorldEntity } from '../world/WorldState';
 
 export class WorldLifecycleSystem {
   readonly state = new WorldState();
@@ -13,6 +14,7 @@ export class WorldLifecycleSystem {
   private readonly runProgression = new RunProgression();
   private finalAscentSeeded = false;
   private summitApproachY: number | null = null;
+  private summitPlatformId: EntityId | null = null;
 
   constructor(private readonly renderer: WorldRenderer) {}
 
@@ -29,7 +31,12 @@ export class WorldLifecycleSystem {
   getVisualBiome(): BiomeId { return this.state.getActiveBiome(); }
   getRunPhase(): RunPhase { return this.runProgression.getPhase(); }
   getSummitApproachY(): number | null { return this.summitApproachY; }
-  markChapterClear() { this.runProgression.markChapterClear(); }
+  getSummitPlatformId(): EntityId | null { return this.summitPlatformId; }
+  markChapterClearForLanding(landedPlatformId: EntityId | null): boolean {
+    if (!isSummitLanding(landedPlatformId, this.summitPlatformId)) return false;
+    this.runProgression.markChapterClear();
+    return this.runProgression.getPhase() === 'chapter-clear';
+  }
 
   updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
     this.state.updatePlatformCollapse(dt);
@@ -47,6 +54,7 @@ export class WorldLifecycleSystem {
   }
 
   update(cameraOffset: number) {
+    if (this.runProgression.getPhase() === 'chapter-clear') return;
     const selectedRoute = this.state.consumePendingRoute();
     if (selectedRoute) { this.generator.queueRoute(selectedRoute); this.waitingForRouteSelection = false; }
     while (this.runProgression.canGenerateProceduralWorld() && !this.waitingForRouteSelection && this.generator.getLastY() + cameraOffset > -150) this.spawnBand();
@@ -60,6 +68,7 @@ export class WorldLifecycleSystem {
     this.waitingForRouteSelection = false;
     this.finalAscentSeeded = false;
     this.summitApproachY = null;
+    this.summitPlatformId = null;
     this.runProgression.reset();
     this.seedInitialWorld();
   }
@@ -83,6 +92,10 @@ export class WorldLifecycleSystem {
     const bands = buildFinalAscent(this.generator.getLastY());
     for (const band of bands) for (const spawn of band.spawns) this.spawn(spawn, null, 'storm-crown');
     this.summitApproachY = bands[bands.length - 1]?.y ?? null;
+    if (this.summitApproachY !== null) {
+      const summit = this.spawn(buildSummitPlatform(this.summitApproachY), null, 'storm-crown');
+      this.summitPlatformId = summit.type === 'platform' ? summit.id : null;
+    }
   }
 
   private advanceBiome() {
@@ -92,5 +105,5 @@ export class WorldLifecycleSystem {
   }
 
   private themeForBand(band: WorldBand): RouteKind | null { if (band.encounter === 'route-choice') return null; return this.state.getActiveRoute(); }
-  private spawn(spawn: WorldSpawn, routeTheme: RouteKind | null, biomeTheme: BiomeId) { const entity = this.state.addSpawn(spawn, spawn.type === 'platform' ? routeTheme : null, biomeTheme); this.renderer.mount(entity); }
+  private spawn(spawn: WorldSpawn, routeTheme: RouteKind | null, biomeTheme: BiomeId): WorldEntity { const entity = this.state.addSpawn(spawn, spawn.type === 'platform' ? routeTheme : null, biomeTheme); this.renderer.mount(entity); return entity; }
 }

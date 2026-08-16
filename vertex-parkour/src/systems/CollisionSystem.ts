@@ -2,11 +2,11 @@ import type { GameEventQueue } from '../domain/events';
 import { PLAYER_FEET_OFFSET, applyCrystalPickup, applyDroneKill, applyHit, applyLanding, applySkill, applyUpgrade, applyWallContact, clearWallContact, type GameState } from '../domain/gameState';
 import { ROUTE_ZONE_HALF_HEIGHT, ROUTE_ZONE_HALF_WIDTH } from '../world/RouteChoice';
 import { applyWindVelocity, windAccelerationAt } from '../world/WindField';
-import type { WorldState } from '../world/WorldState';
+import type { EntityId, WorldState } from '../world/WorldState';
 
 const LANDING_EDGE_ASSIST = 12;
 
-export type CollisionResult = { state: GameState; invulnerable: number };
+export type CollisionResult = { state: GameState; invulnerable: number; landedPlatformId: EntityId | null };
 
 export class CollisionSystem {
   private previousElapsed = 0;
@@ -17,6 +17,7 @@ export class CollisionSystem {
     const windAcceleration = windAccelerationAt(world.platforms, state.playerX, state.playerY);
     let next = windAcceleration === 0 ? state : { ...state, velocityX: applyWindVelocity(state.velocityX, windAcceleration, windDt) };
     let nextInvulnerable = invulnerable;
+    let landedPlatformId: EntityId | null = null;
     const previousFeet = previousPlayerY + PLAYER_FEET_OFFSET;
 
     if (next.velocityY >= 0 && next.landingTime <= 0) {
@@ -25,6 +26,7 @@ export class CollisionSystem {
         if (platform.collapseState === 'broken') continue;
         if (Math.abs(next.playerX - platform.x) <= platform.width / 2 + LANDING_EDGE_ASSIST && previousFeet <= platform.y + 4 && nextFeet >= platform.y - 2) {
           next = applyLanding(next, platform.y);
+          landedPlatformId = platform.id;
           world.triggerPlatformCollapse(platform.id);
           events.emit({ type: 'landed', x: next.playerX, y: next.playerY + cameraOffset });
           break;
@@ -118,6 +120,6 @@ export class CollisionSystem {
       }
     }
 
-    return { state: next, invulnerable: nextInvulnerable };
+    return { state: next, invulnerable: nextInvulnerable, landedPlatformId };
   }
 }
