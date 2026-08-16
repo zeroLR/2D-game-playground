@@ -4,7 +4,7 @@ import { SkillId, isLegalPosition, skills } from '../skills';
 import { HeroId } from '../heroes';
 import { applyAfterPlacePassive, applyAfterSkillPassive } from '../passives';
 
-export type ActionError='occupied'|'sealed'|'corrupted'|'invalid-skill'|'insufficient-mana'|'invalid-target';
+export type ActionError='occupied'|'sealed'|'corrupted'|'forced-placement'|'invalid-skill'|'insufficient-mana'|'invalid-target';
 export interface ActionResolution {
   ok:boolean;state:CombatState;consumedTurn:boolean;won:boolean;manaGained:number;passiveTriggered:boolean;passiveMana:number;at:Pos;source?:Pos;skillId?:SkillId;skillCost:number;error?:ActionError;
 }
