@@ -1,0 +1,29 @@
+name: domino-mischief CI
+
+on:
+  pull_request:
+    paths:
+      - "domino-mischief/**"
+      - ".github/workflows/domino-mischief.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "domino-mischief/**"
+      - ".github/workflows/domino-mischief.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: domino-mischief
+      install-command: npm install --no-audit --no-fund
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
