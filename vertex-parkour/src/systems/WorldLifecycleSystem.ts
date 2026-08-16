@@ -2,6 +2,7 @@ import type { WorldRenderer } from '../presentation/WorldRenderer';
 import { RunProgression, type RunPhase } from '../domain/RunProgression';
 import { nextBiome, type BiomeId } from '../world/Biome';
 import { biomeSpawnsForBand } from '../world/BiomeEcosystem';
+import { buildFinalAscent } from '../world/FinalAscent';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
 import { WorldState } from '../world/WorldState';
 
@@ -10,6 +11,8 @@ export class WorldLifecycleSystem {
   private generator = new WorldGenerator(createRunSeed());
   private waitingForRouteSelection = false;
   private readonly runProgression = new RunProgression();
+  private finalAscentSeeded = false;
+  private summitApproachY: number | null = null;
 
   constructor(private readonly renderer: WorldRenderer) {}
 
@@ -25,6 +28,7 @@ export class WorldLifecycleSystem {
   getVisualRoute(): RouteKind | null { return this.waitingForRouteSelection ? null : this.state.getActiveRoute(); }
   getVisualBiome(): BiomeId { return this.state.getActiveBiome(); }
   getRunPhase(): RunPhase { return this.runProgression.getPhase(); }
+  getSummitApproachY(): number | null { return this.summitApproachY; }
   markChapterClear() { this.runProgression.markChapterClear(); }
 
   updateMotion(elapsed: number, playerX = 180, playerY = 0, dt = 1 / 60) {
@@ -49,7 +53,15 @@ export class WorldLifecycleSystem {
   }
 
   reset() {
-    this.renderer.clear(); this.state.clear(); this.generator = new WorldGenerator(createRunSeed()); this.generator.setBiome(this.state.getActiveBiome()); this.waitingForRouteSelection = false; this.runProgression.reset(); this.seedInitialWorld();
+    this.renderer.clear();
+    this.state.clear();
+    this.generator = new WorldGenerator(createRunSeed());
+    this.generator.setBiome(this.state.getActiveBiome());
+    this.waitingForRouteSelection = false;
+    this.finalAscentSeeded = false;
+    this.summitApproachY = null;
+    this.runProgression.reset();
+    this.seedInitialWorld();
   }
 
   private spawnBand() {
@@ -60,8 +72,17 @@ export class WorldLifecycleSystem {
 
     this.runProgression.observeEncounter(biomeTheme, band.encounter, band.encounterStep);
 
+    if (this.runProgression.getPhase() === 'final-ascent') this.seedFinalAscent();
     if (band.encounter === 'route-choice' && band.encounterStep === 3) this.waitingForRouteSelection = true;
     if (band.encounter === 'climax' && band.encounterStep === 3 && this.runProgression.getPhase() === 'running') this.advanceBiome();
+  }
+
+  private seedFinalAscent() {
+    if (this.finalAscentSeeded) return;
+    this.finalAscentSeeded = true;
+    const bands = buildFinalAscent(this.generator.getLastY());
+    for (const band of bands) for (const spawn of band.spawns) this.spawn(spawn, null, 'storm-crown');
+    this.summitApproachY = bands[bands.length - 1]?.y ?? null;
   }
 
   private advanceBiome() {
