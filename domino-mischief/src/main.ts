@@ -5,18 +5,21 @@ import './style.css';
 
 type Point=[number,number];
 type Level={name:string;goal:string;path:Point[];count:number;accent:number;prop?:'ball'|'bell'|'cat'|'chicken'|'balloon'};
-const DOMINO={thickness:.22,height:1.25,width:.72,spacing:.68,mass:.35};
+// A domino chain needs the falling face to reach the next tile with enough leverage to
+// move its centre of mass past the support edge. Keep a visible gap, but make the tiles
+// thin/tall enough that a real collision can cross that tipping threshold.
+const DOMINO={thickness:.16,height:1.35,width:.72,spacing:.52,mass:.28};
 const levels:Level[]=[
-{name:'第一推',goal:'推倒整條骨牌',path:[[-4.2,0],[4.2,0]],count:14,accent:0xf08a72},
-{name:'轉個彎',goal:'讓連鎖反應繞過轉角',path:[[-4,-1.8],[-.5,-1.8],[-.5,2.4]],count:13,accent:0x77bfa3},
-{name:'蛇蛇走',goal:'沿 S 彎完成連鎖',path:[[-4,-1.2],[-2.4,1.1],[-.7,1.1],[1,-1.1],[2.6,-1.1],[4,1]],count:18,accent:0x7aa7d9},
-{name:'滾球球',goal:'把球撞下終點',path:[[-4,0],[3.7,0]],count:13,accent:0xe8b75b,prop:'ball'},
-{name:'叫醒貓',goal:'最後一張骨牌要碰到貓',path:[[-4,-.8],[-2,.6],[0,-.5],[2,.5],[3.7,0]],count:15,accent:0xc999d4,prop:'cat'},
-{name:'雞飛狗跳',goal:'把連鎖送到逃跑的小雞',path:[[-4,-1.4],[-1.2,-1.4],[.5,-.2],[2.2,1.4],[3.8,1.4]],count:15,accent:0xf2cf66,prop:'chicken'},
-{name:'繞圈圈',goal:'完成半圓連鎖',path:Array.from({length:13},(_,i)=>{const a=Math.PI+i*Math.PI/12;return[Math.cos(a)*3.4,Math.sin(a)*3.4-1] as Point}),count:17,accent:0x69c4cc},
-{name:'叮一聲',goal:'讓最後的骨牌敲響鈴鐺',path:[[-4,-.7],[-2,0],[0,.7],[2,0],[3.8,.6]],count:15,accent:0xf09b65,prop:'bell'},
-{name:'螺旋',goal:'從外圈一路倒進中心',path:Array.from({length:18},(_,i)=>{const a=i*.38,r=3.9-i*.15;return[Math.cos(a)*r,Math.sin(a)*r] as Point}),count:20,accent:0x94bd65},
-{name:'飛高高',goal:'完成連鎖，把氣球送上天',path:[[-4,-.6],[-2,.5],[0,-.5],[2,.5],[3.8,0]],count:15,accent:0xe889a8,prop:'balloon'}
+{name:'第一推',goal:'推倒整條骨牌',path:[[-4.2,0],[4.2,0]],count:18,accent:0xf08a72},
+{name:'轉個彎',goal:'讓連鎖反應繞過轉角',path:[[-4,-1.8],[-.5,-1.8],[-.5,2.4]],count:17,accent:0x77bfa3},
+{name:'蛇蛇走',goal:'沿 S 彎完成連鎖',path:[[-4,-1.2],[-2.4,1.1],[-.7,1.1],[1,-1.1],[2.6,-1.1],[4,1]],count:24,accent:0x7aa7d9},
+{name:'滾球球',goal:'把球撞下終點',path:[[-4,0],[3.7,0]],count:17,accent:0xe8b75b,prop:'ball'},
+{name:'叫醒貓',goal:'最後一張骨牌要碰到貓',path:[[-4,-.8],[-2,.6],[0,-.5],[2,.5],[3.7,0]],count:21,accent:0xc999d4,prop:'cat'},
+{name:'雞飛狗跳',goal:'把連鎖送到逃跑的小雞',path:[[-4,-1.4],[-1.2,-1.4],[.5,-.2],[2.2,1.4],[3.8,1.4]],count:21,accent:0xf2cf66,prop:'chicken'},
+{name:'繞圈圈',goal:'完成半圓連鎖',path:Array.from({length:13},(_,i)=>{const a=Math.PI+i*Math.PI/12;return[Math.cos(a)*3.4,Math.sin(a)*3.4-1] as Point}),count:22,accent:0x69c4cc},
+{name:'叮一聲',goal:'讓最後的骨牌敲響鈴鐺',path:[[-4,-.7],[-2,0],[0,.7],[2,0],[3.8,.6]],count:21,accent:0xf09b65,prop:'bell'},
+{name:'螺旋',goal:'從外圈一路倒進中心',path:Array.from({length:18},(_,i)=>{const a=i*.38,r=3.9-i*.15;return[Math.cos(a)*r,Math.sin(a)*r] as Point}),count:28,accent:0x94bd65},
+{name:'飛高高',goal:'完成連鎖，把氣球送上天',path:[[-4,-.6],[-2,.5],[0,-.5],[2,.5],[3.8,0]],count:21,accent:0xe889a8,prop:'balloon'}
 ];
 
 function samplePath(path:Point[],count:number):Point[]{
@@ -34,10 +37,10 @@ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(
 const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=18;controls.maxPolarAngle=Math.PI*.46;controls.target.set(0,0,0);
 scene.add(new THREE.HemisphereLight(0xfff5dc,0x8c765f,2.2));const sun=new THREE.DirectionalLight(0xffffff,2.5);sun.position.set(4,10,6);sun.castShadow=true;scene.add(sun);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(6.2,6.4,.45,48),new THREE.MeshStandardMaterial({color:0xf1d7a7,roughness:.9}));floor.position.y=-.28;floor.receiveShadow=true;scene.add(floor);
-const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});world.allowSleep=true;if(world.solver instanceof CANNON.GSSolver)world.solver.iterations=20;
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});world.allowSleep=true;if(world.solver instanceof CANNON.GSSolver)world.solver.iterations=24;
 const groundMat=new CANNON.Material('ground'),dominoMat=new CANNON.Material('domino');
-world.addContactMaterial(new CANNON.ContactMaterial(groundMat,dominoMat,{friction:.7,restitution:0,contactEquationStiffness:1e8,contactEquationRelaxation:3}));
-world.addContactMaterial(new CANNON.ContactMaterial(dominoMat,dominoMat,{friction:.12,restitution:.08}));
+world.addContactMaterial(new CANNON.ContactMaterial(groundMat,dominoMat,{friction:.38,restitution:0,contactEquationStiffness:1e8,contactEquationRelaxation:3}));
+world.addContactMaterial(new CANNON.ContactMaterial(dominoMat,dominoMat,{friction:.04,restitution:.04}));
 const ground=new CANNON.Body({type:CANNON.Body.STATIC,shape:new CANNON.Box(new CANNON.Vec3(7,.2,7)),material:groundMat});ground.position.y=-.2;world.addBody(ground);
 let bodies:CANNON.Body[]=[],meshes:THREE.Mesh[]=[],prop:THREE.Object3D|null=null,current=0,armed=false,currentPoints:Point[]=[];
 const hud=document.createElement('div');hud.className='hud';hud.innerHTML=`<div class="top"><div><div class="title"></div><div class="goal"></div></div></div><div class="bottom"><div class="levels"></div><button id="reset">↻</button><button class="primary" id="go">推！</button></div>`;document.body.appendChild(hud);
@@ -45,9 +48,13 @@ const hint=document.createElement('div');hint.className='hint';hint.textContent=
 const levelBar=hud.querySelector('.levels')!;levels.forEach((_,i)=>{const b=document.createElement('button');b.textContent=String(i+1);b.onclick=()=>load(i);levelBar.appendChild(b)});
 function clear(){bodies.forEach(b=>world.removeBody(b));meshes.forEach(m=>scene.remove(m));bodies=[];meshes=[];if(prop){scene.remove(prop);prop=null}}
 function load(index:number){current=index;armed=false;clear();const l=levels[index];currentPoints=samplePath(l.path,l.count);(hud.querySelector('.title') as HTMLElement).textContent=`${index+1}. ${l.name}`;(hud.querySelector('.goal') as HTMLElement).textContent=l.goal;[...levelBar.children].forEach((x,i)=>x.classList.toggle('active',i===index));
- currentPoints.forEach((p,i)=>{const angle=heading(currentPoints,i);const mesh=new THREE.Mesh(new THREE.BoxGeometry(DOMINO.width,DOMINO.height,DOMINO.thickness),new THREE.MeshStandardMaterial({color:i===0?0xff6b5e:l.accent,roughness:.55}));mesh.position.set(p[0],DOMINO.height/2+.01,p[1]);mesh.rotation.y=angle;mesh.castShadow=true;scene.add(mesh);const shape=new CANNON.Box(new CANNON.Vec3(DOMINO.width/2,DOMINO.height/2,DOMINO.thickness/2));const body=new CANNON.Body({mass:DOMINO.mass,shape,material:dominoMat,allowSleep:true,sleepSpeedLimit:.05,sleepTimeLimit:.35});body.position.set(p[0],DOMINO.height/2+.01,p[1]);body.quaternion.setFromEuler(0,angle,0);body.linearDamping=.06;body.angularDamping=.025;world.addBody(body);body.sleep();meshes.push(mesh);bodies.push(body)});addProp(l)}
+ currentPoints.forEach((p,i)=>{const angle=heading(currentPoints,i);const mesh=new THREE.Mesh(new THREE.BoxGeometry(DOMINO.width,DOMINO.height,DOMINO.thickness),new THREE.MeshStandardMaterial({color:i===0?0xff6b5e:l.accent,roughness:.55}));mesh.position.set(p[0],DOMINO.height/2+.01,p[1]);mesh.rotation.y=angle;mesh.castShadow=true;scene.add(mesh);const shape=new CANNON.Box(new CANNON.Vec3(DOMINO.width/2,DOMINO.height/2,DOMINO.thickness/2));const body=new CANNON.Body({mass:DOMINO.mass,shape,material:dominoMat,allowSleep:true,sleepSpeedLimit:.05,sleepTimeLimit:.35});body.position.set(p[0],DOMINO.height/2+.01,p[1]);body.quaternion.setFromEuler(0,angle,0);body.linearDamping=.015;body.angularDamping=.008;world.addBody(body);body.sleep();meshes.push(mesh);bodies.push(body)});addProp(l)}
 function addProp(l:Level){if(!l.prop||!currentPoints.length)return;const end=currentPoints.at(-1)!,prev=currentPoints[Math.max(0,currentPoints.length-2)];const dx=end[0]-prev[0],dz=end[1]-prev[1],len=Math.hypot(dx,dz)||1;const group=new THREE.Group();group.position.set(end[0]+dx/len*.85,.55,end[1]+dz/len*.85);const mat=new THREE.MeshStandardMaterial({color:0xffffff});if(l.prop==='ball')group.add(new THREE.Mesh(new THREE.SphereGeometry(.48,24,16),new THREE.MeshStandardMaterial({color:0x6fa8dc})));else if(l.prop==='bell')group.add(new THREE.Mesh(new THREE.ConeGeometry(.5,.8,20),new THREE.MeshStandardMaterial({color:0xe9b949})));else if(l.prop==='balloon'){const b=new THREE.Mesh(new THREE.SphereGeometry(.45,24,16),new THREE.MeshStandardMaterial({color:0xf48fb1}));b.scale.y=1.2;group.add(b)}else{const body=new THREE.Mesh(new THREE.SphereGeometry(.48,20,14),mat);group.add(body);const e1=new THREE.Mesh(new THREE.ConeGeometry(.16,.35,3),mat);e1.position.set(-.25,.42,0);group.add(e1);const e2=e1.clone();e2.position.x=.25;group.add(e2)}prop=group;scene.add(group)}
-function push(){if(armed||bodies.length<2)return;armed=true;bodies.forEach(b=>{b.allowSleep=false;b.wakeUp();b.velocity.setZero();b.angularVelocity.setZero()});const first=bodies[0],second=bodies[1];const dx=second.position.x-first.position.x,dz=second.position.z-first.position.z,len=Math.hypot(dx,dz)||1,dirX=dx/len,dirZ=dz/len;first.applyImpulse(new CANNON.Vec3(dirX*.22,0,dirZ*.22),new CANNON.Vec3(0,DOMINO.height*.42,0));first.applyTorque(new CANNON.Vec3(dirZ*1.8,0,-dirX*1.8));}
+function push(){if(armed||bodies.length<2)return;armed=true;bodies.forEach(b=>{b.allowSleep=false;b.wakeUp();b.velocity.setZero();b.angularVelocity.setZero()});const first=bodies[0],second=bodies[1];const dx=second.position.x-first.position.x,dz=second.position.z-first.position.z,len=Math.hypot(dx,dz)||1,dirX=dx/len,dirZ=dz/len;
+ // Apply the start impulse high on the face. This produces the same rotation axis that a
+ // preceding domino collision will produce, so the first tile is not a special sideways shove.
+ first.applyImpulse(new CANNON.Vec3(dirX*.48,0,dirZ*.48),new CANNON.Vec3(0,DOMINO.height*.44,0));
+}
 (hud.querySelector('#go') as HTMLButtonElement).onclick=push;(hud.querySelector('#reset') as HTMLButtonElement).onclick=()=>load(current);
 function resize(){const w=Math.min(innerWidth,700),h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}addEventListener('resize',resize);resize();load(0);
-let last=performance.now();function tick(now:number){const dt=Math.min((now-last)/1000,.05);last=now;world.step(1/60,dt,8);bodies.forEach((b,i)=>{meshes[i].position.copy(b.position as unknown as THREE.Vector3);meshes[i].quaternion.copy(b.quaternion as unknown as THREE.Quaternion)});controls.update();renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+let last=performance.now();function tick(now:number){const dt=Math.min((now-last)/1000,.05);last=now;world.step(1/120,dt,12);bodies.forEach((b,i)=>{meshes[i].position.copy(b.position as unknown as THREE.Vector3);meshes[i].quaternion.copy(b.quaternion as unknown as THREE.Quaternion)});controls.update();renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
