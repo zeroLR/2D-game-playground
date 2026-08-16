@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for game in simple-roguelike axiom vertex-parkour neon-siege gomoku-rpg stack-shift; do
+          for game in simple-roguelike axiom vertex-parkour neon-siege gomoku-rpg stack-shift domino-mischief; do
             if [ ! -f "_pages_state/site/${game}/index.html" ]; then
               echo "Missing published game: ${game}"
               missing=1
@@ -121,6 +121,7 @@ jobs:
             <li><a href="./neon-siege/">neon-siege</a><div class="desc">Cyberpunk horizontal action tower-defense MVP.</div></li>
             <li><a href="./gomoku-rpg/">gomoku-rpg</a><div class="desc">Portrait-first 9×9 Gomoku RPG with Mana and tactical Blink.</div></li>
             <li><a href="./stack-shift/">stack-shift</a><div class="desc">Portrait 3D gravity-shifting puzzle prototype.</div></li>
+            <li><a href="./domino-mischief/">domino-mischief</a><div class="desc">Cozy portrait 3D domino chain-reaction puzzle prototype.</div></li>
           </ul>
           HTML
       - name: Persist site state
