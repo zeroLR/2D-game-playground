@@ -9,7 +9,9 @@ export type GameHubOptions = {
 type HubSettings = { reducedMotion: boolean; highContrast: boolean };
 
 const SETTINGS_KEY = 'vertex-hub-settings-v1';
-const NOVA_PROFILE_URL = new URL('./assets/nova-profile.svg', import.meta.url).href;
+const NOVA_PROFILE_URL = new URL('./assets/profile-nova.png', import.meta.url).href;
+const NOVA_ROSTER_URL = new URL('./assets/roster-nova.png', import.meta.url).href;
+const LOCKED_RUNNER_URL = new URL('./assets/locked.png', import.meta.url).href;
 
 function loadSettings(): HubSettings {
   try {
@@ -138,11 +140,11 @@ export class GameHub {
         <div class="runner-roster-label"><span>RUNNER ROSTER</span><i></i></div>
         <div class="runner-roster">
           <article class="runner-roster-card is-active">
-            <img src="${NOVA_PROFILE_URL}" alt="Nova" />
+            <img src="${NOVA_ROSTER_URL}" alt="Nova" />
             <b>NOVA</b><small>ACTIVE</small>
           </article>
-          <article class="runner-roster-card is-locked"><div class="locked-runner">△<span>⌑</span></div><b>KAI</b><small>LOCKED · AGGRESSION</small></article>
-          <article class="runner-roster-card is-locked"><div class="locked-runner">◇<span>⌑</span></div><b>LUMEN</b><small>LOCKED · CONTROL</small></article>
+          <article class="runner-roster-card is-locked"><img class="locked-runner-art" src="${LOCKED_RUNNER_URL}" alt="Locked runner" /><b>KAI</b><small>LOCKED · AGGRESSION</small></article>
+          <article class="runner-roster-card is-locked"><img class="locked-runner-art" src="${LOCKED_RUNNER_URL}" alt="Locked runner" /><b>LUMEN</b><small>LOCKED · CONTROL</small></article>
         </div>
       </section>
       <section class="runner-archive-note panel-cut"><span>◉ &nbsp; RUNNER ARCHIVE PROTOCOL</span><p>Additional runner identities are sealed within the Protocol. Ascend further to unlock.</p></section>`;
