@@ -11,26 +11,17 @@ import { createWindFieldVisual, updateWindFieldVisual } from './WindFieldRendere
 import { createCrystalVisual, createDroneVisual, createHazardVisual, createSpikeVisual, createWallVisual, setHazardDanger } from './visuals';
 
 function routeForPlatform(platform: Extract<WorldEntity, { type: 'platform' }>, entities: WorldEntity[]): RouteEntity | undefined { return entities.find((entity): entity is RouteEntity => entity.type === 'route' && Math.abs(entity.x - platform.x) < 40 && Math.abs(entity.y + 48 - platform.y) < 8); }
-
 type WindView = { view: Graphics; field: WindField };
 
 export class WorldRenderer {
-  private readonly views = new Map<EntityId, Container>();
-  private readonly windViews = new Map<EntityId, WindView>();
+  private readonly views = new Map<EntityId, Container>(); private readonly windViews = new Map<EntityId, WindView>();
   constructor(private readonly container: Container) {}
   mount(entity: WorldEntity) {
     let view: Container;
     switch (entity.type) {
       case 'platform': {
-        const wind = windFieldForPlatform(entity);
-        if (wind) {
-          const windView = createWindFieldVisual(wind);
-          windView.position.set(wind.x, wind.y);
-          this.container.addChild(windView);
-          this.windViews.set(entity.id, { view: windView, field: wind });
-        }
-        view = createBiomePlatformVisual(entity.width, entity.biomeTheme);
-        break;
+        const wind = windFieldForPlatform(entity); if (wind) { const windView = createWindFieldVisual(wind); windView.position.set(wind.x, wind.y); this.container.addChild(windView); this.windViews.set(entity.id, { view: windView, field: wind }); }
+        view = createBiomePlatformVisual(entity.width, entity.biomeTheme); break;
       }
       case 'crystal': view = createCrystalVisual(); break;
       case 'drone': view = createDroneVisual(); break;
@@ -48,26 +39,21 @@ export class WorldRenderer {
     for (const entity of entities) {
       const view = this.views.get(entity.id); if (!view) continue;
       if (entity.type === 'platform') {
-        view.visible = entity.collapseState !== 'broken';
-        if (!view.visible) continue;
+        view.visible = entity.collapseState !== 'broken'; if (!view.visible) continue;
         view.x = entity.x; view.y = entity.y + cameraOffset;
         const route = routeForPlatform(entity, entities); const routeKind = entity.routeTheme ?? route?.kind ?? null; const biomeTint = getBiomeTheme(entity.biomeTheme).platformTint; const graphics = view as Graphics;
         graphics.tint = routeKind ? mixTint(biomeTint, getRouteTheme(routeKind).platformTint, 0.58) : biomeTint;
         const baseAlpha = route?.locked ? 0.38 : 1;
         if (entity.collapseState === 'cracking') {
           const urgency = 1 - Math.max(0, Math.min(1, entity.collapseTimer));
-          graphics.alpha = baseAlpha * (0.92 - urgency * 0.28 + Math.sin(elapsed * 24) * 0.05);
-          view.rotation = Math.sin(elapsed * 31 + entity.id) * (0.008 + urgency * 0.018);
-          view.scale.set(1 - urgency * 0.05, 1 - urgency * 0.12);
-        } else {
-          graphics.alpha = baseAlpha; view.rotation = 0; view.scale.set(1);
-        }
-        const wind = this.windViews.get(entity.id);
-        if (wind) {
-          wind.view.x = wind.field.x;
-          wind.view.y = wind.field.y + cameraOffset;
-          updateWindFieldVisual(wind.view, wind.field, elapsed);
-        }
+          const shakeX = Math.sin(elapsed * (38 + urgency * 30) + entity.id) * (1.5 + urgency * 4.5);
+          const shakeY = Math.sin(elapsed * (47 + urgency * 34) + entity.id * 0.7) * (0.6 + urgency * 1.8);
+          view.x = entity.x + shakeX; view.y = entity.y + cameraOffset + shakeY;
+          graphics.alpha = baseAlpha * (0.96 - urgency * 0.3 + Math.sin(elapsed * 30) * (0.04 + urgency * 0.05));
+          view.rotation = Math.sin(elapsed * 43 + entity.id) * (0.018 + urgency * 0.045);
+          view.scale.set(1 - urgency * 0.07, 0.92 - urgency * 0.16);
+        } else { graphics.alpha = baseAlpha; view.rotation = 0; view.scale.set(1); }
+        const wind = this.windViews.get(entity.id); if (wind) { wind.view.x = wind.field.x; wind.view.y = wind.field.y + cameraOffset; updateWindFieldVisual(wind.view, wind.field, elapsed); }
       }
       else if (entity.type === 'wall' || entity.type === 'spike') view.y = entity.y + cameraOffset;
       else if (entity.type === 'pulse-gate') { view.x = entity.x; view.y = entity.y + cameraOffset; updatePulseGateVisual(view, entity.active, elapsed, entity.biomeTheme); }
@@ -79,9 +65,5 @@ export class WorldRenderer {
       else if (entity.type === 'hazard') { view.y = entity.y + cameraOffset; view.rotation += dt * 0.36; setHazardDanger(view as Graphics, 1 - Math.min(1, Math.hypot(playerX - entity.x, playerY - entity.y) / 150)); }
     }
   }
-  clear() {
-    for (const view of this.views.values()) view.destroy({ children: true });
-    for (const wind of this.windViews.values()) wind.view.destroy({ children: true });
-    this.views.clear(); this.windViews.clear();
-  }
+  clear() { for (const view of this.views.values()) view.destroy({ children: true }); for (const wind of this.windViews.values()) wind.view.destroy({ children: true }); this.views.clear(); this.windViews.clear(); }
 }
