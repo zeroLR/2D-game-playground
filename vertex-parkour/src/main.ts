@@ -2,6 +2,7 @@ import { createApplication } from './bootstrap';
 import { GameRuntime, LOGICAL_H, LOGICAL_W } from './game/GameRuntime';
 import { GameHub } from './hub/GameHub';
 import './hub/hub.css';
+import './hub/profile.css';
 
 const AUTOSTART_KEY = 'vertex-autostart-run';
 
