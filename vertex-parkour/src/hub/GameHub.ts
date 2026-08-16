@@ -9,8 +9,8 @@ export type GameHubOptions = {
 type HubSettings = { reducedMotion: boolean; highContrast: boolean };
 
 const SETTINGS_KEY = 'vertex-hub-settings-v1';
-const NOVA_PROFILE_URL = new URL('./assets/profile-nova.png', import.meta.url).href;
-const NOVA_ROSTER_URL = new URL('./assets/roster-nova.png', import.meta.url).href;
+const NOVA_PROFILE_URL = new URL('./assets/nova/profile-nova.png', import.meta.url).href;
+const NOVA_ROSTER_URL = new URL('./assets/nova/roster-nova.png', import.meta.url).href;
 const LOCKED_RUNNER_URL = new URL('./assets/locked.png', import.meta.url).href;
 
 function loadSettings(): HubSettings {
