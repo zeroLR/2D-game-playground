@@ -17,6 +17,6 @@ export function resolvePlaceAction(state:CombatState,heroId:HeroId,player:Player
 export function resolveSkillAction(state:CombatState,heroId:HeroId,player:Player,skillId:SkillId,target:Pos,source?:Pos):ActionResolution{
   const skill=skills[skillId];if(!skill)return rejected(state,target,'invalid-skill',skillId);if(getMana(state,player)<skill.cost)return rejected(state,target,'insufficient-mana',skillId);
   const context={state,player};if(skill.legalSources&&(!source||!isLegalPosition(source,skill.legalSources(context))))return rejected(state,target,'invalid-target',skillId);if(!isLegalPosition(target,skill.legalTargets(context,source)))return rejected(state,target,'invalid-target',skillId);
-  const executed=skill.execute(context,target,source);const passive=applyAfterSkillPassive(executed,heroId,player);const won=skillId!=='phase'&&passive.state.board[target.row]?.[target.col]===player&&isWin(passive.state.board,target,player);
+  const executed=skill.execute(context,target,source);const passive=applyAfterSkillPassive(executed,heroId,player);const won=passive.state.board[target.row]?.[target.col]===player&&isWin(passive.state.board,target,player);
   return {ok:true,state:passive.state,consumedTurn:skill.consumesTurn,won,manaGained:0,passiveTriggered:passive.triggered,passiveMana:passive.manaRefunded??0,at:target,source,skillId,skillCost:skill.cost};
 }
