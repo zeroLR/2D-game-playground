@@ -39,8 +39,11 @@ async function bootstrap() {
   const resumeGameplay = () => { activeRun = true; app.ticker.start(); };
   const enterChapter = async () => {
     if (activeRun) {
+      app.ticker.stop();
+      host.classList.add('chapter-restart-guard');
       sessionStorage.setItem(AUTOSTART_KEY, '1');
       sessionStorage.setItem(ENTRY_TRANSITION_KEY, '1');
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       window.location.reload();
       return;
     }
