@@ -4,6 +4,7 @@ import { NOVA_FRAME_SCALE } from './NovaSpriteLayout';
 import { redrawPlayer } from './visuals';
 
 const FRAME_ANCHOR_Y = 0.5;
+const VISUAL_Y_OFFSET = -8;
 
 const NOVA_FRAME_URLS: Record<NovaAnimationState, string[]> = {
   idle: [1, 2, 3, 4].map((frame) => new URL(`../game/assets/nova/idle/idle-0${frame}.png`, import.meta.url).href),
@@ -42,6 +43,7 @@ export class NovaPlayerRenderer {
       const idle = this.textures.get('idle'); if (!idle?.length) return;
       this.sprite = new AnimatedSprite(idle);
       this.sprite.anchor.set(0.5, FRAME_ANCHOR_Y);
+      this.sprite.position.y = VISUAL_Y_OFFSET;
       this.sprite.scale.set(NOVA_FRAME_SCALE);
       this.sprite.animationSpeed = ANIMATION_SPEED.idle; this.sprite.loop = true;
       this.fallback.visible = false; this.view.addChild(this.sprite); this.sprite.play();
