@@ -1,3 +1,4 @@
+#app.chapter-restart-guard::after { content: ''; position: absolute; inset: 0; z-index: 60; pointer-events: all; background: radial-gradient(circle at 50% 52%, rgba(82,190,178,.13), transparent 28%), linear-gradient(180deg, #071216, #07181c); }
 .chapter-transition { position: absolute; inset: 0; z-index: 40; overflow: hidden; display: grid; place-items: center; pointer-events: all; color: #e9f0ec; background: radial-gradient(circle at 50% 52%, rgba(82,190,178,.13), transparent 28%), linear-gradient(180deg, rgba(4,13,17,.96), rgba(7,24,28,.985)); opacity: 1; transition: opacity 420ms ease; }
 .chapter-transition[hidden] { display: none; }
 .chapter-transition.is-releasing { opacity: 0; pointer-events: none; }
