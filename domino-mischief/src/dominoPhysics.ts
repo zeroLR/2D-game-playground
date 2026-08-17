@@ -4,7 +4,7 @@ export const DOMINO_PHYSICS={
   thickness:.14,
   height:1.42,
   width:.72,
-  spacing:.42,
+  spacing:.50,
   mass:.30,
   gravity:-10.5,
   groundFriction:.65,
