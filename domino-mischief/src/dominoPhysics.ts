@@ -5,13 +5,14 @@ export const DOMINO_PHYSICS={
   height:1.42,
   width:.72,
   spacing:.8,
-  mass:.30,
-  gravity:-10.5,
-  groundFriction:.65,
-  dominoFriction:.01,
-  linearDamping:.001,
-  angularDamping:.001,
-  releaseAngleDeg:72,
+  mass:.32,
+  gravity:-10.35,
+  groundFriction:.68,
+  dominoFriction:.015,
+  linearDamping:.0015,
+  angularDamping:.002,
+  releaseAngleDeg:74,
+  startAngularSpeed:3.8,
 } as const;
 
 export type PivotedDomino={body:CANNON.Body;hinge:CANNON.HingeConstraint;released:boolean};
@@ -69,7 +70,7 @@ export function releaseFallenDominoes(world:CANNON.World,dominoes:PivotedDomino[
   }
 }
 
-export function startDomino(domino:PivotedDomino,yaw:number,angularSpeed=3.8){
+export function startDomino(domino:PivotedDomino,yaw:number,angularSpeed=DOMINO_PHYSICS.startAngularSpeed){
   const axis=new CANNON.Vec3(Math.cos(yaw),0,-Math.sin(yaw));
   domino.body.wakeUp();
   domino.body.angularVelocity.set(axis.x*angularSpeed,0,axis.z*angularSpeed);
