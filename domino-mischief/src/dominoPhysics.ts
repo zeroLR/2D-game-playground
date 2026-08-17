@@ -4,7 +4,7 @@ export const DOMINO_PHYSICS={
   thickness:.14,
   height:1.42,
   width:.72,
-  spacing:.36,
+  spacing:.42,
   mass:.30,
   gravity:-10.5,
   groundFriction:.65,
@@ -43,8 +43,6 @@ export function createPivotedDomino(world:CANNON.World,ground:CANNON.Body,materi
   body.angularDamping=p.angularDamping;
   world.addBody(body);
 
-  // The hinge makes the standing phase deterministic: the foot cannot skate across
-  // the floor, but the tile can rotate naturally around its bottom width axis.
   const axisA=new CANNON.Vec3(Math.cos(yaw),0,-Math.sin(yaw));
   const hinge=new CANNON.HingeConstraint(ground,body,{
     pivotA:new CANNON.Vec3(x,.21,z),
