@@ -47,6 +47,12 @@ Build a complete shell around the playable chapter while leaving future progress
 - Hub pauses Pixi gameplay while open; gameplay resumes only when returning to the run
 - visual language must remain consistent with VERTEX: dark atmospheric field, fine geometry, restrained teal/gold/violet accents, low-noise typography
 
+### M7.7 Slice B — Chapter lifecycle transitions ✅ first-pass
+- Gate commit now plays a short Chapter 01 / The Ascent transition before gameplay input/time begins
+- restarting an active chapter preserves the transition across the reload boundary
+- Summit clear emits a product-shell completion event once, freezes gameplay, plays a Storm Crown clear transition, then returns to Home
+- reduced-motion preference collapses transition timings instead of forcing cinematic motion
+
 # M8 — Relic System
 Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats. The M7.7 Relic Archive is presentation-only until this milestone.
 
@@ -72,5 +78,5 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M5: mechanics implemented; balance deferred
 - M6: traversal vocabulary implemented; balance deferred
 - M7.1–M7.6: first-pass Chapter 1 gameplay loop complete
-- M7.7: Game Hub/product shell in progress
+- M7.7: Game Hub/product shell in progress; Chapter lifecycle transition first-pass complete
 - M8–M12: not started

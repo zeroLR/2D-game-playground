@@ -1,53 +1,66 @@
 import { createApplication } from './bootstrap';
 import { GameRuntime, LOGICAL_H, LOGICAL_W } from './game/GameRuntime';
+import { ChapterTransition } from './hub/ChapterTransition';
 import { GameHub } from './hub/GameHub';
 import './hub/hub.css';
 import './hub/profile.css';
+import './hub/transition.css';
 
 const AUTOSTART_KEY = 'vertex-autostart-run';
+const ENTRY_TRANSITION_KEY = 'vertex-entry-transition';
 
 async function bootstrap() {
   const app = await createApplication(LOGICAL_W, LOGICAL_H);
   const host = document.querySelector<HTMLElement>('#app')!;
   host.appendChild(app.canvas);
 
-  const runtime = new GameRuntime(app);
+  let activeRun = sessionStorage.getItem(AUTOSTART_KEY) === '1';
+  const shouldPlayReloadEntry = sessionStorage.getItem(ENTRY_TRANSITION_KEY) === '1';
+  sessionStorage.removeItem(AUTOSTART_KEY);
+  sessionStorage.removeItem(ENTRY_TRANSITION_KEY);
+
+  let clearHandled = false;
+  let hub!: GameHub;
+  const transition = new ChapterTransition(host, { reducedMotion: () => document.documentElement.classList.contains('vertex-reduced-motion') });
+
+  const runtime = new GameRuntime(app, {
+    onChapterClear: async ({ score, elapsed }) => {
+      if (clearHandled) return;
+      clearHandled = true;
+      activeRun = false;
+      app.ticker.stop();
+      await transition.playClear(score, elapsed);
+      hub.showHub('home');
+    },
+  });
   runtime.start();
   app.ticker.stop();
 
-  let activeRun = sessionStorage.getItem(AUTOSTART_KEY) === '1';
-  sessionStorage.removeItem(AUTOSTART_KEY);
-
-  const resumeGameplay = () => {
-    activeRun = true;
-    app.ticker.start();
-  };
-
-  const enterChapter = () => {
+  const resumeGameplay = () => { activeRun = true; app.ticker.start(); };
+  const enterChapter = async () => {
     if (activeRun) {
       sessionStorage.setItem(AUTOSTART_KEY, '1');
+      sessionStorage.setItem(ENTRY_TRANSITION_KEY, '1');
       window.location.reload();
       return;
     }
-    resumeGameplay();
+    activeRun = true;
+    clearHandled = false;
+    app.ticker.stop();
+    await transition.playEntry();
+    app.ticker.start();
   };
 
-  const hub = new GameHub(host, {
-    onEnterChapter: enterChapter,
-    onResumeRun: resumeGameplay,
-    hasActiveRun: () => activeRun,
-  });
+  hub = new GameHub(host, { onEnterChapter: () => { void enterChapter(); }, onResumeRun: resumeGameplay, hasActiveRun: () => activeRun });
 
-  // The Hub owns the product shell while Pixi owns gameplay. Pausing the
-  // application ticker guarantees that opening HOME freezes the run rather
-  // than letting the world continue behind an opaque menu.
   new MutationObserver(() => {
-    if (hub.root.hidden) app.ticker.start();
+    if (hub.root.hidden && transition.root.hidden) app.ticker.start();
     else app.ticker.stop();
   }).observe(hub.root, { attributes: true, attributeFilter: ['hidden'] });
 
   if (activeRun) {
     hub.showGame();
+    if (shouldPlayReloadEntry) { app.ticker.stop(); await transition.playEntry(); }
     app.ticker.start();
   }
 }
