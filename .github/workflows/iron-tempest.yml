@@ -1,0 +1,29 @@
+name: iron-tempest CI
+
+on:
+  pull_request:
+    paths:
+      - "iron-tempest/**"
+      - ".github/workflows/iron-tempest.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "iron-tempest/**"
+      - ".github/workflows/iron-tempest.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: iron-tempest
+      install-command: npm install
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
