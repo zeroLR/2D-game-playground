@@ -3,7 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": {"dev":"vite --host 0.0.0.0","build":"tsc --noEmit && vite build","test":"tsc --noEmit"},
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "tsc --noEmit && npm run test:physics",
+    "test:physics": "rm -rf .test-dist && tsc src/physics.test.ts --outDir .test-dist --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck && node .test-dist/physics.test.js && rm -rf .test-dist"
+  },
   "dependencies": {"three":"^0.179.1","cannon-es":"^0.20.0"},
   "devDependencies": {"@types/three":"^0.179.0","typescript":"^5.9.2","vite":"^7.1.2"}
 }
