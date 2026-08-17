@@ -4,6 +4,7 @@ import { ChapterTransition } from './hub/ChapterTransition';
 import { GameHub } from './hub/GameHub';
 import './hub/hub.css';
 import './hub/profile.css';
+import './hub/transition.css';
 
 const AUTOSTART_KEY = 'vertex-autostart-run';
 const ENTRY_TRANSITION_KEY = 'vertex-entry-transition';
@@ -20,9 +21,7 @@ async function bootstrap() {
 
   let clearHandled = false;
   let hub!: GameHub;
-  const transition = new ChapterTransition(host, {
-    reducedMotion: () => document.documentElement.classList.contains('vertex-reduced-motion'),
-  });
+  const transition = new ChapterTransition(host, { reducedMotion: () => document.documentElement.classList.contains('vertex-reduced-motion') });
 
   const runtime = new GameRuntime(app, {
     onChapterClear: async ({ score, elapsed }) => {
@@ -37,11 +36,7 @@ async function bootstrap() {
   runtime.start();
   app.ticker.stop();
 
-  const resumeGameplay = () => {
-    activeRun = true;
-    app.ticker.start();
-  };
-
+  const resumeGameplay = () => { activeRun = true; app.ticker.start(); };
   const enterChapter = async () => {
     if (activeRun) {
       sessionStorage.setItem(AUTOSTART_KEY, '1');
@@ -56,11 +51,7 @@ async function bootstrap() {
     app.ticker.start();
   };
 
-  hub = new GameHub(host, {
-    onEnterChapter: () => { void enterChapter(); },
-    onResumeRun: resumeGameplay,
-    hasActiveRun: () => activeRun,
-  });
+  hub = new GameHub(host, { onEnterChapter: () => { void enterChapter(); }, onResumeRun: resumeGameplay, hasActiveRun: () => activeRun });
 
   new MutationObserver(() => {
     if (hub.root.hidden && transition.root.hidden) app.ticker.start();
@@ -69,10 +60,7 @@ async function bootstrap() {
 
   if (activeRun) {
     hub.showGame();
-    if (shouldPlayReloadEntry) {
-      app.ticker.stop();
-      await transition.playEntry();
-    }
+    if (shouldPlayReloadEntry) { app.ticker.stop(); await transition.playEntry(); }
     app.ticker.start();
   }
 }
