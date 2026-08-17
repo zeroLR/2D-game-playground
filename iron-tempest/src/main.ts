@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 
+async function bootstrap() {
 const W=360,H=640;
 const app=new Application(); await app.init({width:W,height:H,background:'#08101b',antialias:false});
 document.querySelector('#app')!.appendChild(app.canvas);
@@ -25,3 +26,6 @@ for(const e of enemies){e.t+=.025*d;e.g.y+=(e.elite?.75:1.15)*d;e.g.x+=Math.sin(
 for(const s of shots){s.g.x+=s.vx*d;s.g.y+=s.vy*d;if(s.enemy){if(dist(s.g,player)<(focus?5:9)){hp--;s.g.y=H+50}}else for(const e of enemies){if(e.hp>0&&dist(s.g,e.g)<13){e.hp-=power;s.g.y=-50;if(e.hp<=0){score+=e.elite?250:60;xp+=e.elite?4:1;e.g.y=H+80}}}}
 for(let i=shots.length-1;i>=0;i--)if(shots[i].g.y<-30||shots[i].g.y>H+30){shots[i].g.destroy();shots.splice(i,1)}for(let i=enemies.length-1;i>=0;i--)if(enemies[i].g.y>H+40){enemies[i].g.destroy();enemies.splice(i,1)}
 if(xp>=level*10){xp-=level*10;level++;upgrade()}hud.text=`HULL ${'■'.repeat(Math.max(0,hp))}  SCORE ${score}\nLV ${level}  SCRAP ${xp}/${level*10}  ${focus?'FOCUS':''}`;if(hp<=0){paused=true;const over=new Text({text:'MISSION FAILED\nREFRESH TO REDEPLOY',style:{fontFamily:'monospace',fontSize:24,fill:0xff665e,align:'center'}});over.anchor.set(.5);over.x=W/2;over.y=H/2;app.stage.addChild(over)}});
+}
+
+void bootstrap();
