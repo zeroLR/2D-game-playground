@@ -1,9 +1,9 @@
 import { AnimatedSprite, Assets, Container, Graphics, type Texture } from 'pixi.js';
 import { resolveNovaAnimationState, type NovaAnimationState } from './NovaAnimationState';
-import { NOVA_ART_FOOT_Y, NOVA_FRAME_SCALE, NOVA_SPRITE_Y_OFFSET } from './NovaSpriteLayout';
+import { NOVA_FRAME_SCALE } from './NovaSpriteLayout';
 import { redrawPlayer } from './visuals';
 
-const FRAME_ANCHOR_Y = NOVA_ART_FOOT_Y / 256;
+const FRAME_ANCHOR_Y = 0.5;
 
 const NOVA_FRAME_URLS: Record<NovaAnimationState, string[]> = {
   idle: [1, 2, 3, 4].map((frame) => new URL(`../game/assets/nova/idle/idle-0${frame}.png`, import.meta.url).href),
@@ -18,6 +18,7 @@ const LOOPING: Record<NovaAnimationState, boolean> = { idle: true, jump: false, 
 
 export type NovaPlayerVisualFrame = { x: number; y: number; elapsed: number; velocityY: number; dashDirection: -1 | 0 | 1; dashVisualTime: number };
 
+/** Nova is centered on the gameplay visual origin shared by FlowAura. */
 export class NovaPlayerRenderer {
   readonly view = new Container();
   private readonly fallback = new Graphics();
@@ -41,7 +42,6 @@ export class NovaPlayerRenderer {
       const idle = this.textures.get('idle'); if (!idle?.length) return;
       this.sprite = new AnimatedSprite(idle);
       this.sprite.anchor.set(0.5, FRAME_ANCHOR_Y);
-      this.sprite.position.y = NOVA_SPRITE_Y_OFFSET;
       this.sprite.scale.set(NOVA_FRAME_SCALE);
       this.sprite.animationSpeed = ANIMATION_SPEED.idle; this.sprite.loop = true;
       this.fallback.visible = false; this.view.addChild(this.sprite); this.sprite.play();
