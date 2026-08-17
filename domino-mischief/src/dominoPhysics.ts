@@ -5,13 +5,13 @@ export const DOMINO_PHYSICS={
   height:1.42,
   width:.72,
   spacing:.8,
-  mass:.34,
-  gravity:-10.2,
-  groundFriction:.72,
-  dominoFriction:.035,
-  linearDamping:.003,
-  angularDamping:.008,
-  releaseAngleDeg:78,
+  mass:.32,
+  gravity:-10.35,
+  groundFriction:.68,
+  dominoFriction:.015,
+  linearDamping:.0015,
+  angularDamping:.002,
+  releaseAngleDeg:74,
   startAngularSpeed:3.8,
 } as const;
 
@@ -24,7 +24,7 @@ export function configureDominoWorld(world:CANNON.World){
   const groundMaterial=new CANNON.Material('ground');
   const dominoMaterial=new CANNON.Material('domino');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.groundFriction,restitution:0,contactEquationStiffness:1e8,contactEquationRelaxation:3}));
-  world.addContactMaterial(new CANNON.ContactMaterial(dominoMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.dominoFriction,restitution:.01}));
+  world.addContactMaterial(new CANNON.ContactMaterial(dominoMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.dominoFriction,restitution:0}));
   return {groundMaterial,dominoMaterial};
 }
 
