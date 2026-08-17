@@ -26,14 +26,18 @@ export class NovaPlayerRenderer {
   private readonly textures = new Map<NovaAnimationState, Texture[]>();
   private sprite: AnimatedSprite | null = null;
   private animation: NovaAnimationState = 'idle';
+  private facing: -1 | 1 = 1;
 
   constructor() { this.view.addChild(this.fallback); void this.loadTextures(); }
 
   update(frame: NovaPlayerVisualFrame) {
     this.view.position.set(frame.x, frame.y);
+    if (frame.dashDirection !== 0) this.facing = frame.dashDirection;
+
     const nextAnimation = resolveNovaAnimationState(frame);
     if (!this.sprite) { redrawPlayer(this.fallback, 0, 0, frame.elapsed, frame.dashVisualTime > 0 ? frame.dashDirection : 0); return; }
     if (nextAnimation !== this.animation) this.play(nextAnimation);
+    this.applyFacing(nextAnimation);
   }
 
   private async loadTextures() {
@@ -44,10 +48,18 @@ export class NovaPlayerRenderer {
       this.sprite = new AnimatedSprite(idle);
       this.sprite.anchor.set(0.5, FRAME_ANCHOR_Y);
       this.sprite.position.y = VISUAL_Y_OFFSET;
-      this.sprite.scale.set(NOVA_FRAME_SCALE);
+      this.applyFacing('idle');
       this.sprite.animationSpeed = ANIMATION_SPEED.idle; this.sprite.loop = true;
       this.fallback.visible = false; this.view.addChild(this.sprite); this.sprite.play();
     } catch (error) { console.warn('Nova animation textures failed to load; using vector fallback.', error); }
+  }
+
+  private applyFacing(state: NovaAnimationState) {
+    if (!this.sprite) return;
+    // Dash frames are authored for their explicit direction. Shared idle/jump/fall
+    // art faces right by default, so mirror only those states when facing left.
+    const authoredDirectionalDash = state === 'dash-left' || state === 'dash-right';
+    this.sprite.scale.set(authoredDirectionalDash ? NOVA_FRAME_SCALE : NOVA_FRAME_SCALE * this.facing, NOVA_FRAME_SCALE);
   }
 
   private play(state: NovaAnimationState) {
