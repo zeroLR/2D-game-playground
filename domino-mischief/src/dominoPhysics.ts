@@ -5,13 +5,14 @@ export const DOMINO_PHYSICS={
   height:1.42,
   width:.72,
   spacing:.8,
-  mass:.30,
-  gravity:-10.5,
-  groundFriction:.65,
-  dominoFriction:.01,
-  linearDamping:.001,
-  angularDamping:.001,
-  releaseAngleDeg:72,
+  mass:.38,
+  gravity:-9.81,
+  groundFriction:.78,
+  dominoFriction:.12,
+  linearDamping:.006,
+  angularDamping:.035,
+  releaseAngleDeg:82,
+  startAngularSpeed:2.35,
 } as const;
 
 export type PivotedDomino={body:CANNON.Body;hinge:CANNON.HingeConstraint;released:boolean};
@@ -23,7 +24,7 @@ export function configureDominoWorld(world:CANNON.World){
   const groundMaterial=new CANNON.Material('ground');
   const dominoMaterial=new CANNON.Material('domino');
   world.addContactMaterial(new CANNON.ContactMaterial(groundMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.groundFriction,restitution:0,contactEquationStiffness:1e8,contactEquationRelaxation:3}));
-  world.addContactMaterial(new CANNON.ContactMaterial(dominoMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.dominoFriction,restitution:0}));
+  world.addContactMaterial(new CANNON.ContactMaterial(dominoMaterial,dominoMaterial,{friction:DOMINO_PHYSICS.dominoFriction,restitution:.015}));
   return {groundMaterial,dominoMaterial};
 }
 
@@ -69,7 +70,7 @@ export function releaseFallenDominoes(world:CANNON.World,dominoes:PivotedDomino[
   }
 }
 
-export function startDomino(domino:PivotedDomino,yaw:number,angularSpeed=3.8){
+export function startDomino(domino:PivotedDomino,yaw:number,angularSpeed=DOMINO_PHYSICS.startAngularSpeed){
   const axis=new CANNON.Vec3(Math.cos(yaw),0,-Math.sin(yaw));
   domino.body.wakeUp();
   domino.body.angularVelocity.set(axis.x*angularSpeed,0,axis.z*angularSpeed);
