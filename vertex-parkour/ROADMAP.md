@@ -64,8 +64,14 @@ Clarify the core run mechanics before adding Relics so later systems modify a st
 - `12` is explicitly **Perfect Flow**, a detectable ceiling/state for later Skill/Relic rule hooks rather than an endlessly scaling stat
 - Flow continues to reward score and retain the existing grace/decay/mistake model
 
-### M7.8B — Skill Vocabulary Expansion ⏭
-Expand the current four-skill prototype into a representative Dash / Jump / Kill / Flow vocabulary before Relics.
+### M7.8B — Skill Vocabulary Expansion ✅ first-pass
+Expand the four-skill prototype to twelve run-local skills, three per archetype:
+- **Dash** — Phase Dash (velocity), Afterimage (dash control window), Blink Reset (Rush+ landing Flow reward)
+- **Jump** — Rebound (landing lift), Aerial Step (air correction), Impact (landing Flow)
+- **Kill** — Kill Refund (kill Flow), Predator (kill primes next jump), Execution (Rush+ kill Flow)
+- **Flow** — Continuity (grace), Overdrive (Rush+ air control), Flow Shield (Perfect Flow converts one hit into Flow loss)
+- one-off rule skills can use `maxTier: 1`; scalable skills retain three tiers
+- this pass establishes representative build vocabulary; exact numerical balance remains deferred
 
 ### M7.8C — Build Synergy Pass ⏭
 Add cross-archetype interactions after the expanded skill vocabulary exists.
@@ -97,5 +103,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M7.1–M7.6: first-pass Chapter 1 gameplay loop complete
 - M7.7: Game Hub/product shell in progress; Chapter lifecycle transition first-pass complete
 - M7.8A: Flow identity first-pass complete
-- M7.8B–C: not started
+- M7.8B: twelve-skill vocabulary first-pass complete
+- M7.8C: not started
 - M8–M12: not started
