@@ -1,0 +1,2 @@
+import { Container, Graphics } from 'pixi.js';
+export class Enemy { readonly view:Graphics; hp:number; t=Math.random()*6; constructor(world:Container,x:number,readonly elite=false){this.view=new Graphics().poly([0,12,11,-8,0,-4,-11,-8]).fill(elite?0xffa63d:0xd9475d);this.view.x=x;this.view.y=-20;this.hp=elite?12:3;world.addChild(this.view)} update(delta:number){this.t+=.025*delta;this.view.y+=(this.elite?.75:1.15)*delta;this.view.x+=Math.sin(this.t)*(.8*delta)} }
