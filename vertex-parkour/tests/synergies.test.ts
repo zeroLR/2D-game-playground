@@ -17,7 +17,7 @@ describe('build synergies', () => {
     expect(synergized.flow - base.flow).toBeCloseTo(MOMENTUM_LOOP_FLOW_BONUS);
   });
 
-  it('Blink Drive makes a Rush+ landing restore an already-spent dash', () => {
+  it('activates Blink Drive from Dash + Flow without replacing the baseline landing reset', () => {
     let state = applySkill(createInitialState(), 'blink-reset');
     state = applySkill(state, 'overdrive');
     state = { ...state, flow: 6, dashReady: false };
@@ -25,11 +25,11 @@ describe('build synergies', () => {
     expect(applyLanding(state, 500).dashReady).toBe(true);
   });
 
-  it('Blink Drive does not recharge below Rush', () => {
+  it('keeps the normal landing dash reset below Rush', () => {
     let state = applySkill(createInitialState(), 'blink-reset');
     state = applySkill(state, 'overdrive');
     state = { ...state, flow: 5.9, dashReady: false };
-    expect(applyLanding(state, 500).dashReady).toBe(false);
+    expect(applyLanding(state, 500).dashReady).toBe(true);
   });
 
   it('activates Predator Rhythm from Kill + Jump', () => {
