@@ -25,66 +25,26 @@ export type RelicDefinition = {
 
 export const RELICS: Record<RelicId, RelicDefinition> = {
   'glass-anchor': {
-    id: 'glass-anchor',
-    name: 'GLASS ANCHOR',
-    rarity: 'rare',
-    sources: ['elite', 'treasure'],
-    summary: 'LANDING RESETS DASH; LONG PLATFORM STAYS BECOME DANGEROUS',
-    effect: {
-      kind: 'movement-rule',
-      triggers: ['landing'],
-      description: 'Traversal-rule relic reserved for M8.2 implementation.',
-    },
+    id: 'glass-anchor', name: 'GLASS ANCHOR', rarity: 'rare', sources: ['elite', 'treasure'],
+    summary: 'LANDINGS HIT HARDER: MORE FLOW AND A STRONGER REBOUND',
+    effect: { kind: 'movement-rule', triggers: ['landing'], description: 'Every landing grants extra Flow and empowers the automatic rebound jump.' },
   },
   'abyss-heart': {
-    id: 'abyss-heart',
-    name: 'ABYSS HEART',
-    rarity: 'mythic',
-    sources: ['elite', 'special'],
-    summary: 'HIGH FLOW SUPPRESSES ABYSS PRESSURE; LOSING FLOW HAS A COST',
-    effect: {
-      kind: 'survival-rule',
-      triggers: ['flow-tier-entered', 'hit'],
-      description: 'Pressure-rule relic reserved for M8.2 implementation.',
-    },
+    id: 'abyss-heart', name: 'ABYSS HEART', rarity: 'mythic', sources: ['elite', 'special'],
+    summary: 'RUSH SUPPRESSES THE ABYSS; TAKING A HIT SURGES IT CLOSER',
+    effect: { kind: 'survival-rule', triggers: ['flow-tier-entered', 'hit'], description: 'At Rush+ the Abyss approaches much slower; taking damage immediately advances it.' },
   },
   'storm-lens': {
-    id: 'storm-lens',
-    name: 'STORM LENS',
-    rarity: 'rare',
-    sources: ['treasure', 'special'],
-    summary: 'STORM PRESSURE BECOMES A MOVEMENT RESOURCE',
-    effect: {
-      kind: 'environment-rule',
-      triggers: ['storm-force', 'dash'],
-      description: 'Environment-rule relic reserved for M8.2 implementation.',
-    },
+    id: 'storm-lens', name: 'STORM LENS', rarity: 'rare', sources: ['treasure', 'special'],
+    summary: 'READ THE STORM: RESIST ITS FORCE AND DASH WITH IT FOR FLOW',
+    effect: { kind: 'environment-rule', triggers: ['storm-force', 'dash'], description: 'Storm force is reduced; dashing with an active surge converts its intensity into Flow.' },
   },
 };
 
 export const RELIC_POOL = Object.keys(RELICS) as RelicId[];
-
 export type RelicInventory = ReadonlySet<RelicId>;
-
-export function createEmptyRelicInventory(): RelicInventory {
-  return new Set<RelicId>();
-}
-
-export function hasRelic(inventory: RelicInventory, id: RelicId) {
-  return inventory.has(id);
-}
-
-export function acquireRelic(inventory: RelicInventory, id: RelicId): RelicInventory {
-  if (inventory.has(id)) return inventory;
-  const next = new Set(inventory);
-  next.add(id);
-  return next;
-}
-
-export function availableRelics(inventory: RelicInventory, source?: RelicSource): RelicId[] {
-  return RELIC_POOL.filter((id) => !inventory.has(id) && (!source || RELICS[id].sources.includes(source)));
-}
-
-export function relicsForTrigger(inventory: RelicInventory, trigger: RelicTrigger): RelicDefinition[] {
-  return RELIC_POOL.filter((id) => inventory.has(id) && RELICS[id].effect.triggers.includes(trigger)).map((id) => RELICS[id]);
-}
+export function createEmptyRelicInventory(): RelicInventory { return new Set<RelicId>(); }
+export function hasRelic(inventory: RelicInventory, id: RelicId) { return inventory.has(id); }
+export function acquireRelic(inventory: RelicInventory, id: RelicId): RelicInventory { if (inventory.has(id)) return inventory; const next = new Set(inventory); next.add(id); return next; }
+export function availableRelics(inventory: RelicInventory, source?: RelicSource): RelicId[] { return RELIC_POOL.filter((id) => !inventory.has(id) && (!source || RELICS[id].sources.includes(source))); }
+export function relicsForTrigger(inventory: RelicInventory, trigger: RelicTrigger): RelicDefinition[] { return RELIC_POOL.filter((id) => inventory.has(id) && RELICS[id].effect.triggers.includes(trigger)).map((id) => RELICS[id]); }
