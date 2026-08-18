@@ -1,5 +1,6 @@
 import { DEFAULT_DEV_TUNING, type DevTuning } from '../dev/DevTuning';
 import { getFlowGameplayModifiers, FLOW_MAX, FLOW_RUSH_THRESHOLD, isPerfectFlow } from '../systems/FlowSystem';
+import { glassAnchorJumpMultiplier, glassAnchorLandingBonus } from './relicEffects';
 import { acquireRelic, createEmptyRelicInventory, type RelicId, type RelicInventory } from './relics';
 import { applySkillLevel, createEmptySkillLevels, type SkillId, type SkillLevels } from './skills';
 import { hasSynergy } from './synergies';
@@ -52,11 +53,8 @@ export type GameState = {
   wallSide: -1 | 0 | 1; wallJumpLock: number;
   score: number; flow: number; hp: number; elapsed: number; speed: number; gameOver: boolean;
   dashUpgradeLevel: number; flowUpgradeLevel: number;
-  skills: SkillLevels;
-  relics: RelicInventory;
-  predatorRhythmReady: boolean;
-  predatorReady: boolean;
-  executionImpactReady: boolean;
+  skills: SkillLevels; relics: RelicInventory;
+  predatorRhythmReady: boolean; predatorReady: boolean; executionImpactReady: boolean;
 };
 
 export const createInitialState = (tuning: DevTuning = DEFAULT_DEV_TUNING): GameState => ({
@@ -79,7 +77,7 @@ export function tickState(state: GameState, deltaSeconds: number, tuning: DevTun
       const rebound = Math.pow(REBOUND_JUMP_MULTIPLIER, state.skills.rebound);
       const predatorSynergy = state.predatorRhythmReady ? PREDATOR_RHYTHM_JUMP_MULTIPLIER : 1;
       const predatorSkill = state.predatorReady ? Math.pow(PREDATOR_JUMP_MULTIPLIER, state.skills.predator) : 1;
-      velocityY = AUTO_JUMP_VELOCITY * tuning.jumpPower * rebound * predatorSynergy * predatorSkill;
+      velocityY = AUTO_JUMP_VELOCITY * tuning.jumpPower * rebound * predatorSynergy * predatorSkill * glassAnchorJumpMultiplier(state.relics);
       predatorRhythmReady = false; predatorReady = false;
     } else velocityY = 0;
   } else {
@@ -101,7 +99,8 @@ export function applyLanding(state: GameState, platformY: number): GameState {
   const rushLanding = state.flow >= FLOW_RUSH_THRESHOLD;
   const blinkBonus = state.skills['blink-reset'] > 0 && rushLanding ? BLINK_RESET_FLOW_BONUS : 0;
   const executionImpactBonus = state.executionImpactReady ? EXECUTION_IMPACT_FLOW_BONUS : 0;
-  return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus + executionImpactBonus), executionImpactReady: false };
+  const relicBonus = glassAnchorLandingBonus(state.relics);
+  return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus + executionImpactBonus + relicBonus), executionImpactReady: false };
 }
 export function applyWallContact(state: GameState, side: -1 | 1, wallX: number): GameState { if (state.gameOver || state.wallJumpLock > 0) return state; return { ...state, playerX: wallX - side * 14, velocityX: 0, velocityY: Math.min(state.velocityY, WALL_SLIDE_SPEED), wallSide: side, dashReady: true }; }
 export function clearWallContact(state: GameState): GameState { return state.wallSide === 0 ? state : { ...state, wallSide: 0 }; }
@@ -109,12 +108,7 @@ export function applyWallJump(state: GameState, tuning: DevTuning = DEFAULT_DEV_
 export function applyAirNudge(state: GameState, direction: -1 | 1, strength = 1): GameState { if (state.gameOver) return state; const clamped = Math.max(0.45, Math.min(1, strength)); const flowControl = getFlowGameplayModifiers(state.flow).airControlMultiplier; const aerial = Math.pow(AERIAL_STEP_MULTIPLIER, state.skills['aerial-step']); const overdrive = state.flow >= FLOW_RUSH_THRESHOLD ? 1 + state.skills.overdrive * OVERDRIVE_CONTROL_BONUS : 1; return { ...state, velocityX: direction * AIR_NUDGE_SPEED * clamped * flowControl * aerial * overdrive, dashTime: AIR_NUDGE_DURATION }; }
 export function applyDash(state: GameState, direction: -1 | 1, strength = 1, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState { if (state.gameOver || !state.dashReady) return state; const clampedStrength = Math.max(MIN_DASH_STRENGTH, Math.min(1, strength)); const baseDashSpeed = MIN_DASH_SPEED + (MAX_DASH_SPEED - MIN_DASH_SPEED) * clampedStrength; const dashLevel = state.dashUpgradeLevel + state.skills['phase-dash']; const dashSpeed = baseDashSpeed * Math.pow(DASH_UPGRADE_SPEED_MULTIPLIER, dashLevel) * tuning.dashPower; const synergyFlow = hasSynergy(state.skills, 'momentum-loop') ? MOMENTUM_LOOP_FLOW_BONUS : 0; return { ...state, velocityX: direction * dashSpeed, dashTime: DASH_DURATION + state.skills.afterimage * AFTERIMAGE_DURATION_BONUS, dashReady: false, wallSide: 0, velocityY: Math.min(state.velocityY, 25), flow: Math.min(FLOW_MAX, state.flow + 0.6 + synergyFlow) }; }
 export function applyCrystalPickup(state: GameState): GameState { if (state.gameOver) return state; return { ...state, dashReady: true, velocityY: Math.min(state.velocityY, CRYSTAL_LIFT_VELOCITY), score: state.score + 250, flow: Math.min(FLOW_MAX, state.flow + 1.4) }; }
-export function applyDroneKill(state: GameState): GameState {
-  if (state.gameOver) return state;
-  const execution = state.flow >= FLOW_RUSH_THRESHOLD ? state.skills.execution * EXECUTION_FLOW_BONUS : 0;
-  const blinkDriveRefund = state.flow >= FLOW_RUSH_THRESHOLD && hasSynergy(state.skills, 'blink-drive');
-  return { ...state, dashReady: state.dashReady || blinkDriveRefund, velocityY: Math.min(state.velocityY, DRONE_BOUNCE_VELOCITY), score: state.score + 400, flow: Math.min(FLOW_MAX, state.flow + 1.8 + state.skills['kill-refund'] * KILL_REFUND_FLOW_BONUS + execution), predatorRhythmReady: hasSynergy(state.skills, 'predator-rhythm') || state.predatorRhythmReady, predatorReady: state.skills.predator > 0 || state.predatorReady, executionImpactReady: hasSynergy(state.skills, 'execution-impact') || state.executionImpactReady };
-}
+export function applyDroneKill(state: GameState): GameState { if (state.gameOver) return state; const execution = state.flow >= FLOW_RUSH_THRESHOLD ? state.skills.execution * EXECUTION_FLOW_BONUS : 0; const blinkDriveRefund = state.flow >= FLOW_RUSH_THRESHOLD && hasSynergy(state.skills, 'blink-drive'); return { ...state, dashReady: state.dashReady || blinkDriveRefund, velocityY: Math.min(state.velocityY, DRONE_BOUNCE_VELOCITY), score: state.score + 400, flow: Math.min(FLOW_MAX, state.flow + 1.8 + state.skills['kill-refund'] * KILL_REFUND_FLOW_BONUS + execution), predatorRhythmReady: hasSynergy(state.skills, 'predator-rhythm') || state.predatorRhythmReady, predatorReady: state.skills.predator > 0 || state.predatorReady, executionImpactReady: hasSynergy(state.skills, 'execution-impact') || state.executionImpactReady }; }
 export function applyUpgrade(state: GameState, kind: UpgradeKind): GameState { return kind === 'dash' ? { ...state, dashUpgradeLevel: state.dashUpgradeLevel + 1 } : { ...state, flowUpgradeLevel: state.flowUpgradeLevel + 1 }; }
 export function applySkill(state: GameState, id: SkillId): GameState { return { ...state, skills: applySkillLevel(state.skills, id) }; }
 export function applyRelic(state: GameState, id: RelicId): GameState { return { ...state, relics: acquireRelic(state.relics, id) }; }
