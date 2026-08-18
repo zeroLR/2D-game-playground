@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDash, applyDroneKill, applyLanding, applySkill, createInitialState, MOMENTUM_LOOP_FLOW_BONUS, tickState } from '../src/domain/gameState';
+import { applyDash, applyDroneKill, applyLanding, applySkill, createInitialState, EXECUTION_IMPACT_FLOW_BONUS, MOMENTUM_LOOP_FLOW_BONUS, tickState } from '../src/domain/gameState';
 import { getActiveSynergies } from '../src/domain/synergies';
 
 describe('build synergies', () => {
@@ -17,6 +17,21 @@ describe('build synergies', () => {
     expect(synergized.flow - base.flow).toBeCloseTo(MOMENTUM_LOOP_FLOW_BONUS);
   });
 
+  it('Blink Drive makes a Rush+ landing restore an already-spent dash', () => {
+    let state = applySkill(createInitialState(), 'blink-reset');
+    state = applySkill(state, 'overdrive');
+    state = { ...state, flow: 6, dashReady: false };
+    expect(getActiveSynergies(state.skills)).toContain('blink-drive');
+    expect(applyLanding(state, 500).dashReady).toBe(true);
+  });
+
+  it('Blink Drive does not recharge below Rush', () => {
+    let state = applySkill(createInitialState(), 'blink-reset');
+    state = applySkill(state, 'overdrive');
+    state = { ...state, flow: 5.9, dashReady: false };
+    expect(applyLanding(state, 500).dashReady).toBe(false);
+  });
+
   it('activates Predator Rhythm from Kill + Jump', () => {
     let state = applySkill(createInitialState(), 'kill-refund');
     state = applySkill(state, 'rebound');
@@ -32,6 +47,19 @@ describe('build synergies', () => {
     state = tickState(state, 0.07);
     expect(state.velocityY).toBeLessThan(-540 * 1.08);
     expect(state.predatorRhythmReady).toBe(false);
+  });
+
+  it('Execution Impact primes one bonus landing after a kill', () => {
+    let state = applySkill(createInitialState(), 'execution');
+    state = applySkill(state, 'impact');
+    state = { ...state, flow: 3 };
+    expect(getActiveSynergies(state.skills)).toContain('execution-impact');
+    const killed = applyDroneKill(state);
+    expect(killed.executionImpactReady).toBe(true);
+    const baseLanding = applyLanding({ ...killed, executionImpactReady: false }, 500);
+    const empoweredLanding = applyLanding(killed, 500);
+    expect(empoweredLanding.flow - baseLanding.flow).toBeCloseTo(EXECUTION_IMPACT_FLOW_BONUS);
+    expect(empoweredLanding.executionImpactReady).toBe(false);
   });
 
   it('does not activate a synergy from only one side of the pair', () => {
