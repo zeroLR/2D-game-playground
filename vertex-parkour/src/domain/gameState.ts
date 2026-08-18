@@ -99,8 +99,7 @@ export function applyLanding(state: GameState, platformY: number): GameState {
   const rushLanding = state.flow >= FLOW_RUSH_THRESHOLD;
   const blinkBonus = state.skills['blink-reset'] > 0 && rushLanding ? BLINK_RESET_FLOW_BONUS : 0;
   const executionImpactBonus = state.executionImpactReady ? EXECUTION_IMPACT_FLOW_BONUS : 0;
-  const blinkDrive = rushLanding && hasSynergy(state.skills, 'blink-drive');
-  return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: blinkDrive || state.dashReady, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus + executionImpactBonus), executionImpactReady: false };
+  return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus + executionImpactBonus), executionImpactReady: false };
 }
 export function applyWallContact(state: GameState, side: -1 | 1, wallX: number): GameState { if (state.gameOver || state.wallJumpLock > 0) return state; return { ...state, playerX: wallX - side * 14, velocityX: 0, velocityY: Math.min(state.velocityY, WALL_SLIDE_SPEED), wallSide: side, dashReady: true }; }
 export function clearWallContact(state: GameState): GameState { return state.wallSide === 0 ? state : { ...state, wallSide: 0 }; }
