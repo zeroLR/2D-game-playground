@@ -14,7 +14,7 @@ export type SynergyDefinition = {
 
 export const SYNERGIES: Record<SynergyId, SynergyDefinition> = {
   'momentum-loop': { id: 'momentum-loop', name: 'MOMENTUM LOOP', detail: 'PHASE DASH + CONTINUITY: DASH BUILDS EXTRA FLOW' },
-  'blink-drive': { id: 'blink-drive', name: 'BLINK DRIVE', detail: 'BLINK RESET + OVERDRIVE: RUSH+ LANDING RECHARGES DASH' },
+  'blink-drive': { id: 'blink-drive', name: 'BLINK DRIVE', detail: 'BLINK RESET + OVERDRIVE: RUSH+ DRONE KILLS REFUND DASH FOR AIRBORNE CHAINS' },
   'predator-rhythm': { id: 'predator-rhythm', name: 'PREDATOR RHYTHM', detail: 'KILL REFUND + REBOUND: KILL BOOSTS NEXT JUMP' },
   'execution-impact': { id: 'execution-impact', name: 'EXECUTION IMPACT', detail: 'EXECUTION + IMPACT: KILLS PRIME THE NEXT LANDING FOR BONUS FLOW' },
 };
