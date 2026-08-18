@@ -5,9 +5,11 @@ import {
   FLOW_GRACE_SECONDS,
   FLOW_UPGRADE_GRACE_BONUS,
   FlowSystem,
+  getFlowGameplayModifiers,
   getFlowGraceSeconds,
   getFlowIntensity,
   getFlowTier,
+  isPerfectFlow,
 } from '../src/systems/FlowSystem';
 
 describe('FlowSystem', () => {
@@ -16,6 +18,35 @@ describe('FlowSystem', () => {
     expect(getFlowTier(3)).toBe('engaged');
     expect(getFlowTier(6)).toBe('rush');
     expect(getFlowTier(9)).toBe('overdrive');
+  });
+
+  it('gives higher tiers stronger control without changing jump power', () => {
+    expect(getFlowGameplayModifiers(1)).toEqual({ airControlMultiplier: 1, landingRecoveryMultiplier: 1 });
+    expect(getFlowGameplayModifiers(6).airControlMultiplier).toBeCloseTo(1.08);
+    expect(getFlowGameplayModifiers(9).airControlMultiplier).toBeCloseTo(1.12);
+    expect(getFlowGameplayModifiers(9).landingRecoveryMultiplier).toBeLessThan(getFlowGameplayModifiers(3).landingRecoveryMultiplier);
+  });
+
+  it('treats 12 as the explicit Perfect Flow ceiling', () => {
+    expect(isPerfectFlow(11.99)).toBe(false);
+    expect(isPerfectFlow(12)).toBe(true);
+    const system = new FlowSystem();
+    const frame = system.update({ ...createInitialState(), flow: 14 }, 0.016);
+    expect(frame.state.flow).toBe(12);
+    expect(frame.perfect).toBe(true);
+    expect(frame.enteredPerfect).toBe(true);
+  });
+
+  it('only reports entering Perfect Flow once until it is lost', () => {
+    const system = new FlowSystem();
+    let frame = system.update({ ...createInitialState(), flow: 12 }, 0.016);
+    expect(frame.enteredPerfect).toBe(true);
+    frame = system.update(frame.state, 0.016);
+    expect(frame.enteredPerfect).toBe(false);
+    frame = system.update({ ...frame.state, flow: 10 }, 0.016);
+    expect(frame.perfect).toBe(false);
+    frame = system.update({ ...frame.state, flow: 12 }, 0.016);
+    expect(frame.enteredPerfect).toBe(true);
   });
 
   it('normalizes visual intensity across the Flow range', () => {
