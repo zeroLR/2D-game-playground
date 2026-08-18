@@ -2,20 +2,20 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { Locale } from '../i18n';
 import { canvas,color } from './design/tokens';
 
-export const CANVAS_WIDTH=canvas.width,CANVAS_HEIGHT=canvas.height,CANVAS_CENTER=canvas.centerX;
-export const ink=color.ink,muted=color.muted,gold=color.gold,violet=color.violet,paper=color.paper;
-export const panel=color.panel,card=color.paperRaised,edge=color.edge,parchment=color.parchment,line=color.line;
+export const CANVAS_WIDTH:number=canvas.width,CANVAS_HEIGHT:number=canvas.height,CANVAS_CENTER:number=canvas.centerX;
+export const ink:number=color.ink,muted:number=color.muted,gold:number=color.gold,violet:number=color.violet,paper:number=color.paper;
+export const panel:number=color.panel,card:number=color.paperRaised,edge:number=color.edge,parchment:number=color.parchment,line:number=color.line;
 
 /** Everything a view needs to draw: where to attach, and which locale the type is set in. */
 export interface ViewContext{root:Container;locale:Locale}
 
-export const textStyle=(locale:Locale,size:number,colorValue=ink,weight='500')=>new TextStyle({fontFamily:'Georgia, "Noto Serif TC", serif',fontSize:size,fill:colorValue,fontWeight:weight as any,letterSpacing:locale==='zh-TW'?1:2});
+export const textStyle=(locale:Locale,size:number,colorValue:number=ink,weight='500')=>new TextStyle({fontFamily:'Georgia, "Noto Serif TC", serif',fontSize:size,fill:colorValue,fontWeight:weight as any,letterSpacing:locale==='zh-TW'?1:2});
 
-export function label({root,locale}:ViewContext,text:string,x:number,y:number,size=14,colorValue=ink,weight='500'){
+export function label({root,locale}:ViewContext,text:string,x:number,y:number,size:number=14,colorValue:number=ink,weight='500'){
   const node=new Text({text,style:textStyle(locale,size,colorValue,weight)});node.x=x;node.y=y;root.addChild(node);return node;
 }
 
-export function centeredLabel(ctx:ViewContext,text:string,centerX:number,y:number,size=14,colorValue=ink,weight='500'){
+export function centeredLabel(ctx:ViewContext,text:string,centerX:number,y:number,size:number=14,colorValue:number=ink,weight='500'){
   const node=label(ctx,text,0,y,size,colorValue,weight);node.x=centerX-node.width/2;return node;
 }
 
