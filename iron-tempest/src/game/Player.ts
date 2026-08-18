@@ -1,0 +1,2 @@
+import { Container, Graphics } from 'pixi.js';
+export class Player { readonly view=new Graphics().poly([0,-14,10,10,0,6,-10,10]).fill(0x55d8ff).rect(-3,-4,6,12).fill(0xf4f1bb); hp=5; constructor(world:Container){this.view.x=180;this.view.y=570;world.addChild(this.view)} move(dx:number,dy:number){this.view.x=Math.max(12,Math.min(348,this.view.x+dx));this.view.y=Math.max(55,Math.min(620,this.view.y+dy))} setFocus(focus:boolean){this.view.scale.set(focus?.85:1)} }
