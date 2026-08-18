@@ -9,7 +9,7 @@ const passiveName={fortified:'Guard / Fortified',flow:'Flow',pressure:'Pressure'
 const skillName:Record<string,string>={blink:'Blink',charge:'Charge',phase:'Flame',corrupt:'Corrupt'};
 const roleName={defense:'防禦',control:'控制',disruption:'干擾'} as const;
 const heroColor:Record<HeroId,number>={vanguard:color.gold,arcanist:color.violet,shade:color.panelSoft};
-function centered(ctx:ViewContext,value:string,y:number,size=type.body,fill=color.ink,weight='600'){const t=uiText(ctx.root,ctx.locale,value,0,y,size,fill,weight);t.anchor.set(.5,0);t.x=canvas.centerX;return t;}
+function centered(ctx:ViewContext,value:string,y:number,size:number=type.body,fill:number=color.ink,weight='600'){const t=uiText(ctx.root,ctx.locale,value,0,y,size,fill,weight);t.anchor.set(.5,0);t.x=canvas.centerX;return t;}
 function tappableCard(ctx:ViewContext,x:number,y:number,w:number,h:number,onTap:()=>void){const g=surface(ctx.root,x,y,w,h,true);g.eventMode='static';g.cursor='pointer';g.on('pointertap',onTap);return g;}
 function emblem(ctx:ViewContext,id:HeroId,x:number,y:number,r:number){const g=new Graphics().poly([x,y-r,x+r,y,x,y+r,x-r,y]).fill({color:heroColor[id],alpha:.92}).stroke({color:color.goldSoft,width:1});ctx.root.addChild(g);return g;}
 
