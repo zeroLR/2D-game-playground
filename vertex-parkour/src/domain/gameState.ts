@@ -1,5 +1,6 @@
 import { DEFAULT_DEV_TUNING, type DevTuning } from '../dev/DevTuning';
 import { getFlowGameplayModifiers, FLOW_MAX, FLOW_RUSH_THRESHOLD, isPerfectFlow } from '../systems/FlowSystem';
+import { acquireRelic, createEmptyRelicInventory, type RelicId, type RelicInventory } from './relics';
 import { applySkillLevel, createEmptySkillLevels, type SkillId, type SkillLevels } from './skills';
 import { hasSynergy } from './synergies';
 
@@ -52,6 +53,7 @@ export type GameState = {
   score: number; flow: number; hp: number; elapsed: number; speed: number; gameOver: boolean;
   dashUpgradeLevel: number; flowUpgradeLevel: number;
   skills: SkillLevels;
+  relics: RelicInventory;
   predatorRhythmReady: boolean;
   predatorReady: boolean;
   executionImpactReady: boolean;
@@ -61,7 +63,7 @@ export const createInitialState = (tuning: DevTuning = DEFAULT_DEV_TUNING): Game
   playerX: 180, playerY: 578, velocityX: 0, velocityY: AUTO_JUMP_VELOCITY * tuning.jumpPower,
   dashTime: 0, dashReady: true, landingTime: 0, wallSide: 0, wallJumpLock: 0,
   score: 0, flow: 1, hp: 3, elapsed: 0, speed: 0, gameOver: false,
-  dashUpgradeLevel: 0, flowUpgradeLevel: 0, skills: createEmptySkillLevels(), predatorRhythmReady: false, predatorReady: false, executionImpactReady: false,
+  dashUpgradeLevel: 0, flowUpgradeLevel: 0, skills: createEmptySkillLevels(), relics: createEmptyRelicInventory(), predatorRhythmReady: false, predatorReady: false, executionImpactReady: false,
 });
 
 export function tickState(state: GameState, deltaSeconds: number, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState {
@@ -115,5 +117,6 @@ export function applyDroneKill(state: GameState): GameState {
 }
 export function applyUpgrade(state: GameState, kind: UpgradeKind): GameState { return kind === 'dash' ? { ...state, dashUpgradeLevel: state.dashUpgradeLevel + 1 } : { ...state, flowUpgradeLevel: state.flowUpgradeLevel + 1 }; }
 export function applySkill(state: GameState, id: SkillId): GameState { return { ...state, skills: applySkillLevel(state.skills, id) }; }
+export function applyRelic(state: GameState, id: RelicId): GameState { return { ...state, relics: acquireRelic(state.relics, id) }; }
 export function getFlowAfterHit(flow: number) { if (flow >= FLOW_OVERDRIVE_THRESHOLD) return FLOW_OVERDRIVE_HIT_FLOOR; if (flow >= FLOW_RUSH_THRESHOLD) return FLOW_RUSH_HIT_FLOOR; return 1; }
 export function applyHit(state: GameState): GameState { if (state.skills['flow-shield'] > 0 && isPerfectFlow(state.flow)) return { ...state, flow: FLOW_OVERDRIVE_HIT_FLOOR }; const hp = state.hp - 1; return { ...state, hp, flow: getFlowAfterHit(state.flow), gameOver: hp <= 0 }; }
