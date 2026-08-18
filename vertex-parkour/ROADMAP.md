@@ -53,6 +53,23 @@ Build a complete shell around the playable chapter while leaving future progress
 - Summit clear emits a product-shell completion event once, freezes gameplay, plays a Storm Crown clear transition, then returns to Home
 - reduced-motion preference collapses transition timings instead of forcing cinematic motion
 
+## M7.8 — Core Build Identity 🚧
+Clarify the core run mechanics before adding Relics so later systems modify a stable vocabulary.
+
+### M7.8A — Flow Identity ✅ first-pass
+- Flow is a bounded `1 → 12` momentum meter, not a literal movement-speed multiplier
+- tiers remain Calm `1–2.99`, Engaged `3–5.99`, Rush `6–8.99`, Overdrive `9–12`
+- higher tiers improve movement **feel** through air-control authority and shorter landing recovery without increasing base jump height
+- tier movement modifiers: Engaged `+4% air / 6% faster recovery`, Rush `+8% / 14%`, Overdrive `+12% / 24%`
+- `12` is explicitly **Perfect Flow**, a detectable ceiling/state for later Skill/Relic rule hooks rather than an endlessly scaling stat
+- Flow continues to reward score and retain the existing grace/decay/mistake model
+
+### M7.8B — Skill Vocabulary Expansion ⏭
+Expand the current four-skill prototype into a representative Dash / Jump / Kill / Flow vocabulary before Relics.
+
+### M7.8C — Build Synergy Pass ⏭
+Add cross-archetype interactions after the expanded skill vocabulary exists.
+
 # M8 — Relic System
 Rare run-defining rule modifiers acquired through Elite/Treasure/Special routes; avoid another list of small percentage stats. The M7.7 Relic Archive is presentation-only until this milestone.
 
@@ -79,4 +96,6 @@ One complete replayable 5–10 minute run: onboarding → Skill → route choice
 - M6: traversal vocabulary implemented; balance deferred
 - M7.1–M7.6: first-pass Chapter 1 gameplay loop complete
 - M7.7: Game Hub/product shell in progress; Chapter lifecycle transition first-pass complete
+- M7.8A: Flow identity first-pass complete
+- M7.8B–C: not started
 - M8–M12: not started
