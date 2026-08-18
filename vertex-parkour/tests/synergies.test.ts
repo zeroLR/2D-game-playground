@@ -17,18 +17,29 @@ describe('build synergies', () => {
     expect(synergized.flow - base.flow).toBeCloseTo(MOMENTUM_LOOP_FLOW_BONUS);
   });
 
-  it('activates Blink Drive from Dash + Flow without replacing the baseline landing reset', () => {
+  it('Blink Drive refunds a spent dash on a Rush+ drone kill', () => {
     let state = applySkill(createInitialState(), 'blink-reset');
     state = applySkill(state, 'overdrive');
-    state = { ...state, flow: 6, dashReady: false };
+    state = { ...state, flow: 6 };
+    state = applyDash(state, 1);
+    expect(state.dashReady).toBe(false);
     expect(getActiveSynergies(state.skills)).toContain('blink-drive');
-    expect(applyLanding(state, 500).dashReady).toBe(true);
+    expect(applyDroneKill(state).dashReady).toBe(true);
   });
 
-  it('keeps the normal landing dash reset below Rush', () => {
+  it('Blink Drive does not refund a spent dash below Rush', () => {
     let state = applySkill(createInitialState(), 'blink-reset');
     state = applySkill(state, 'overdrive');
-    state = { ...state, flow: 5.9, dashReady: false };
+    state = { ...state, flow: 4 };
+    state = applyDash(state, 1);
+    expect(state.flow).toBeLessThan(6);
+    expect(applyDroneKill(state).dashReady).toBe(false);
+  });
+
+  it('keeps normal landing dash reset independent of Blink Drive', () => {
+    let state = applySkill(createInitialState(), 'blink-reset');
+    state = applySkill(state, 'overdrive');
+    state = { ...state, flow: 4, dashReady: false };
     expect(applyLanding(state, 500).dashReady).toBe(true);
   });
 
