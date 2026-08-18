@@ -3,6 +3,9 @@ import type { GameState } from '../domain/gameState';
 export const FLOW_MIN = 1;
 export const FLOW_MAX = 12;
 export const FLOW_PERFECT = FLOW_MAX;
+export const FLOW_ENGAGED_THRESHOLD = 3;
+export const FLOW_RUSH_THRESHOLD = 6;
+export const FLOW_OVERDRIVE_THRESHOLD = 9;
 export const FLOW_GRACE_SECONDS = 1.35;
 export const FLOW_UPGRADE_GRACE_BONUS = 0.45;
 export const FLOW_DECAY_PER_SECOND = 0.9;
@@ -25,9 +28,9 @@ export type FlowFrame = {
 };
 
 export function getFlowTier(flow: number): FlowTier {
-  if (flow >= 9) return 'overdrive';
-  if (flow >= 6) return 'rush';
-  if (flow >= 3) return 'engaged';
+  if (flow >= FLOW_OVERDRIVE_THRESHOLD) return 'overdrive';
+  if (flow >= FLOW_RUSH_THRESHOLD) return 'rush';
+  if (flow >= FLOW_ENGAGED_THRESHOLD) return 'engaged';
   return 'calm';
 }
 
