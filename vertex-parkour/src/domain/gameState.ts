@@ -41,6 +41,7 @@ export const PREDATOR_JUMP_MULTIPLIER = 1.06;
 export const EXECUTION_FLOW_BONUS = 0.35;
 export const OVERDRIVE_CONTROL_BONUS = 0.04;
 export const AFTERIMAGE_DURATION_BONUS = 0.018;
+export const BLINK_RESET_FLOW_BONUS = 0.45;
 
 export type UpgradeKind = 'dash' | 'flow';
 export type GameState = {
@@ -90,7 +91,7 @@ export function tickState(state: GameState, deltaSeconds: number, tuning: DevTun
   return { ...state, elapsed, playerX, playerY, velocityX, velocityY, dashTime, landingTime, wallJumpLock, predatorRhythmReady, predatorReady, speed: Math.hypot(velocityX, velocityY), score: state.score + climbed * Math.max(1, state.flow) };
 }
 
-export function applyLanding(state: GameState, platformY: number): GameState { if (state.gameOver) return state; const bonus = state.skills.impact * IMPACT_FLOW_BONUS; const refund = state.skills['blink-reset'] > 0 && state.flow >= FLOW_RUSH_THRESHOLD; return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: refund || true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus) }; }
+export function applyLanding(state: GameState, platformY: number): GameState { if (state.gameOver) return state; const bonus = state.skills.impact * IMPACT_FLOW_BONUS; const blinkBonus = state.skills['blink-reset'] > 0 && state.flow >= FLOW_RUSH_THRESHOLD ? BLINK_RESET_FLOW_BONUS : 0; return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus) }; }
 export function applyWallContact(state: GameState, side: -1 | 1, wallX: number): GameState { if (state.gameOver || state.wallJumpLock > 0) return state; return { ...state, playerX: wallX - side * 14, velocityX: 0, velocityY: Math.min(state.velocityY, WALL_SLIDE_SPEED), wallSide: side, dashReady: true }; }
 export function clearWallContact(state: GameState): GameState { return state.wallSide === 0 ? state : { ...state, wallSide: 0 }; }
 export function applyWallJump(state: GameState, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState { if (state.gameOver || state.wallSide === 0) return state; const direction = (state.wallSide * -1) as -1 | 1; return { ...state, velocityX: direction * WALL_JUMP_VELOCITY_X, velocityY: WALL_JUMP_VELOCITY_Y * tuning.jumpPower, dashTime: 0, dashReady: true, wallSide: 0, wallJumpLock: WALL_JUMP_LOCK, flow: Math.min(FLOW_MAX, state.flow + 0.45) }; }
