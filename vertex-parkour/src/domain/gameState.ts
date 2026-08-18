@@ -35,6 +35,7 @@ export const REBOUND_JUMP_MULTIPLIER = 1.08;
 export const KILL_REFUND_FLOW_BONUS = 0.6;
 export const MOMENTUM_LOOP_FLOW_BONUS = 0.25;
 export const PREDATOR_RHYTHM_JUMP_MULTIPLIER = 1.12;
+export const EXECUTION_IMPACT_FLOW_BONUS = 0.65;
 export const AERIAL_STEP_MULTIPLIER = 1.12;
 export const IMPACT_FLOW_BONUS = 0.2;
 export const PREDATOR_JUMP_MULTIPLIER = 1.06;
@@ -53,13 +54,14 @@ export type GameState = {
   skills: SkillLevels;
   predatorRhythmReady: boolean;
   predatorReady: boolean;
+  executionImpactReady: boolean;
 };
 
 export const createInitialState = (tuning: DevTuning = DEFAULT_DEV_TUNING): GameState => ({
   playerX: 180, playerY: 578, velocityX: 0, velocityY: AUTO_JUMP_VELOCITY * tuning.jumpPower,
   dashTime: 0, dashReady: true, landingTime: 0, wallSide: 0, wallJumpLock: 0,
   score: 0, flow: 1, hp: 3, elapsed: 0, speed: 0, gameOver: false,
-  dashUpgradeLevel: 0, flowUpgradeLevel: 0, skills: createEmptySkillLevels(), predatorRhythmReady: false, predatorReady: false,
+  dashUpgradeLevel: 0, flowUpgradeLevel: 0, skills: createEmptySkillLevels(), predatorRhythmReady: false, predatorReady: false, executionImpactReady: false,
 });
 
 export function tickState(state: GameState, deltaSeconds: number, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState {
@@ -91,14 +93,21 @@ export function tickState(state: GameState, deltaSeconds: number, tuning: DevTun
   return { ...state, elapsed, playerX, playerY, velocityX, velocityY, dashTime, landingTime, wallJumpLock, predatorRhythmReady, predatorReady, speed: Math.hypot(velocityX, velocityY), score: state.score + climbed * Math.max(1, state.flow) };
 }
 
-export function applyLanding(state: GameState, platformY: number): GameState { if (state.gameOver) return state; const bonus = state.skills.impact * IMPACT_FLOW_BONUS; const blinkBonus = state.skills['blink-reset'] > 0 && state.flow >= FLOW_RUSH_THRESHOLD ? BLINK_RESET_FLOW_BONUS : 0; return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus) }; }
+export function applyLanding(state: GameState, platformY: number): GameState {
+  if (state.gameOver) return state;
+  const bonus = state.skills.impact * IMPACT_FLOW_BONUS;
+  const rushLanding = state.flow >= FLOW_RUSH_THRESHOLD;
+  const blinkBonus = state.skills['blink-reset'] > 0 && rushLanding ? BLINK_RESET_FLOW_BONUS : 0;
+  const executionImpactBonus = state.executionImpactReady ? EXECUTION_IMPACT_FLOW_BONUS : 0;
+  return { ...state, playerY: platformY - PLAYER_FEET_OFFSET, velocityY: 0, landingTime: LANDING_DELAY, dashReady: true, wallSide: 0, flow: Math.min(FLOW_MAX, state.flow + 0.25 + bonus + blinkBonus + executionImpactBonus), executionImpactReady: false };
+}
 export function applyWallContact(state: GameState, side: -1 | 1, wallX: number): GameState { if (state.gameOver || state.wallJumpLock > 0) return state; return { ...state, playerX: wallX - side * 14, velocityX: 0, velocityY: Math.min(state.velocityY, WALL_SLIDE_SPEED), wallSide: side, dashReady: true }; }
 export function clearWallContact(state: GameState): GameState { return state.wallSide === 0 ? state : { ...state, wallSide: 0 }; }
 export function applyWallJump(state: GameState, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState { if (state.gameOver || state.wallSide === 0) return state; const direction = (state.wallSide * -1) as -1 | 1; return { ...state, velocityX: direction * WALL_JUMP_VELOCITY_X, velocityY: WALL_JUMP_VELOCITY_Y * tuning.jumpPower, dashTime: 0, dashReady: true, wallSide: 0, wallJumpLock: WALL_JUMP_LOCK, flow: Math.min(FLOW_MAX, state.flow + 0.45) }; }
 export function applyAirNudge(state: GameState, direction: -1 | 1, strength = 1): GameState { if (state.gameOver) return state; const clamped = Math.max(0.45, Math.min(1, strength)); const flowControl = getFlowGameplayModifiers(state.flow).airControlMultiplier; const aerial = Math.pow(AERIAL_STEP_MULTIPLIER, state.skills['aerial-step']); const overdrive = state.flow >= FLOW_RUSH_THRESHOLD ? 1 + state.skills.overdrive * OVERDRIVE_CONTROL_BONUS : 1; return { ...state, velocityX: direction * AIR_NUDGE_SPEED * clamped * flowControl * aerial * overdrive, dashTime: AIR_NUDGE_DURATION }; }
 export function applyDash(state: GameState, direction: -1 | 1, strength = 1, tuning: DevTuning = DEFAULT_DEV_TUNING): GameState { if (state.gameOver || !state.dashReady) return state; const clampedStrength = Math.max(MIN_DASH_STRENGTH, Math.min(1, strength)); const baseDashSpeed = MIN_DASH_SPEED + (MAX_DASH_SPEED - MIN_DASH_SPEED) * clampedStrength; const dashLevel = state.dashUpgradeLevel + state.skills['phase-dash']; const dashSpeed = baseDashSpeed * Math.pow(DASH_UPGRADE_SPEED_MULTIPLIER, dashLevel) * tuning.dashPower; const synergyFlow = hasSynergy(state.skills, 'momentum-loop') ? MOMENTUM_LOOP_FLOW_BONUS : 0; return { ...state, velocityX: direction * dashSpeed, dashTime: DASH_DURATION + state.skills.afterimage * AFTERIMAGE_DURATION_BONUS, dashReady: false, wallSide: 0, velocityY: Math.min(state.velocityY, 25), flow: Math.min(FLOW_MAX, state.flow + 0.6 + synergyFlow) }; }
 export function applyCrystalPickup(state: GameState): GameState { if (state.gameOver) return state; return { ...state, dashReady: true, velocityY: Math.min(state.velocityY, CRYSTAL_LIFT_VELOCITY), score: state.score + 250, flow: Math.min(FLOW_MAX, state.flow + 1.4) }; }
-export function applyDroneKill(state: GameState): GameState { if (state.gameOver) return state; const execution = state.flow >= FLOW_RUSH_THRESHOLD ? state.skills.execution * EXECUTION_FLOW_BONUS : 0; return { ...state, dashReady: true, velocityY: Math.min(state.velocityY, DRONE_BOUNCE_VELOCITY), score: state.score + 400, flow: Math.min(FLOW_MAX, state.flow + 1.8 + state.skills['kill-refund'] * KILL_REFUND_FLOW_BONUS + execution), predatorRhythmReady: hasSynergy(state.skills, 'predator-rhythm') || state.predatorRhythmReady, predatorReady: state.skills.predator > 0 || state.predatorReady }; }
+export function applyDroneKill(state: GameState): GameState { if (state.gameOver) return state; const execution = state.flow >= FLOW_RUSH_THRESHOLD ? state.skills.execution * EXECUTION_FLOW_BONUS : 0; return { ...state, dashReady: true, velocityY: Math.min(state.velocityY, DRONE_BOUNCE_VELOCITY), score: state.score + 400, flow: Math.min(FLOW_MAX, state.flow + 1.8 + state.skills['kill-refund'] * KILL_REFUND_FLOW_BONUS + execution), predatorRhythmReady: hasSynergy(state.skills, 'predator-rhythm') || state.predatorRhythmReady, predatorReady: state.skills.predator > 0 || state.predatorReady, executionImpactReady: hasSynergy(state.skills, 'execution-impact') || state.executionImpactReady }; }
 export function applyUpgrade(state: GameState, kind: UpgradeKind): GameState { return kind === 'dash' ? { ...state, dashUpgradeLevel: state.dashUpgradeLevel + 1 } : { ...state, flowUpgradeLevel: state.flowUpgradeLevel + 1 }; }
 export function applySkill(state: GameState, id: SkillId): GameState { return { ...state, skills: applySkillLevel(state.skills, id) }; }
 export function getFlowAfterHit(flow: number) { if (flow >= FLOW_OVERDRIVE_THRESHOLD) return FLOW_OVERDRIVE_HIT_FLOOR; if (flow >= FLOW_RUSH_THRESHOLD) return FLOW_RUSH_HIT_FLOOR; return 1; }
