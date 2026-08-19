@@ -8,6 +8,8 @@ import { GAMEPLAY_HEIGHT, LOGICAL_WIDTH } from './layout';
 import { createPlayerMotion, stepPlayer, type Rect } from './movement';
 
 const WORLD_WIDTH = 1380; const WORLD_HEIGHT = 760;
+const HIT_SHAKE_DURATION = 0.075;
+const HIT_SHAKE_STRENGTH = 2;
 const PLATFORMS: Rect[] = [
   { x: 0, y: 500, width: 330, height: 80 }, { x: 330, y: 472, width: 130, height: 108 },
   { x: 485, y: 430, width: 150, height: 150 }, { x: 675, y: 500, width: 235, height: 80 },
@@ -46,13 +48,13 @@ export class GameShell extends Container {
     if (!isAttackActive(this.attack)) return; const hitbox = playerAttackHitbox(this.motion.x, this.motion.y, this.motion.facing);
     for (const enemy of this.enemies) {
       if (enemy.hp <= 0 || this.attack.hitIds.has(enemy.enemyId) || !overlaps(hitbox, enemy.hurtbox())) continue;
-      this.attack.hitIds.add(enemy.enemyId); enemy.hit(this.motion.facing); this.hitStop = HIT_STOP; this.shakeTime = 0.12; this.spawnImpact(enemy.x, enemy.groundY - 25);
+      this.attack.hitIds.add(enemy.enemyId); enemy.hit(this.motion.facing); this.hitStop = HIT_STOP; this.shakeTime = HIT_SHAKE_DURATION; this.spawnImpact(enemy.x, enemy.groundY - 25);
     }
   }
 
   private applyCameraPosition() {
-    const strength = this.shakeTime > 0 ? 5 * (this.shakeTime / 0.12) : 0;
-    const sx = strength ? (Math.random() * 2 - 1) * strength : 0; const sy = strength ? (Math.random() * 2 - 1) * strength * 0.55 : 0;
+    const strength = this.shakeTime > 0 ? HIT_SHAKE_STRENGTH * (this.shakeTime / HIT_SHAKE_DURATION) : 0;
+    const sx = strength ? (Math.random() * 2 - 1) * strength : 0; const sy = strength ? (Math.random() * 2 - 1) * strength * 0.4 : 0;
     this.world.position.set(-this.camera.x + sx, -this.camera.y + sy);
   }
 
