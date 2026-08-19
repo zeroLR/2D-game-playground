@@ -1,9 +1,16 @@
-import { Container,Graphics,Text } from 'pixi.js';
-import { HeroId,HeroLoadout,heroIds,heroes } from '../heroes';
-import { getMessages } from '../i18n';
+import { HeroId,HeroLoadout } from '../heroes';
 import { ViewContext } from './theme';
-const ink=0x252431,paper=0xf8f4ec,purple=0x7650b6,gold=0xc9a354,line=0xd7ccba,muted=0x77716b;
-const skillName:Record<string,string>={blink:'Blink',charge:'Charge',phase:'Flame',corrupt:'Corrupt'};
-function text(value:string,size:number,color=ink){return new Text({text:value,style:{fontFamily:'Georgia, serif',fontSize:size,fill:color,fontWeight:'600'}})}
-function button(parent:Container,x:number,y:number,w:number,h:number,label:string,onTap:()=>void,active=false){const g=new Graphics().roundRect(x,y,w,h,7).fill(active?ink:paper).stroke({color:active?gold:line,width:1});g.eventMode='static';g.cursor='pointer';g.on('pointertap',onTap);parent.addChild(g);const t=text(label,14,active?0xf6ead0:ink);t.anchor.set(.5);t.position.set(x+w/2,y+h/2);parent.addChild(t);}
-export function renderCpuMatchSetup(ctx:ViewContext,opts:{playerHeroId:HeroId;playerLoadout:HeroLoadout;cpuHeroId:HeroId;randomOpponent:boolean;onBack:()=>void;onCpuHero:(id:HeroId)=>void;onRandom:()=>void;onContinue:()=>void}){const {root}=ctx,w=window.innerWidth,m=getMessages(ctx.locale);const back=text('‹',32);back.position.set(24,55);back.eventMode='static';back.cursor='pointer';back.on('pointertap',opts.onBack);root.addChild(back);const heading=text(ctx.locale==='en'?'CPU Match Setup':'CPU 對戰設定',24);heading.position.set(62,62);root.addChild(heading);const yours=text(ctx.locale==='en'?'YOUR HERO':'我方英雄',12,gold);yours.position.set(28,118);root.addChild(yours);const player=new Graphics().roundRect(28,144,w-56,78,7).fill(0xeee5fa).stroke({color:purple,width:1});root.addChild(player);const pn=text(m[heroes[opts.playerHeroId].nameKey],18);pn.position.set(46,160);root.addChild(pn);const pk=text(opts.playerLoadout.skills.map(s=>skillName[s]??s).join('  •  '),11,muted);pk.position.set(46,190);root.addChild(pk);const opponent=text(ctx.locale==='en'?'CPU OPPONENT':'CPU 對手',12,gold);opponent.position.set(28,254);root.addChild(opponent);heroIds.forEach((id,i)=>button(root,28,282+i*62,w-56,48,m[heroes[id].nameKey],()=>opts.onCpuHero(id),!opts.randomOpponent&&opts.cpuHeroId===id));button(root,28,480,w-56,48,ctx.locale==='en'?'↻ RANDOM — HIDDEN UNTIL BATTLE':'↻ 隨機對手 — 開戰後揭曉',opts.onRandom,opts.randomOpponent);const kit=text(opts.randomOpponent?(ctx.locale==='en'?'CPU hero and loadout will be revealed when battle starts.':'CPU 英雄與預設編組將在進入對局後揭曉。'):`${ctx.locale==='en'?'CPU default loadout':'CPU 預設編組'}  ·  ${heroes[opts.cpuHeroId].defaultLoadout.skills.map(s=>skillName[s]??s).join(' / ')}`,11,purple);kit.anchor.set(.5);kit.position.set(w/2,554);root.addChild(kit);button(root,28,600,w-56,64,ctx.locale==='en'?'CONTINUE TO PREVIEW':'前往對戰確認',opts.onContinue,true);const note=text(opts.randomOpponent?(ctx.locale==='en'?'Random selection stays hidden through preview.':'隨機選擇在對戰確認頁仍保持隱藏。'):(ctx.locale==='en'?'CPU uses the selected hero default loadout.':'CPU 會使用所選英雄的預設技能編組。'),10,muted);note.anchor.set(.5);note.position.set(w/2,690);root.addChild(note);}
+import { renderBattleSetupVisual } from './battle-setup-visual';
+
+export function renderCpuMatchSetup(ctx:ViewContext,opts:{
+  playerHeroId:HeroId;
+  playerLoadout:HeroLoadout;
+  cpuHeroId:HeroId;
+  randomOpponent:boolean;
+  onBack:()=>void;
+  onCpuHero:(id:HeroId)=>void;
+  onRandom:()=>void;
+  onContinue:()=>void;
+}){
+  renderBattleSetupVisual(ctx.root,ctx.locale,opts);
+}
