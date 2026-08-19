@@ -1,0 +1,29 @@
+name: inkbound CI
+
+on:
+  pull_request:
+    paths:
+      - "inkbound/**"
+      - ".github/workflows/inkbound.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "inkbound/**"
+      - ".github/workflows/inkbound.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: inkbound
+      install-command: npm install
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
