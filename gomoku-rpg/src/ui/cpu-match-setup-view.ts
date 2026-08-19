@@ -6,9 +6,11 @@ export function renderCpuMatchSetup(ctx:ViewContext,opts:{
   playerHeroId:HeroId;
   playerLoadout:HeroLoadout;
   cpuHeroId:HeroId;
+  cpuLevel:number;
   randomOpponent:boolean;
   onBack:()=>void;
   onCpuHero:(id:HeroId)=>void;
+  onCpuLevel:(level:number)=>void;
   onRandom:()=>void;
   onContinue:()=>void;
 }){
