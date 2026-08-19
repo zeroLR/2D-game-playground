@@ -18,7 +18,12 @@ export class FloaterEnemy extends Container implements EnemyActor {
 
   update(playerX: number, playerY: number, dt: number) {
     this.hurtTime = Math.max(0, this.hurtTime - dt); if (this.hp <= 0) { this.alpha = Math.max(0, this.alpha - dt * 4); return; }
-    this.age += dt; this.y = this.anchorY + Math.sin(this.age * 2.2) * 12; this.facing = playerX < this.x ? -1 : 1; this.scale.x = this.facing;
+    this.age += dt;
+    // Hover around the player's upper-body attack band instead of remaining permanently outside melee reach.
+    const reachableY = Math.min(this.anchorY + 72, playerY - 43);
+    const desiredY = reachableY + Math.sin(this.age * 2.2) * 10;
+    this.y += (desiredY - this.y) * Math.min(1, dt * 3.2);
+    this.facing = playerX < this.x ? -1 : 1; this.scale.x = this.facing;
     this.fireTimer -= dt; const dx = playerX - this.x; const dy = (playerY - 25) - this.y; const distance = Math.hypot(dx, dy);
     if (distance < 310 && this.fireTimer <= 0) { const speed = 125; this.shots.push({ x: this.x, y: this.y, vx: dx / distance * speed, vy: dy / distance * speed, life: 3 }); this.fireTimer = 1.55; }
     for (const shot of this.shots) { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt; }
@@ -26,7 +31,7 @@ export class FloaterEnemy extends Container implements EnemyActor {
     this.alpha = this.hurtTime > 0 ? 0.45 : 1;
   }
 
-  hurtbox(): Rect { return { x: this.x - 20, y: this.y - 16, width: 40, height: 32 }; }
+  hurtbox(): Rect { return { x: this.x - 20, y: this.y - 18, width: 40, height: 36 }; }
   hit(direction: -1 | 1) { this.hp--; this.hurtTime = 0.12; this.x += direction * 18; }
   impactPoint() { return { x: this.x, y: this.y }; }
 }
