@@ -9,12 +9,14 @@ import { buildSummitPlatform, isSummitLanding } from '../world/Summit';
 import { START_PLATFORM_Y, WorldGenerator, createRunSeed, type RouteKind, type WorldBand, type WorldSpawn } from '../world/WorldGenerator';
 import { WorldState, type EntityId, type WorldEntity } from '../world/WorldState';
 
+type PendingRelicReward = { source: RelicSource; completionY: number };
+
 export class WorldLifecycleSystem {
   readonly state = new WorldState();
   private generator = new WorldGenerator(createRunSeed());
   private waitingForRouteSelection = false;
   private readonly runProgression = new RunProgression();
-  private readonly relicRewards = new Map<EntityId, RelicSource>();
+  private readonly relicRewards: PendingRelicReward[] = [];
   private finalAscentSeeded = false;
   private summitApproachY: number | null = null;
   private summitPlatformId: EntityId | null = null;
@@ -37,10 +39,12 @@ export class WorldLifecycleSystem {
   getSummitPlatformId(): EntityId | null { return this.summitPlatformId; }
 
   consumeRelicRewardForLanding(landedPlatformId: EntityId | null): RelicSource | null {
-    if (landedPlatformId === null) return null;
-    const source = this.relicRewards.get(landedPlatformId) ?? null;
-    if (source) this.relicRewards.delete(landedPlatformId);
-    return source;
+    if (landedPlatformId === null || this.relicRewards.length === 0) return null;
+    const platform = this.state.platforms.find((candidate) => candidate.id === landedPlatformId);
+    if (!platform) return null;
+    const rewardIndex = this.relicRewards.findIndex((reward) => platform.y <= reward.completionY + 12);
+    if (rewardIndex < 0) return null;
+    return this.relicRewards.splice(rewardIndex, 1)[0]?.source ?? null;
   }
 
   markChapterClearForLanding(landedPlatformId: EntityId | null): boolean {
@@ -74,7 +78,7 @@ export class WorldLifecycleSystem {
   reset() {
     this.renderer.clear();
     this.state.clear();
-    this.relicRewards.clear();
+    this.relicRewards.length = 0;
     this.generator = new WorldGenerator(createRunSeed());
     this.generator.setBiome(this.state.getActiveBiome());
     this.waitingForRouteSelection = false;
@@ -89,13 +93,10 @@ export class WorldLifecycleSystem {
     const band = this.generator.nextBand();
     const routeTheme = this.themeForBand(band);
     const biomeTheme = this.state.getActiveBiome();
-    const spawned = biomeSpawnsForBand(biomeTheme, band).map((spawn) => this.spawn(spawn, routeTheme, biomeTheme));
+    biomeSpawnsForBand(biomeTheme, band).forEach((spawn) => this.spawn(spawn, routeTheme, biomeTheme));
 
     const source = relicSourceForEncounter(band.encounter);
-    if (source && band.encounterStep === 3) {
-      const completionPlatform = spawned.find((entity) => entity.type === 'platform');
-      if (completionPlatform) this.relicRewards.set(completionPlatform.id, source);
-    }
+    if (source && band.encounterStep === 3) this.relicRewards.push({ source, completionY: band.y });
 
     this.runProgression.observeEncounter(biomeTheme, band.encounter, band.encounterStep);
     if (this.runProgression.getPhase() === 'final-ascent') this.seedFinalAscent();

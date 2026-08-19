@@ -13,59 +13,20 @@ async function bootstrap() {
   const app = await createApplication(LOGICAL_W, LOGICAL_H);
   const host = document.querySelector<HTMLElement>('#app')!;
   host.appendChild(app.canvas);
-
   let activeRun = sessionStorage.getItem(AUTOSTART_KEY) === '1';
   const shouldPlayReloadEntry = sessionStorage.getItem(ENTRY_TRANSITION_KEY) === '1';
-  sessionStorage.removeItem(AUTOSTART_KEY);
-  sessionStorage.removeItem(ENTRY_TRANSITION_KEY);
-
-  let clearHandled = false;
-  let hub!: GameHub;
+  sessionStorage.removeItem(AUTOSTART_KEY); sessionStorage.removeItem(ENTRY_TRANSITION_KEY);
+  let clearHandled = false; let hub!: GameHub;
   const transition = new ChapterTransition(host, { reducedMotion: () => document.documentElement.classList.contains('vertex-reduced-motion') });
-
-  const runtime = new GameRuntime(app, {
-    onChapterClear: async ({ score, elapsed }) => {
-      if (clearHandled) return;
-      clearHandled = true;
-      activeRun = false;
-      app.ticker.stop();
-      await transition.playClear(score, elapsed);
-      hub.showHub('home');
-    },
-  });
-  runtime.start();
-  app.ticker.stop();
-
+  const runtime = new GameRuntime(app, { onChapterClear: async ({ score, elapsed }) => { if (clearHandled) return; clearHandled = true; activeRun = false; app.ticker.stop(); await transition.playClear(score, elapsed); hub.showHub('home'); } });
+  runtime.start(); app.ticker.stop();
   const resumeGameplay = () => { activeRun = true; app.ticker.start(); };
   const enterChapter = async () => {
-    if (activeRun) {
-      app.ticker.stop();
-      host.classList.add('chapter-restart-guard');
-      sessionStorage.setItem(AUTOSTART_KEY, '1');
-      sessionStorage.setItem(ENTRY_TRANSITION_KEY, '1');
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      window.location.reload();
-      return;
-    }
-    activeRun = true;
-    clearHandled = false;
-    app.ticker.stop();
-    await transition.playEntry();
-    app.ticker.start();
+    if (activeRun) { app.ticker.stop(); host.classList.add('chapter-restart-guard'); sessionStorage.setItem(AUTOSTART_KEY, '1'); sessionStorage.setItem(ENTRY_TRANSITION_KEY, '1'); await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); window.location.reload(); return; }
+    activeRun = true; clearHandled = false; app.ticker.stop(); await transition.playEntry(); app.ticker.start();
   };
-
-  hub = new GameHub(host, { onEnterChapter: () => { void enterChapter(); }, onResumeRun: resumeGameplay, hasActiveRun: () => activeRun });
-
-  new MutationObserver(() => {
-    if (hub.root.hidden && transition.root.hidden) app.ticker.start();
-    else app.ticker.stop();
-  }).observe(hub.root, { attributes: true, attributeFilter: ['hidden'] });
-
-  if (activeRun) {
-    hub.showGame();
-    if (shouldPlayReloadEntry) { app.ticker.stop(); await transition.playEntry(); }
-    app.ticker.start();
-  }
+  hub = new GameHub(host, { onEnterChapter: () => { void enterChapter(); }, onResumeRun: resumeGameplay, hasActiveRun: () => activeRun, getRunStatus: () => runtime.getRunStatus() });
+  new MutationObserver(() => { if (hub.root.hidden && transition.root.hidden) app.ticker.start(); else app.ticker.stop(); }).observe(hub.root, { attributes: true, attributeFilter: ['hidden'] });
+  if (activeRun) { hub.showGame(); if (shouldPlayReloadEntry) { app.ticker.stop(); await transition.playEntry(); } app.ticker.start(); }
 }
-
 void bootstrap();
