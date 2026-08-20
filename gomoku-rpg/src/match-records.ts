@@ -9,6 +9,7 @@ export interface MatchRecord{
  finishedAt:string;
  heroId:HeroId;
  cpuHeroId:HeroId;
+ cpuLevel?:number;
  result:MatchResult;
  turns:number;
  actions:ActionHistoryEntry[];
@@ -49,5 +50,5 @@ export function createMatchRecord(input:Omit<MatchRecord,'id'|'finishedAt'>):Mat
 function isMatchRecord(value:unknown):value is MatchRecord{
  if(!value||typeof value!=='object')return false;
  const record=value as Partial<MatchRecord>;
- return typeof record.id==='string'&&typeof record.startedAt==='string'&&typeof record.finishedAt==='string'&&typeof record.heroId==='string'&&typeof record.cpuHeroId==='string'&&(record.result==='victory'||record.result==='defeat'||record.result==='draw')&&typeof record.turns==='number'&&Array.isArray(record.actions)&&!!record.metrics;
+ return typeof record.id==='string'&&typeof record.startedAt==='string'&&typeof record.finishedAt==='string'&&typeof record.heroId==='string'&&typeof record.cpuHeroId==='string'&&(record.cpuLevel===undefined||typeof record.cpuLevel==='number')&&(record.result==='victory'||record.result==='defeat'||record.result==='draw')&&typeof record.turns==='number'&&Array.isArray(record.actions)&&!!record.metrics;
 }

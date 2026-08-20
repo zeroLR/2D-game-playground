@@ -1,0 +1,1 @@
+import { describe,expect,it } from 'vitest';import { cpuDifficulty } from '../src/runtime/cpu-difficulty';describe('M7 CPU level type',()=>{it('is numeric for telemetry aggregation',()=>expect(typeof cpuDifficulty(4).level).toBe('number'));});

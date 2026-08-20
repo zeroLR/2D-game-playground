@@ -1,0 +1,1 @@
+import { describe,expect,it } from 'vitest';import { MatchRecord } from '../src/match-records';describe('M7 history CPU level',()=>{it('allows level metadata on history records',()=>expect(({cpuLevel:4} as MatchRecord).cpuLevel).toBe(4));});
