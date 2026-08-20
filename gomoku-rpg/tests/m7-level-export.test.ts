@@ -1,0 +1,1 @@
+import { describe,expect,it } from 'vitest';import { exportMatchesCsv } from '../src/match-export';describe('M7 CPU level export column',()=>{it('exists',()=>expect(exportMatchesCsv([])).toContain('cpuLevel'));});

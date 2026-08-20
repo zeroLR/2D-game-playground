@@ -1,0 +1,1 @@
+import { describe,expect,it } from 'vitest';import { cpuDifficulty } from '../src/runtime/cpu-difficulty';describe('M7 guardrail profile',()=>{it('supports every current CPU level',()=>{for(let level=1;level<=6;level++)expect(cpuDifficulty(level).level).toBe(level);});});

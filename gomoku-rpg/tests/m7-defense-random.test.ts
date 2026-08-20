@@ -1,0 +1,3 @@
+import { describe,expect,it } from 'vitest';
+import { createBoard } from '../src/game';import { createCombatState } from '../src/combat';import { chooseCpuAction } from '../src/runtime/cpu-action-evaluator';import { cpuDifficulty } from '../src/runtime/cpu-difficulty';
+describe('M7 deterministic forced defense',()=>{it('does not consume tactical correctness as difficulty noise',()=>{const b=createBoard();b[0][0]=2;b[0][1]=1;b[0][2]=1;b[0][3]=1;b[0][4]=1;const s=createCombatState(b),c=[{kind:'place',at:{row:8,col:8}},{kind:'place',at:{row:0,col:5}}] as const;expect(chooseCpuAction(s,c,cpuDifficulty(4),()=>1)?.action).toEqual(c[1]);});});
