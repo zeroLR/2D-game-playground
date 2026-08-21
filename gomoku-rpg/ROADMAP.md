@@ -8,199 +8,133 @@ Visual direction: abstract characters, minimal premium pixel presentation, restr
 
 ## Current state
 
-### M0 — Core Prototype ✅
-- 9×9 board
-- five in a row wins
-- VS CPU
-- pattern-driven Mana
-- Blink as the first board-manipulation skill
-
-### M0.1 — Playable Loop ✅
-- victory / defeat / draw states
-- replay without browser reload
-- English default locale
-- Traditional Chinese (`zh-TW`)
-- persisted language preference
+M0–M6 established the playable combat loop, hero/build foundation, CPU match setup, replay/history, telemetry, and the current mobile-first visual shell. M7 now owns CPU progression and production polish.
 
 ---
 
-## M1 — Combat Foundation
+## M1 — Combat Foundation ✅
+Pattern/Mana economy, one-primary-action turn model, data-driven skills, targeting and combat feedback.
 
-**Goal:** prove that the RPG layer creates meaningful decisions beyond ordinary Gomoku.
+## M2 — Heroes & Builds ✅
+Vanguard, Arcanist and Shade vertical slices. Skills manipulate board structure and tempo rather than adding a separate HP/ATK layer.
 
-### M1.1 Pattern & Mana rules
-Formalize pattern rewards instead of treating every `3+` line as the same event.
-
-Initial rule set to playtest:
-- newly formed 3-line: +1 Mana
-- newly formed 4-line: +2 Mana
-- multiple new qualifying lines from one placement stack their rewards
-- extending an existing rewarded line must not repeatedly farm the same pattern
-- skill movement does not generate Mana in M1 unless explicitly stated by the skill
-- Mana remains capped at 5 during M1
-
-Acceptance question: can a player intentionally choose between immediate board pressure and building Mana economy?
-
-### M1.2 Turn action model
-Every turn performs exactly one primary action:
-- Place Stone
-- Use Skill
-
-Skills consume tempo. A skill never grants a free normal placement unless explicitly designed to do so later.
-
-### M1.3 Skill framework
-Create a data-driven skill boundary with id, Mana cost, target type, legal target calculation, execution, and localized description.
-
-### M1.4 Board feedback
-- legal target highlight
-- selected source / destination state
-- invalid target feedback
-- Mana gain feedback
-- winning five-line highlight
-- CPU thinking feedback
-
-### M1 exit criteria
-The player must encounter real situations where using a skill instead of placing a stone is a defensible choice.
-
----
-
-## M2 — Heroes & Builds
-
-**Goal:** prove that hero choice changes how the board is read and played.
-
-First three abstract hero archetypes:
-- **Vanguard** — structure advancement and stability
-- **Arcanist** — board manipulation / tempo
-- **Shade** — positional disruption and pressure
-
-### M2.4 playtest-driven skill redesign
-- Common skill boundary: Blink
-- Shade vertical slice: Pressure + Corrupt
-- Vanguard vertical slice: Fortified + Charge
-- Arcanist vertical slice: Flow + Phase
-
-**Phase — the first free action.** M1.2 reserved the right to design a skill that does not consume the turn. Phase is that skill: 3 Mana shifts one Arcanist stone one step to an adjacent empty intersection, Flow refunds 1 Mana, and the player still places a stone in the same turn. Skills now declare `consumesTurn`, and the runtime reads the turn decision from that flag rather than assuming every cast ends the turn.
-
-**Deferred — Bulwark and Seal:** both are retained in the skill registry but unequipped. Current CPU has no hostile active skills, so playtesting showed no meaningful reason to spend a turn and 3 Mana on Bulwark. Seal steps aside for Phase while the Arcanist slice is measured; re-evaluate both after the CPU Skill System exists and can actively disrupt player structures.
-
-Exit criterion: players should describe different strategic priorities for each hero, not merely different visual effects.
-
----
-
-## M3 — CPU & PvE
-
-**Goal:** make solo play exercise the full RPG rules rather than only basic Gomoku blocking.
-
-Difficulty layers:
-- Easy — basic patterns, intentional tactical misses
-- Normal — offensive / defensive scoring, skill usage, shallow lookahead
-- Hard — Mana economy, skill-aware evaluation, deeper search
-
-CPU implementation direction: deterministic heuristic evaluation with minimax / alpha-beta where useful; no ML dependency required.
-
-Enemy personalities:
-- Sentinel — defensive
-- Duelist — aggressive
-- Trickster — control-heavy
-- Oracle — setup / pattern-oriented
-
-Exit criterion: the player must track the opponent's Mana and possible skills as part of threat assessment.
-
----
+## M3 — CPU & PvE Foundation ✅
+Deterministic heuristic CPU, hero-aware active skills, tactical attack/defense evaluation and shallow candidate search.
 
 ## M4 — Meta Progression
-
-**Goal:** add replayability without stat-based power creep.
-
-Prefer horizontal progression:
-- unlock skills
-- build a skill pool
-- equip a limited loadout
-- unlock alternative hero play styles
-
-Optional PvE run structure:
-Battle → Upgrade → Battle → Upgrade → Elite → Upgrade → Boss
-
-Target run length: 15–25 minutes while individual battles remain 3–5 minutes.
-
-Avoid permanent ATK / DEF style numerical advantages that undermine board-game fairness.
-
----
+Prefer horizontal progression: unlock skills, build a skill pool, limited loadouts and alternative hero play styles. Optional PvE run: Battle → Upgrade → Battle → Elite → Boss.
 
 ## M5 — Local PvP
+Pass-and-play, hero selection/loadouts, rematch and optional custom rules after PvE rules stabilize.
 
-**Goal:** validate human mind games before paying the complexity cost of online multiplayer.
-
-- pass-and-play on one phone
-- hero selection
-- loadouts
-- rematch
-- optional custom rules such as board size / win length
-
-Exit criterion: players should actively predict the opponent's possible skill action, not only their next stone placement.
+## M6 — Product UX / Match Lifecycle ✅
+CPU match setup, hidden random CPU reveal, battle preview, replay/history, match telemetry, responsive app shell and visual refactor foundation.
 
 ---
 
-## M6 — Online PvP
+# M7 — CPU Difficulty & PvE Progression
 
-**Goal:** service-ize PvP only after local PvP proves the design.
+**Goal:** CPU level is a long-term PvE progression axis, not a cosmetic number. The architecture supports Lv.1–100; every 5 levels forms a measurable strength tier and every 10 levels unlocks a new reasoning capability. Lv.100 is reserved for the terminal computer Boss.
 
-First version:
-- create room
-- room code
-- join room
-- ready state
-- authoritative match state
-- reconnect
-- rematch
+Difficulty must not be implemented as linear brute-force search. Strength is composed from tactical accuracy, pattern knowledge, candidate breadth, selective search, evaluation quality, skill intelligence, combo planning, opponent modeling and controlled decision noise.
 
-Server owns validation of turn, Mana, legal actions, skill targets, and victory state.
+### Progression contract
+
+- **Every level:** interpolate bounded decision-quality parameters.
+- **Every 5 levels:** enter a new tier with measurable changes to accuracy/search budget/noise. Twenty tiers exist from Lv.1–100.
+- **Every 10 levels:** unlock a qualitative CPU capability.
+- Forced immediate wins and forced blocks are guardrails, not intentional difficulty mistakes.
+- Search depth grows slowly; candidate generation, pruning and tactical extensions carry most late-game strength.
+- CPU level remains orthogonal to hero/elite/route/Boss modifiers so Roguelike encounters can compose difficulty without inventing fake levels.
+
+| Level | Capability milestone | Intended qualitative change |
+| ---: | --- | --- |
+| 1–10 | Immediate tactics | novice → reliable direct win/block |
+| 11–20 | Pattern recognition | reads structured multi-direction threats |
+| 21–30 | Threat planning | forks, double threats, attack/defense priority |
+| 31–40 | Lookahead search | selective short-horizon prediction |
+| 41–50 | Skill-aware search | compares placement and skill board outcomes |
+| 51–60 | Multi-turn combo | plans placement + skill forced sequences |
+| 61–70 | Strategic evaluation | initiative, tempo, resources, global position |
+| 71–80 | Opponent modeling | adapts evaluation to observed player tendencies |
+| 81–90 | Deep selective search | tactical extensions and stronger pruning |
+| 91–99 | Boss-grade policy | near-deterministic high-quality decisions, hero-specialized policy |
+| 100 | Apex Boss | complete capability set plus explicit Boss policy hook |
+
+### M7.1 — Pattern Recognition + Candidate Search ✅
+Make Lv.4–6 visibly understand board patterns instead of only changing score weights. Candidate generation and tactical ordering become explicit CPU subsystems.
+
+### M7.2 — CPU Decision Telemetry v2 ✅
+Persist selected/best score, regret, selection reason, top candidates, score decomposition and CPU context so difficulty can be balanced from evidence rather than match result alone.
+
+### M7.3 — Difficulty Curve Foundation 🚧
+Introduce the stable Lv.1–100 difficulty contract without pretending all future intelligence is already implemented.
+
+Foundation deliverables:
+- `CPU_LEVEL_MAX = 100`
+- 20 five-level tiers
+- ten-level capability milestone registry
+- bounded interpolation anchors across Lv.1–100
+- profile dimensions for tactical accuracy, evaluation quality, combo planning, opponent modeling and decision noise
+- preserve existing runtime-compatible fields (`patternDepth`, `searchDepth`, `candidateWidth`, `skillPlanningDepth`, awareness, optimal move rate, blunder tolerance)
+- tests for clamping, monotonic progression, tier boundaries and capability unlocks
+
+**M7.3 exit criterion:** level profiles are deterministic, monotonic where required, Lv.1/Lv.20/Lv.50/Lv.100 are observably different configurations, and future CPU systems can query capabilities rather than scattering `level >= N` checks.
+
+### M7.4 — Lv.1–20 Calibration
+Make the first progression band real before implementing higher intelligence. Use telemetry and playtests to verify every five-level tier produces a measurable strength change. Lv.20 should reliably understand core Gomoku patterns without requiring deep brute-force search.
+
+### M7.5 — Lv.21–30 Threat Planning
+Fork/double-threat recognition, forced-sequence prioritization and attack-vs-defense planning.
+
+### M7.6 — Lv.31–40 Selective Lookahead
+Introduce bounded multi-ply search with pruning and tactical extensions. Performance budget is part of acceptance criteria.
+
+### M7.7 — Lv.41–50 Skill-aware Search
+Evaluate skill board transformations inside search rather than as isolated heuristic actions.
+
+### M7.8 — Lv.51–60 Combination Planning
+Plan multi-turn placement/skill sequences and resource timing.
+
+### M7.9 — Lv.61–70 Strategic Evaluation
+Global board pressure, initiative, tempo and Mana/resource opportunity cost.
+
+### M7.10 — Lv.71–80 Opponent Modeling
+Build bounded match-local observations of player tendencies and use them as evaluation bias, never hidden rule-breaking information.
+
+### M7.11 — Lv.81–90 Deep Selective Search
+Tactical extensions, stronger move ordering/transposition strategy and strict frame/time budgets.
+
+### M7.12 — Lv.91–100 Boss Intelligence
+Hero-specialized policies, Boss modifiers/phases and Lv.100 Apex policy. Boss strength should come from richer decision policy and encounter rules, not arbitrary cheating.
 
 ---
 
-## M7 — Polish & Release
+## M8 — Roguelike PvE Structure
 
-**Goal:** turn the validated systems into a coherent mobile game.
+Compose encounter difficulty from `Base CPU Level + Route/Elite/Hero/Boss modifiers`. Target run structure remains Battle → Upgrade → Battle → Upgrade → Elite → Upgrade → Boss. Permanent progression should remain primarily horizontal so board-game decisions stay meaningful.
 
-Visual language:
-- abstract geometric hero identities
-- minimal premium pixel treatment
-- restrained accent palette
-- motion and particles as identity rather than detailed character illustration
-
-Polish:
-- placement impact
-- Mana pulse
-- skill cast feedback
-- threat warning
-- winning line presentation
-- abstract hero reaction
-- haptics
-- sound / BGM
-- transitions
-- onboarding and first-match tutorial
-- accessibility / reduced motion considerations
+## M9 — Polish & Release
+Placement impact, Mana/skill feedback, threat warning, winning-line presentation, hero reactions, haptics, audio, transitions, onboarding and accessibility/reduced-motion support.
 
 ---
 
 ## Product gates
 
-| Stage | Milestones | Question |
-| --- | --- | --- |
-| Prototype | M0–M1 | Is RPG Gomoku actually more interesting than normal Gomoku? |
-| Vertical Slice | M2–M3 | Do heroes and opponents create meaningful replayability? |
-| Game | M4–M5 | Is there enough depth to support repeated play? |
-| Online Product | M6–M7 | Is the proven game worth operating as a service? |
+| Stage | Question |
+| --- | --- |
+| Combat | Is RPG Gomoku more interesting than normal Gomoku? |
+| CPU progression | Do 5-level tiers measure stronger play and 10-level milestones feel smarter rather than merely slower? |
+| Roguelike | Do route/build choices let players overcome stronger CPU policies? |
+| Boss | Does Lv.100 feel like an intelligent terminal encounter rather than a cheating CPU? |
+| Release | Is the validated game worth operating as a service? |
 
 ## Deferred until validated
 
-- **Bulwark**, **Seal** — re-evaluate after CPU Skill System can threaten protected structures
-- online matchmaking
-- ranked seasons
+- Bulwark / Seal re-evaluation after richer hostile skill policies
+- online matchmaking / ranked seasons
 - account system
-- equipment stats
-- character levels / ATK / DEF progression
-- narrative campaign
+- equipment ATK/DEF stat creep
 - large hero roster
 
-The roadmap should advance through playtest evidence, not feature count.
+The roadmap advances through playtest and telemetry evidence, not feature count.
