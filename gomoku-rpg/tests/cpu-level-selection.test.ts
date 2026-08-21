@@ -1,11 +1,11 @@
 import { describe,expect,it,vi } from 'vitest';
 import { createMatchRuntime } from '../src/runtime/match-runtime';
-import { CPU_BASELINE_LEVEL,CPU_LEVEL_MAX,CPU_LEVEL_MIN } from '../src/runtime/cpu-difficulty';
+import { cpuProfileLevelForDifficulty } from '../src/runtime/cpu-difficulty-tier';
 
 const runtime=()=>createMatchRuntime({heroId:'arcanist',schedule:vi.fn() as never,cancel:vi.fn(),onChange:vi.fn(),onEvent:vi.fn()});
 
-describe('M7 CPU level selection',()=>{
-  it('starts at the calibrated Lv.3 baseline',()=>{const r=runtime();expect(r.cpuLevel()).toBe(CPU_BASELINE_LEVEL);expect(r.snapshot().cpuLevel).toBe(CPU_BASELINE_LEVEL);});
-  it('keeps the selected level through match reset',()=>{const r=runtime();r.selectCpuLevel(7);r.reset();expect(r.cpuLevel()).toBe(7);expect(r.snapshot().cpuLevel).toBe(7);});
-  it('accepts levels inside the public Lv.1-100 range and clamps only outside it',()=>{const r=runtime();r.selectCpuLevel(-5);expect(r.cpuLevel()).toBe(CPU_LEVEL_MIN);r.selectCpuLevel(99);expect(r.cpuLevel()).toBe(99);r.selectCpuLevel(999);expect(r.cpuLevel()).toBe(CPU_LEVEL_MAX);});
+describe('M7.3-R CPU difficulty selection',()=>{
+  it('starts at Normal',()=>{const r=runtime();expect(r.cpuDifficulty()).toBe('normal');expect(r.snapshot().cpuDifficulty).toBe('normal');expect(r.cpuProfileLevel()).toBe(cpuProfileLevelForDifficulty('normal'));});
+  it('keeps the selected difficulty through match reset',()=>{const r=runtime();r.selectCpuDifficulty('hard');r.reset();expect(r.cpuDifficulty()).toBe('hard');expect(r.snapshot().cpuDifficulty).toBe('hard');expect(r.cpuProfileLevel()).toBe(cpuProfileLevelForDifficulty('hard'));});
+  it('maps every player-facing tier to a hidden internal profile',()=>{const r=runtime();for(const difficulty of ['easy','normal','hard','extreme','manic','chaos'] as const){r.selectCpuDifficulty(difficulty);expect(r.cpuProfileLevel()).toBe(cpuProfileLevelForDifficulty(difficulty));}});
 });

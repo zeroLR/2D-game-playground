@@ -1,1 +1,1 @@
-import { describe,expect,it } from 'vitest';import { exportMatchesCsv } from '../src/match-export';describe('M7 CPU level export column',()=>{it('exists',()=>expect(exportMatchesCsv([])).toContain('cpuLevel'));});
+import { describe,expect,it } from 'vitest';import { exportMatchesCsv } from '../src/match-export';describe('M7.3-R CPU difficulty export columns',()=>{it('exports player-facing difficulty and hidden profile',()=>{const csv=exportMatchesCsv([]);expect(csv).toContain('cpuDifficulty');expect(csv).toContain('cpuProfileLevel');});});

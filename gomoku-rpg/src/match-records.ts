@@ -1,5 +1,6 @@
 import { HeroId } from './heroes';
 import { ActionHistoryEntry } from './runtime/action-feedback';
+import { CpuDifficultyId,isCpuDifficultyId,closestDifficultyForProfileLevel } from './runtime/cpu-difficulty-tier';
 import { PlaytestMetrics } from './telemetry';
 
 export type MatchResult='victory'|'defeat'|'draw';
@@ -9,6 +10,9 @@ export interface MatchRecord{
  finishedAt:string;
  heroId:HeroId;
  cpuHeroId:HeroId;
+ cpuDifficulty?:CpuDifficultyId;
+ cpuProfileLevel?:number;
+ /** @deprecated legacy player-facing field from pre-tier exports. */
  cpuLevel?:number;
  result:MatchResult;
  turns:number;
@@ -25,12 +29,12 @@ export function loadMatchRecords():MatchRecord[]{
   if(!raw)return [];
   const value:unknown=JSON.parse(raw);
   if(!Array.isArray(value))return [];
-  return value.filter(isMatchRecord).slice(0,MAX_RECORDS);
+  return value.filter(isMatchRecord).map(normalizeMatchRecord).slice(0,MAX_RECORDS);
  }catch{return [];}
 }
 
 export function saveMatchRecord(record:MatchRecord):MatchRecord[]{
- const records=[record,...loadMatchRecords().filter(item=>item.id!==record.id)].slice(0,MAX_RECORDS);
+ const normalized=normalizeMatchRecord(record),records=[normalized,...loadMatchRecords().filter(item=>item.id!==record.id)].slice(0,MAX_RECORDS);
  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
  return records;
 }
@@ -44,11 +48,18 @@ export function deleteMatchRecords(ids:readonly string[]):MatchRecord[]{
 
 export function createMatchRecord(input:Omit<MatchRecord,'id'|'finishedAt'>):MatchRecord{
  const finishedAt=new Date().toISOString();
- return {...input,id:`${finishedAt}-${Math.random().toString(36).slice(2,8)}`,finishedAt};
+ return normalizeMatchRecord({...input,id:`${finishedAt}-${Math.random().toString(36).slice(2,8)}`,finishedAt});
+}
+
+function normalizeMatchRecord(record:MatchRecord):MatchRecord{
+ if(record.cpuDifficulty)return record;
+ const legacyLevel=record.cpuProfileLevel??record.cpuLevel;
+ if(typeof legacyLevel!=='number')return record;
+ return {...record,cpuDifficulty:closestDifficultyForProfileLevel(legacyLevel),cpuProfileLevel:legacyLevel};
 }
 
 function isMatchRecord(value:unknown):value is MatchRecord{
  if(!value||typeof value!=='object')return false;
  const record=value as Partial<MatchRecord>;
- return typeof record.id==='string'&&typeof record.startedAt==='string'&&typeof record.finishedAt==='string'&&typeof record.heroId==='string'&&typeof record.cpuHeroId==='string'&&(record.cpuLevel===undefined||typeof record.cpuLevel==='number')&&(record.result==='victory'||record.result==='defeat'||record.result==='draw')&&typeof record.turns==='number'&&Array.isArray(record.actions)&&!!record.metrics;
+ return typeof record.id==='string'&&typeof record.startedAt==='string'&&typeof record.finishedAt==='string'&&typeof record.heroId==='string'&&typeof record.cpuHeroId==='string'&&(record.cpuDifficulty===undefined||isCpuDifficultyId(record.cpuDifficulty))&&(record.cpuProfileLevel===undefined||typeof record.cpuProfileLevel==='number')&&(record.cpuLevel===undefined||typeof record.cpuLevel==='number')&&(record.result==='victory'||record.result==='defeat'||record.result==='draw')&&typeof record.turns==='number'&&Array.isArray(record.actions)&&!!record.metrics;
 }
