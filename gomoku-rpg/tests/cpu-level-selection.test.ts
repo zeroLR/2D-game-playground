@@ -7,5 +7,5 @@ const runtime=()=>createMatchRuntime({heroId:'arcanist',schedule:vi.fn() as neve
 describe('M7 CPU level selection',()=>{
   it('starts at the calibrated Lv.3 baseline',()=>{const r=runtime();expect(r.cpuLevel()).toBe(CPU_BASELINE_LEVEL);expect(r.snapshot().cpuLevel).toBe(CPU_BASELINE_LEVEL);});
   it('keeps the selected level through match reset',()=>{const r=runtime();r.selectCpuLevel(7);r.reset();expect(r.cpuLevel()).toBe(7);expect(r.snapshot().cpuLevel).toBe(7);});
-  it('clamps setup selection to the public Lv.1-20 range',()=>{const r=runtime();r.selectCpuLevel(-5);expect(r.cpuLevel()).toBe(CPU_LEVEL_MIN);r.selectCpuLevel(99);expect(r.cpuLevel()).toBe(CPU_LEVEL_MAX);});
+  it('accepts levels inside the public Lv.1-100 range and clamps only outside it',()=>{const r=runtime();r.selectCpuLevel(-5);expect(r.cpuLevel()).toBe(CPU_LEVEL_MIN);r.selectCpuLevel(99);expect(r.cpuLevel()).toBe(99);r.selectCpuLevel(999);expect(r.cpuLevel()).toBe(CPU_LEVEL_MAX);});
 });
