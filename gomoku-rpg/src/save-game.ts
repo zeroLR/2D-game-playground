@@ -34,7 +34,7 @@ export function normalizeGameSave(value:unknown):GameSaveV1{
   if(!value||typeof value!=='object')return createNewGameSave();
   const source=value as Partial<GameSaveV1>,fallback=createNewGameSave(),story=source.story??fallback.story,progression=source.progression??fallback.progression;
   const completed:StoryEncounterId[]=Array.isArray(story.completedEncounterIds)?story.completedEncounterIds.filter((id):id is StoryEncounterId=>['E1-1','E1-2','E1-3','E1-4','E1-5','E1-BOSS'].includes(String(id))):[];
-  const heroes:HeroId[]=Array.isArray(progression.unlockedHeroes)?progression.unlockedHeroes.filter((id):id is HeroId=>['vanguard','arcanist','shade'].includes(String(id))):['vanguard'];
+  const heroes:HeroId[]=Array.isArray(progression.unlockedHeroes)?progression.unlockedHeroes.filter((id):id is HeroId=>['vanguard','arcanist','shade','architect'].includes(String(id))):['vanguard'];
   if(!heroes.includes('vanguard'))heroes.unshift('vanguard');
   return {version:1,slot:AUTOSAVE_SLOT,createdAt:typeof source.createdAt==='string'?source.createdAt:fallback.createdAt,updatedAt:typeof source.updatedAt==='string'?source.updatedAt:fallback.updatedAt,story:{completedEncounterIds:[...new Set(completed)],lastEncounterId:story.lastEncounterId&&completed.includes(story.lastEncounterId)?story.lastEncounterId:null,easyBossCleared:completed.includes('E1-BOSS')||!!story.easyBossCleared},progression:{unlockedHeroes:[...new Set(heroes)],soul:Number.isFinite(progression.soul)?Math.max(0,Number(progression.soul)):0,skillFragments:Number.isFinite(progression.skillFragments)?Math.max(0,Number(progression.skillFragments)):0,roguelikeUnlocked:!!progression.roguelikeUnlocked}};
 }

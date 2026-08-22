@@ -13,6 +13,19 @@ function hasAdjacentEnemy(state:CombatState,placed:Pos,player:Player){
   }
   return false;
 }
+function adjacentFriendlyCount(state:CombatState,placed:Pos,player:Player){
+  let count=0;
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(dr===0&&dc===0)continue;
+    if(state.board[placed.row+dr]?.[placed.col+dc]===player)count++;
+  }
+  return count;
+}
+function gainOneMana(state:CombatState,player:Player):PassiveResult{
+  const before=getMana(state,player),after=Math.min(5,before+1);
+  if(after===before)return {state,triggered:false};
+  return {state:setMana(state,player,after),triggered:true,manaGained:after-before};
+}
 
 export function applyAfterPlacePassive(state:CombatState,heroId:HeroId,player:Player,placed:Pos,manaGained:number):PassiveResult {
   const passive=heroes[heroId].passive;
@@ -21,10 +34,9 @@ export function applyAfterPlacePassive(state:CombatState,heroId:HeroId,player:Pl
     return {state:addGuard(state,placed,player),triggered:true,guarded:placed};
   }
   /** Pressure: Shade gains 1 Mana when placing next to an enemy stone. */
-  if(passive==='pressure'&&hasAdjacentEnemy(state,placed,player)){
-    const before=getMana(state,player),after=Math.min(5,before+1);
-    if(after>before)return {state:setMana(state,player,after),triggered:true,manaGained:after-before};
-  }
+  if(passive==='pressure'&&hasAdjacentEnemy(state,placed,player))return gainOneMana(state,player);
+  /** Formation: Architect gains 1 Mana when a placement connects at least two friendly stones. */
+  if(passive==='formation'&&adjacentFriendlyCount(state,placed,player)>=2)return gainOneMana(state,player);
   return {state,triggered:false};
 }
 

@@ -3,7 +3,7 @@ import type { SkillId } from './skills';
 export type MatchOutcome='playing'|'victory'|'defeat'|'draw';
 export interface PlaytestMetrics {hero:HeroId;startedAt:number;endedAt:number|null;outcome:MatchOutcome;playerTurns:number;placements:number;patternMana:number;passiveMana:number;manaSpent:number;manaWasted:number;manaCappedTurns:number;passiveTriggers:number;skillUses:Record<SkillId,number>;skillOpportunities:Record<SkillId,number>;skillUseManaTotal:Record<SkillId,number>;peakMana:number;endingMana:number;}
 export type MatchSummary=ReturnType<typeof summarizeMetrics>;export const HISTORY_STORAGE_KEY='gomoku-rpg.playtest-history.v1';
-const emptySkillCounts=():Record<SkillId,number>=>({blink:0,guard:0,seal:0,corrupt:0,bulwark:0,charge:0,phase:0});
+const emptySkillCounts=():Record<SkillId,number>=>({blink:0,guard:0,seal:0,corrupt:0,bulwark:0,charge:0,phase:0,rally:0,lattice:0});
 export function createPlaytestMetrics(hero:HeroId,startingMana=0):PlaytestMetrics{return {hero,startedAt:Date.now(),endedAt:null,outcome:'playing',playerTurns:0,placements:0,patternMana:0,passiveMana:0,manaSpent:0,manaWasted:0,manaCappedTurns:0,passiveTriggers:0,skillUses:emptySkillCounts(),skillOpportunities:emptySkillCounts(),skillUseManaTotal:emptySkillCounts(),peakMana:startingMana,endingMana:startingMana};}
 export function recordMana(metrics:PlaytestMetrics,mana:number){metrics.peakMana=Math.max(metrics.peakMana,mana);metrics.endingMana=mana;}
 export function recordTurnStart(metrics:PlaytestMetrics,mana:number,maxMana=5){if(mana>=maxMana)metrics.manaCappedTurns++;}
@@ -16,5 +16,5 @@ export function summarizeMetrics(metrics:PlaytestMetrics){const durationSeconds=
 export function loadHistory():MatchSummary[]{try{const raw=localStorage.getItem(HISTORY_STORAGE_KEY);if(!raw)return [];const value=JSON.parse(raw);return Array.isArray(value)?value:[];}catch{return [];} }
 export function saveCompletedMatch(metrics:PlaytestMetrics){if(metrics.outcome==='playing')return loadHistory();const history=loadHistory();history.push(summarizeMetrics(metrics));try{localStorage.setItem(HISTORY_STORAGE_KEY,JSON.stringify(history));}catch{}return history;}
 export function clearHistory(){try{localStorage.removeItem(HISTORY_STORAGE_KEY);}catch{}}
-export function exportHistory(){const matches=loadHistory();const heroCounts:Record<HeroId,number>={vanguard:0,arcanist:0,shade:0};matches.forEach((match)=>heroCounts[match.hero]++);return {version:3,exportedAt:new Date().toISOString(),totalMatches:matches.length,heroCounts,matches};}
+export function exportHistory(){const matches=loadHistory();const heroCounts:Record<HeroId,number>={vanguard:0,arcanist:0,shade:0,architect:0};matches.forEach((match)=>heroCounts[match.hero]++);return {version:3,exportedAt:new Date().toISOString(),totalMatches:matches.length,heroCounts,matches};}
 export function historyText(){return JSON.stringify(exportHistory(),null,2);}export function summaryText(_metrics:PlaytestMetrics){return historyText();}
