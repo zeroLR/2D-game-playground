@@ -7,6 +7,8 @@ import { CpuAction, CpuDecisionCandidate, chooseCpuAction } from './cpu-action-e
 import { CPU_BASELINE_LEVEL, cpuDifficulty } from './cpu-difficulty';
 
 export type CpuOutcome='moved'|'won'|'draw'|'blocked';
+export interface CpuRuntimePolicy{skillsEnabled:boolean;}
+export const FULL_CPU_RUNTIME_POLICY:CpuRuntimePolicy={skillsEnabled:true};
 export interface CpuResolution{outcome:CpuOutcome;state:CombatState;at:Pos|null;action:CpuAction|null;passiveTriggered:boolean;cpuLevel:number;decisionScore:number|null;decisionBestScore:number|null;decisionRegret:number|null;decisionReason:string|null;topCandidates:CpuDecisionCandidate[];manaBefore:number;}
 export function cpuLegalCells(state:CombatState):Pos[]{const forced=forcedPlacementFor(state,2);return state.board.flatMap((row,r)=>row.map((cell,c)=>({cell,pos:{row:r,col:c}}))).filter(({cell,pos})=>cell===0&&!isSealed(state,pos)&&(!forced||samePos(forced,pos))).map(({pos})=>pos);}
 export function cpuPlaceCandidates(state:CombatState):CpuAction[]{return cpuLegalCells(state).map((at)=>({kind:'place',at}));}
@@ -15,11 +17,11 @@ function cpuTargetSkillCandidates(state:CombatState,skillId:SkillId):CpuAction[]
 export function cpuChargeCandidates(state:CombatState):CpuAction[]{return cpuSourceTargetSkillCandidates(state,'charge');}
 export function cpuPhaseCandidates(state:CombatState):CpuAction[]{return cpuTargetSkillCandidates(state,'phase');}
 export function cpuCorruptCandidates(state:CombatState):CpuAction[]{return cpuTargetSkillCandidates(state,'corrupt');}
-export function cpuActionCandidates(state:CombatState,heroId:HeroId):CpuAction[]{return [...cpuPlaceCandidates(state),...(heroId==='vanguard'?cpuChargeCandidates(state):[]),...(heroId==='arcanist'?cpuPhaseCandidates(state):[]),...(heroId==='shade'?cpuCorruptCandidates(state):[])];}
+export function cpuActionCandidates(state:CombatState,heroId:HeroId,skillsEnabled=true):CpuAction[]{return [...cpuPlaceCandidates(state),...(skillsEnabled&&heroId==='vanguard'?cpuChargeCandidates(state):[]),...(skillsEnabled&&heroId==='arcanist'?cpuPhaseCandidates(state):[]),...(skillsEnabled&&heroId==='shade'?cpuCorruptCandidates(state):[])];}
 
-/** CPU actions use the same hero-aware resolution as the player so passives, Mana refunds and win checks stay consistent. */
-export function resolveCpuTurn(state:CombatState,heroId:HeroId='arcanist',cpuLevel:number=CPU_BASELINE_LEVEL):CpuResolution{
- const profile=cpuDifficulty(cpuLevel),manaBefore=getMana(state,2),selected=chooseCpuAction(state,cpuActionCandidates(state,heroId),profile);const meta={cpuLevel:profile.level,decisionScore:selected?.score??null,decisionBestScore:selected?.bestScore??null,decisionRegret:selected?.regret??null,decisionReason:selected?.decisionReason??null,topCandidates:selected?.topCandidates??[],manaBefore};if(!selected)return {outcome:'draw',state,at:null,action:null,passiveTriggered:false,...meta};const action=selected.action;
+/** CPU actions use the same hero-aware resolution as the player so passives, Mana refunds and win checks stay consistent. Teaching policy can remove RPG actions without changing Free Battle defaults. */
+export function resolveCpuTurn(state:CombatState,heroId:HeroId='arcanist',cpuLevel:number=CPU_BASELINE_LEVEL,policy:CpuRuntimePolicy=FULL_CPU_RUNTIME_POLICY):CpuResolution{
+ const profile=cpuDifficulty(cpuLevel),manaBefore=getMana(state,2),selected=chooseCpuAction(state,cpuActionCandidates(state,heroId,policy.skillsEnabled),profile);const meta={cpuLevel:profile.level,decisionScore:selected?.score??null,decisionBestScore:selected?.bestScore??null,decisionRegret:selected?.regret??null,decisionReason:selected?.decisionReason??null,topCandidates:selected?.topCandidates??[],manaBefore};if(!selected)return {outcome:'draw',state,at:null,action:null,passiveTriggered:false,...meta};const action=selected.action;
  if(action.kind==='place'){const result=resolvePlaceAction(state,heroId,2,action.at);if(!result.ok)return {outcome:'blocked',state,at:null,action,passiveTriggered:false,...meta};return {outcome:result.won?'won':'moved',state:{...result.state,activePlayer:1},at:action.at,action,passiveTriggered:result.passiveTriggered,...meta};}
  const result=resolveSkillAction(state,heroId,2,action.skillId,action.target,action.source);if(!result.ok)return {outcome:'blocked',state,at:null,action,passiveTriggered:false,...meta};return {outcome:result.won?'won':'moved',state:{...result.state,activePlayer:1},at:action.target,action,passiveTriggered:result.passiveTriggered,...meta};
 }
