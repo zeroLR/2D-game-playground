@@ -24,8 +24,10 @@ function cpuSkillCandidates(state:CombatState,skillId:SkillId):CpuAction[]{
 export function cpuChargeCandidates(state:CombatState):CpuAction[]{return cpuSkillCandidates(state,'charge');}
 export function cpuPhaseCandidates(state:CombatState):CpuAction[]{return cpuSkillCandidates(state,'phase');}
 export function cpuCorruptCandidates(state:CombatState):CpuAction[]{return cpuSkillCandidates(state,'corrupt');}
-export function cpuActionCandidates(state:CombatState,heroId:HeroId,loadout:Loadout=createLoadout(heroId),skillsEnabled=true):CpuAction[]{
- return [...cpuPlaceCandidates(state),...(skillsEnabled?loadout.skillIds.flatMap((skillId)=>cpuSkillCandidates(state,skillId)):[])];
+export function cpuActionCandidates(state:CombatState,heroId:HeroId,loadoutOrSkillsEnabled:Loadout|boolean=createLoadout(heroId),skillsEnabled=true):CpuAction[]{
+ const loadout=typeof loadoutOrSkillsEnabled==='boolean'?createLoadout(heroId):loadoutOrSkillsEnabled;
+ const enabled=typeof loadoutOrSkillsEnabled==='boolean'?loadoutOrSkillsEnabled:skillsEnabled;
+ return [...cpuPlaceCandidates(state),...(enabled?loadout.skillIds.flatMap((skillId)=>cpuSkillCandidates(state,skillId)):[])];
 }
 
 /** CPU actions use the same hero-aware resolution as the player so passives, Mana refunds and win checks stay consistent. The candidate set is derived from the CPU's actual equipped loadout. */
