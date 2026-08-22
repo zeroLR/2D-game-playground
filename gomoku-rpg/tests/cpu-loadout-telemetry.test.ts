@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { createCombatState } from '../src/combat';
+import { createCombatState,setMana } from '../src/combat';
 import { createBoard } from '../src/game';
 import { createLoadout } from '../src/heroes';
 import { createMatchRecord } from '../src/match-records';
@@ -11,7 +11,7 @@ import { createPlaytestMetrics } from '../src/telemetry';
 describe('Slice 3 CPU loadout',()=>{
  it('generates skill candidates from the CPU equipped pair instead of hero hard-coding',()=>{
   const board=createBoard();board[4][4]=2;board[4][5]=2;
-  const state=createCombatState(board,0,3);
+  const state=setMana(createCombatState(board),2,3);
   const loadout=createLoadout('vanguard',['guard','bulwark']);
   const skillIds=cpuActionCandidates(state,'vanguard',loadout,true).filter(a=>a.kind==='skill').map(a=>a.kind==='skill'?a.skillId:null);
   expect(skillIds).toContain('guard');
@@ -21,14 +21,14 @@ describe('Slice 3 CPU loadout',()=>{
  });
  it('keeps the CPU default loadout when no explicit kit is supplied',()=>{
   const board=createBoard();board[4][4]=2;
-  const state=createCombatState(board,0,3);
+  const state=setMana(createCombatState(board),2,3);
   const skillIds=cpuActionCandidates(state,'vanguard').filter(a=>a.kind==='skill').map(a=>a.kind==='skill'?a.skillId:null);
   expect(skillIds).toContain('blink');
   expect(skillIds).toContain('charge');
  });
  it('validates CPU loadout changes through match runtime',()=>{
   const events:MatchEvent[]=[];
-  const runtime=createMatchRuntime({heroId:'arcanist',cpuHeroId:'vanguard',schedule:(cb)=>0 as unknown as ReturnType<typeof setTimeout>,cancel:()=>{},onChange:()=>{},onEvent:e=>events.push(e)});
+  const runtime=createMatchRuntime({heroId:'arcanist',cpuHeroId:'vanguard',schedule:()=>0 as unknown as ReturnType<typeof setTimeout>,cancel:()=>{},onChange:()=>{},onEvent:e=>events.push(e)});
   expect(runtime.setCpuLoadout(['guard','bulwark'])).toBe(true);
   expect(runtime.snapshot().cpuLoadout.skillIds).toEqual(['guard','bulwark']);
   expect(runtime.setCpuLoadout(['guard','corrupt'])).toBe(false);
