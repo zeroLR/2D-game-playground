@@ -1,8 +1,8 @@
 import { describe,expect,it } from 'vitest';
 import { createCombatState,executePlace,getMana,setMana } from '../src/combat';
 import { createBoard } from '../src/game';
-import { COMMON_SKILL,createLoadout,heroes,isHeroSkillEquipped,isSkillEquipped } from '../src/heroes';
-import { chargeSkill,commonSkillIds,corruptSkill,sealSkill } from '../src/skills';
+import { COMMON_SKILL,createLoadout,heroes,isHeroSkillEquipped,isLegalLoadout,isSkillAccessible,isSkillEquipped } from '../src/heroes';
+import { chargeSkill,commonSkillIds,corruptSkill,sealSkill,skills } from '../src/skills';
 
 describe('M2 combat resources',()=>{
  it('tracks Mana independently for both actors',()=>{let state=createCombatState(createBoard(),3);state=setMana(state,2,4);expect(getMana(state,1)).toBe(3);expect(getMana(state,2)).toBe(4);});
@@ -10,12 +10,67 @@ describe('M2 combat resources',()=>{
  it('skills spend the acting player resource',()=>{let state=createCombatState(createBoard(),5,2);state=setMana(state,2,3);const next=sealSkill.execute({state,player:2},{row:4,col:4});expect(getMana(next,1)).toBe(5);expect(getMana(next,2)).toBe(1);});
 });
 
-describe('M2.4 skill architecture',()=>{
- it('declares Blink as the common skill',()=>{expect(COMMON_SKILL).toBe('blink');expect(commonSkillIds).toEqual(['blink']);});
- it('separates common and hero-owned slots for Arcanist',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['phase']);expect(loadout.skills).toEqual(['blink','phase']);});
- it('equips Shade with common Blink and Corrupt',()=>{expect(createLoadout('shade').skills).toEqual(['blink','corrupt']);});
- it('equips Vanguard with common Blink and hero-owned Charge',()=>{const loadout=createLoadout('vanguard');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['charge']);expect(loadout.skills).toEqual(['blink','charge']);expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isHeroSkillEquipped(loadout,'charge')).toBe(true);expect(isHeroSkillEquipped(loadout,'bulwark')).toBe(false);});
- it('keeps hero definitions focused on identity-owned skills',()=>{expect(heroes.vanguard.heroSkills).toEqual(['charge']);expect(heroes.arcanist.heroSkills).toEqual(['phase']);expect(heroes.shade.heroSkills).toEqual(['corrupt']);});
+describe('Slice 1 hero domain contract',()=>{
+ it('makes signaturePassive authoritative while preserving compatibility aliases',()=>{
+   expect(heroes.vanguard.signaturePassive).toBe('fortified');
+   expect(heroes.arcanist.signaturePassive).toBe('flow');
+   expect(heroes.shade.signaturePassive).toBe('pressure');
+   expect(heroes.vanguard.passive).toBe(heroes.vanguard.signaturePassive);
+   expect(heroes.arcanist.innatePassive).toBe(heroes.arcanist.signaturePassive);
+ });
+ it('exposes curated pools without changing current default match loadouts',()=>{
+   expect(heroes.vanguard.skillPool).toEqual(['blink','guard','bulwark','charge']);
+   expect(heroes.arcanist.skillPool).toEqual(['blink','seal','phase']);
+   expect(heroes.shade.skillPool).toEqual(['blink','corrupt']);
+   expect(createLoadout('vanguard').skillIds).toEqual(['blink','charge']);
+   expect(createLoadout('arcanist').skillIds).toEqual(['blink','phase']);
+   expect(createLoadout('shade').skillIds).toEqual(['blink','corrupt']);
+ });
+ it('validates two unique skills against the selected hero pool',()=>{
+   expect(isLegalLoadout('vanguard',['charge','guard'])).toBe(true);
+   expect(isLegalLoadout('vanguard',['blink','bulwark'])).toBe(true);
+   expect(isLegalLoadout('vanguard',['charge','charge'])).toBe(false);
+   expect(isLegalLoadout('vanguard',['charge'])).toBe(false);
+   expect(isLegalLoadout('vanguard',['charge','corrupt'])).toBe(false);
+   expect(isSkillAccessible('arcanist','seal')).toBe(true);
+   expect(isSkillAccessible('shade','seal')).toBe(false);
+ });
+ it('adds playstyle and interaction metadata without runtime modifiers',()=>{
+   expect(heroes.vanguard.playstyleTags).toEqual(['defense','tempo']);
+   expect(heroes.arcanist.synergyTags).toContain('zone');
+   expect(heroes.shade.counterTags).toContain('protection');
+ });
+});
+
+describe('Slice 1 skill domain contract',()=>{
+ it('models Blink as common availability instead of relying on ownership alone',()=>{
+   expect(COMMON_SKILL).toBe('blink');
+   expect(commonSkillIds).toEqual(['blink']);
+   expect(skills.blink.availability).toEqual({kind:'common'});
+ });
+ it('declares hero-pool availability for specialized skills',()=>{
+   expect(skills.charge.availability).toEqual({kind:'hero-pool',heroIds:['vanguard']});
+   expect(skills.guard.availability).toEqual({kind:'hero-pool',heroIds:['vanguard']});
+   expect(skills.seal.availability).toEqual({kind:'hero-pool',heroIds:['arcanist']});
+   expect(skills.phase.availability).toEqual({kind:'hero-pool',heroIds:['arcanist']});
+   expect(skills.corrupt.availability).toEqual({kind:'hero-pool',heroIds:['shade']});
+ });
+ it('requires design metadata for every registered skill',()=>{
+   for(const skill of Object.values(skills)){
+     expect(skill.category).toBeTruthy();
+     expect(skill.effectTags.length).toBeGreaterThan(0);
+     expect(skill.riskProfile).toMatch(/^(low|medium|high)$/);
+     expect(Array.isArray(skill.synergyTags)).toBe(true);
+     expect(Array.isArray(skill.counterTags)).toBe(true);
+   }
+ });
+});
+
+describe('M2.4 compatibility architecture',()=>{
+ it('keeps legacy default-slot aliases until Slice 2 migrates consumers',()=>{const loadout=createLoadout('arcanist');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['phase']);expect(loadout.skills).toEqual(['blink','phase']);});
+ it('keeps Shade defaulted to common Blink and Corrupt',()=>{expect(createLoadout('shade').skills).toEqual(['blink','corrupt']);});
+ it('keeps Vanguard defaulted to common Blink and Charge',()=>{const loadout=createLoadout('vanguard');expect(loadout.commonSkill).toBe('blink');expect(loadout.heroSkills).toEqual(['charge']);expect(loadout.skills).toEqual(['blink','charge']);expect(isSkillEquipped(loadout,'blink')).toBe(true);expect(isHeroSkillEquipped(loadout,'charge')).toBe(true);expect(isHeroSkillEquipped(loadout,'bulwark')).toBe(false);});
+ it('keeps identity-owned aliases stable for existing UI/runtime consumers',()=>{expect(heroes.vanguard.heroSkills).toEqual(['charge']);expect(heroes.arcanist.heroSkills).toEqual(['phase']);expect(heroes.shade.heroSkills).toEqual(['corrupt']);});
 });
 
 describe('M2.4 Shade Corrupt',()=>{
