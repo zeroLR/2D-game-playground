@@ -11,8 +11,8 @@ export interface MatchRecord{
  finishedAt:string;
  heroId:HeroId;
  cpuHeroId:HeroId;
- playerSkillIds:readonly [SkillId,SkillId];
- cpuSkillIds:readonly [SkillId,SkillId];
+ playerSkillIds?:readonly [SkillId,SkillId];
+ cpuSkillIds?:readonly [SkillId,SkillId];
  cpuDifficulty?:CpuDifficultyId;
  cpuProfileLevel?:number;
  /** @deprecated legacy player-facing field from pre-tier exports. */
@@ -49,9 +49,9 @@ export function deleteMatchRecords(ids:readonly string[]):MatchRecord[]{
  return records;
 }
 
-export function createMatchRecord(input:Omit<MatchRecord,'id'|'finishedAt'|'playerSkillIds'|'cpuSkillIds'> & Partial<Pick<MatchRecord,'playerSkillIds'|'cpuSkillIds'>>):MatchRecord{
+export function createMatchRecord(input:Omit<MatchRecord,'id'|'finishedAt'>):MatchRecord{
  const finishedAt=new Date().toISOString();
- return normalizeMatchRecord({...input,id:`${finishedAt}-${Math.random().toString(36).slice(2,8)}`,finishedAt} as MatchRecord);
+ return normalizeMatchRecord({...input,id:`${finishedAt}-${Math.random().toString(36).slice(2,8)}`,finishedAt});
 }
 
 function actionLoadout(actions:readonly ActionHistoryEntry[],actor:'player'|'cpu'):[SkillId,SkillId]|null{
@@ -61,7 +61,7 @@ function actionLoadout(actions:readonly ActionHistoryEntry[],actor:'player'|'cpu
 function normalizeMatchRecord(record:MatchRecord):MatchRecord{
  const playerSkillIds=record.playerSkillIds??actionLoadout(record.actions,'player')??createLoadout(record.heroId).skillIds;
  const cpuSkillIds=record.cpuSkillIds??actionLoadout(record.actions,'cpu')??createLoadout(record.cpuHeroId).skillIds;
- const normalized={...record,playerSkillIds:[...playerSkillIds] as [SkillId,SkillId],cpuSkillIds:[...cpuSkillIds] as [SkillId,SkillId]};
+ const normalized:MatchRecord={...record,playerSkillIds:[...playerSkillIds] as [SkillId,SkillId],cpuSkillIds:[...cpuSkillIds] as [SkillId,SkillId]};
  if(normalized.cpuDifficulty)return normalized;
  const legacyLevel=normalized.cpuProfileLevel??normalized.cpuLevel;
  if(typeof legacyLevel!=='number')return normalized;
