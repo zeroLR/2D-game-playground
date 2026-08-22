@@ -34,10 +34,7 @@ export type HeroDefinition={
   activeSkills:readonly SkillId[];
 };
 
-/**
- * Canonical v1 loadout shape is heroId + exactly two active skills.
- * Legacy aliases remain during staged runtime/UI migration.
- */
+/** Canonical v1 loadout shape is heroId + exactly two active skills. */
 export type HeroLoadout={
   heroId:HeroId;
   skillIds:readonly [SkillId,SkillId];
@@ -52,20 +49,25 @@ export type HeroLoadout={
 };
 export type Loadout=HeroLoadout;
 
-/** @deprecated Blink is retained as the current default common skill, not a permanent mandatory slot. */
+/** @deprecated Blink is retained as a default skill, not a mandatory slot. */
 export const COMMON_SKILL:SkillId='blink';
-const loadout=(heroId:HeroId,passive:PassiveId,heroSkill:SkillId):HeroLoadout=>({
-  heroId,
-  skillIds:[COMMON_SKILL,heroSkill],
-  passive,
-  commonSkill:COMMON_SKILL,
-  heroSkills:[heroSkill],
-  skills:[COMMON_SKILL,heroSkill],
-});
 
-const vanguardLoadout=loadout('vanguard','fortified','charge');
-const arcanistLoadout=loadout('arcanist','flow','phase');
-const shadeLoadout=loadout('shade','pressure','corrupt');
+function compatibilityFields(heroId:HeroId,skillIds:readonly [SkillId,SkillId]){
+  const passive=heroes[heroId]?.signaturePassive??({vanguard:'fortified',arcanist:'flow',shade:'pressure'} as const)[heroId];
+  const commonSkill=skillIds.includes(COMMON_SKILL)?COMMON_SKILL:null;
+  const heroSkills=skillIds.filter((skillId)=>skillId!==COMMON_SKILL);
+  return {passive,commonSkill,heroSkills,skills:[...skillIds]};
+}
+
+function initialLoadout(heroId:HeroId,passive:PassiveId,skillIds:readonly [SkillId,SkillId]):HeroLoadout{
+  const commonSkill=skillIds.includes(COMMON_SKILL)?COMMON_SKILL:null;
+  const heroSkills=skillIds.filter((skillId)=>skillId!==COMMON_SKILL);
+  return {heroId,skillIds:[...skillIds] as [SkillId,SkillId],passive,commonSkill,heroSkills,skills:[...skillIds]};
+}
+
+const vanguardLoadout=initialLoadout('vanguard','fortified',['blink','charge']);
+const arcanistLoadout=initialLoadout('arcanist','flow',['blink','phase']);
+const shadeLoadout=initialLoadout('shade','pressure',['blink','corrupt']);
 
 export const heroes:Record<HeroId,HeroDefinition>={
   vanguard:{
@@ -94,14 +96,19 @@ export function isSkillAccessible(heroId:HeroId,skillId:SkillId){
   return heroes[heroId].skillPool.includes(skillId);
 }
 
-/** Domain-level legality only; runtime wiring of configurable loadouts is Slice 2. */
 export function isLegalLoadout(heroId:HeroId,skillIds:readonly SkillId[]){
   return skillIds.length===2&&new Set(skillIds).size===2&&skillIds.every((skillId)=>isSkillAccessible(heroId,skillId));
 }
 
-export function createLoadout(heroId:HeroId):HeroLoadout{
-  const source=heroes[heroId].defaultLoadout;
-  return {...source,skillIds:[...source.skillIds] as [SkillId,SkillId],heroSkills:[...source.heroSkills],skills:[...source.skills]};
+export function createLoadout(heroId:HeroId,skillIds:readonly SkillId[]=heroes[heroId].defaultLoadout.skillIds):HeroLoadout{
+  if(!isLegalLoadout(heroId,skillIds))throw new Error(`[Gomoku RPG] Illegal loadout for ${heroId}: ${skillIds.join(',')}`);
+  const canonical=[skillIds[0],skillIds[1]] as [SkillId,SkillId];
+  return {heroId,skillIds:canonical,...compatibilityFields(heroId,canonical)};
 }
+
+export function tryCreateLoadout(heroId:HeroId,skillIds:readonly SkillId[]):HeroLoadout|null{
+  return isLegalLoadout(heroId,skillIds)?createLoadout(heroId,skillIds):null;
+}
+
 export function isSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.skillIds.includes(skillId);}
 export function isHeroSkillEquipped(loadout:Loadout,skillId:SkillId){return loadout.heroSkills.includes(skillId);}
