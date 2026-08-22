@@ -13,7 +13,7 @@ export interface SkillBarItem{skillId:SkillId;cost:number;enabled:boolean;select
 
 export function describeSkillBar(state:CombatState,player:Player,loadout:Loadout,turn:TurnState,targeting:SkillTargetingState):SkillBarItem[]{
   const mana=getMana(state,player),active=targetingSkill(targeting);
-  return loadout.skills.map((skillId)=>{
+  return loadout.skillIds.map((skillId)=>{
     const skill=skills[skillId];
     return {skillId,cost:skill.cost,enabled:isPlayerInput(turn)&&mana>=skill.cost,selected:active===skillId,descriptionKey:skill.descriptionKey};
   });
