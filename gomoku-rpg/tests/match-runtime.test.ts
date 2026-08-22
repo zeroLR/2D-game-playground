@@ -92,7 +92,7 @@ describe('Slice 2 configurable runtime loadout',()=>{
   const h=harness('vanguard',()=>createCombatState(boardWith([[4,4,1],[4,5,1]]),5));
   expect(h.runtime.setLoadout(['guard','bulwark'])).toBe(true);
   expect(h.runtime.snapshot().loadout.skillIds).toEqual(['guard','bulwark']);
-  expect(h.runtime.snapshot().skillBar.map((item)=>item.id)).toEqual(['guard','bulwark']);
+  expect(h.runtime.snapshot().skillBar.map((item)=>item.skillId)).toEqual(['guard','bulwark']);
  });
  it('rejects an illegal loadout and preserves the current configuration',()=>{
   const h=harness('vanguard');
