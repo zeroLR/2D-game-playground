@@ -87,6 +87,29 @@ describe('R7 match runtime skills',()=>{
  });
 });
 
+describe('Slice 2 configurable runtime loadout',()=>{
+ it('accepts a legal two-skill loadout without Blink',()=>{
+  const h=harness('vanguard',()=>createCombatState(boardWith([[4,4,1],[4,5,1]]),5));
+  expect(h.runtime.setLoadout(['guard','bulwark'])).toBe(true);
+  expect(h.runtime.snapshot().loadout.skillIds).toEqual(['guard','bulwark']);
+  expect(h.runtime.snapshot().skillBar.map((item)=>item.id)).toEqual(['guard','bulwark']);
+ });
+ it('rejects an illegal loadout and preserves the current configuration',()=>{
+  const h=harness('vanguard');
+  const before=[...h.runtime.snapshot().loadout.skillIds];
+  expect(h.runtime.setLoadout(['charge','corrupt'])).toBe(false);
+  expect(h.runtime.snapshot().loadout.skillIds).toEqual(before);
+ });
+ it('does not allow selecting a skill that is no longer equipped',()=>{
+  const h=harness('vanguard',()=>createCombatState(boardWith([[4,4,1],[4,5,1]]),5));
+  h.runtime.setLoadout(['guard','bulwark']);
+  h.runtime.selectSkill('blink');
+  expect(h.runtime.snapshot().status).toBe('yourTurn');
+  h.runtime.selectSkill('guard');
+  expect(h.runtime.snapshot().status).toBe('guard');
+ });
+});
+
 describe('R7 match runtime lifecycle',()=>{
  it('reset clears the board, the metrics and the pending CPU turn',()=>{
   const h=harness();
