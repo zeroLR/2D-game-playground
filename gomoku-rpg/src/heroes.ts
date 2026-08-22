@@ -1,10 +1,10 @@
 import type { EffectTag, SkillId } from './skills';
 
-export type HeroId='vanguard'|'arcanist'|'shade';
-export type PassiveId='fortified'|'flow'|'pressure';
+export type HeroId='vanguard'|'arcanist'|'shade'|'architect';
+export type PassiveId='fortified'|'flow'|'pressure'|'formation';
 export type HeroRole='defense'|'control'|'disruption';
 export type HeroTier=1|2|3;
-export type PlaystyleTag='defense'|'tempo'|'control'|'zone'|'disruption'|'pressure';
+export type PlaystyleTag='defense'|'tempo'|'control'|'zone'|'disruption'|'pressure'|'setup';
 
 /**
  * Static hero identity/catalog data. The signature passive is authoritative;
@@ -52,8 +52,9 @@ export type Loadout=HeroLoadout;
 /** @deprecated Blink is retained as a default skill, not a mandatory slot. */
 export const COMMON_SKILL:SkillId='blink';
 
+const passiveFallback:Record<HeroId,PassiveId>={vanguard:'fortified',arcanist:'flow',shade:'pressure',architect:'formation'};
 function compatibilityFields(heroId:HeroId,skillIds:readonly [SkillId,SkillId]){
-  const passive=heroes[heroId]?.signaturePassive??({vanguard:'fortified',arcanist:'flow',shade:'pressure'} as const)[heroId];
+  const passive=heroes[heroId]?.signaturePassive??passiveFallback[heroId];
   const commonSkill=skillIds.includes(COMMON_SKILL)?COMMON_SKILL:null;
   const heroSkills=skillIds.filter((skillId)=>skillId!==COMMON_SKILL);
   return {passive,commonSkill,heroSkills,skills:[...skillIds]};
@@ -68,6 +69,7 @@ function initialLoadout(heroId:HeroId,passive:PassiveId,skillIds:readonly [Skill
 const vanguardLoadout=initialLoadout('vanguard','fortified',['blink','charge']);
 const arcanistLoadout=initialLoadout('arcanist','flow',['blink','phase']);
 const shadeLoadout=initialLoadout('shade','pressure',['blink','corrupt']);
+const architectLoadout=initialLoadout('architect','formation',['rally','lattice']);
 
 export const heroes:Record<HeroId,HeroDefinition>={
   vanguard:{
@@ -87,6 +89,12 @@ export const heroes:Record<HeroId,HeroDefinition>={
     signaturePassive:'pressure',skillPool:['blink','corrupt'],defaultLoadout:shadeLoadout,
     playstyleTags:['disruption','pressure'],synergyTags:['remove','resource'],counterTags:['protection'],
     innatePassive:'pressure',passive:'pressure',heroSkills:['corrupt'],activeSkills:['blink','corrupt'],
+  },
+  architect:{
+    id:'architect',nameKey:'architect',role:'control',baseClass:'architect',tier:1,parentHeroId:null,variants:[],
+    signaturePassive:'formation',skillPool:['blink','rally','lattice'],defaultLoadout:architectLoadout,
+    playstyleTags:['setup','control'],synergyTags:['pattern','setup','zone'],counterTags:['disruption','reposition'],
+    innatePassive:'formation',passive:'formation',heroSkills:['rally','lattice'],activeSkills:['rally','lattice'],
   },
 };
 
