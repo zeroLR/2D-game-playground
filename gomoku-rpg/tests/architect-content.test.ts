@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { createCombatState,getMana,isSealed } from '../src/combat';
+import { createCombatState,getMana,isSealed,setMana } from '../src/combat';
 import { createBoard } from '../src/game';
 import { createLoadout,heroes } from '../src/heroes';
 import { latticeSkill,rallySkill } from '../src/skills';
@@ -54,7 +54,7 @@ describe('Slice 4 Architect active skills',()=>{
 
  it('exposes the equipped Architect skills to CPU candidate generation and scoring',()=>{
   const board=createBoard();board[4][4]=2;board[4][3]=2;board[3][4]=2;board[0][0]=2;
-  const state=createCombatState(board,0,3),loadout=createLoadout('architect',['rally','lattice']);
+  const state=setMana(createCombatState(board),2,3),loadout=createLoadout('architect',['rally','lattice']);
   const candidates=cpuActionCandidates(state,'architect',loadout,true);
   expect(candidates.some(a=>a.kind==='skill'&&a.skillId==='rally')).toBe(true);
   expect(candidates.some(a=>a.kind==='skill'&&a.skillId==='lattice')).toBe(true);
