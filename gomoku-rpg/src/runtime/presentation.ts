@@ -14,7 +14,9 @@ export function describeSkillBar(state:CombatState,player:Player,heroId:HeroId,l
   return loadout.skillIds.map((skillId)=>{
     const skill=skills[skillId],activation=resolveAbilityActivation(heroId,skillId),prepared=prepareHeroAbilityState(state,heroId,player,skillId),readiness=canActivate(prepared,player,activation,skillId);
     const resourceId=activation.kind==='resource'?activation.resourceId:null;
-    return {skillId,cost:legacyManaCost(activation),enabled:isPlayerInput(turn)&&readiness.ready,selected:active===skillId,descriptionKey:skill.descriptionKey,activation,cooldownRemaining:activation.kind==='cooldown'?getAbilityCooldown(prepared,player,skillId):0,resourceCurrent:resourceId?getAbilityResource(prepared,player,resourceId):0,resourceMax:economy.kind==='resource'&&resourceId===economy.resourceId?economy.max:0,conditionReady:activation.kind==='condition'&&readiness.ready};
+    const economyResourceId=economy.kind==='resource'||economy.kind==='momentum'?economy.resourceId:null;
+    const economyMax=economy.kind==='resource'||economy.kind==='momentum'?economy.max:0;
+    return {skillId,cost:legacyManaCost(activation),enabled:isPlayerInput(turn)&&readiness.ready,selected:active===skillId,descriptionKey:skill.descriptionKey,activation,cooldownRemaining:activation.kind==='cooldown'?getAbilityCooldown(prepared,player,skillId):0,resourceCurrent:resourceId?getAbilityResource(prepared,player,resourceId):0,resourceMax:resourceId===economyResourceId?economyMax:0,conditionReady:activation.kind==='condition'&&readiness.ready};
   });
 }
 
