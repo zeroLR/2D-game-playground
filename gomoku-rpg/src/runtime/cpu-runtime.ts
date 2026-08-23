@@ -15,7 +15,7 @@ export function cpuLegalCells(state:CombatState):Pos[]{const forced=forcedPlacem
 export function cpuPlaceCandidates(state:CombatState):CpuAction[]{return cpuLegalCells(state).map((at)=>({kind:'place',at}));}
 function cpuSkillCandidates(state:CombatState,skillId:SkillId):CpuAction[]{
  const skill=skills[skillId];
- if(!canActivate(state,2,skill.activation).ready)return [];
+ if(!canActivate(state,2,skill.activation,skillId).ready)return [];
  const context={state,player:2 as const};
  if(skill.legalSources){
   return skill.legalSources(context).flatMap((source)=>skill.legalTargets(context,source).map((target)=>({kind:'skill' as const,skillId,source,target})));
