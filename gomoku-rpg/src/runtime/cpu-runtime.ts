@@ -1,3 +1,4 @@
+import { canActivate } from '../ability-economy';
 import { Pos } from '../game';
 import { CombatState, forcedPlacementFor, getMana, isSealed, samePos } from '../combat';
 import { HeroId, Loadout, createLoadout } from '../heroes';
@@ -14,7 +15,7 @@ export function cpuLegalCells(state:CombatState):Pos[]{const forced=forcedPlacem
 export function cpuPlaceCandidates(state:CombatState):CpuAction[]{return cpuLegalCells(state).map((at)=>({kind:'place',at}));}
 function cpuSkillCandidates(state:CombatState,skillId:SkillId):CpuAction[]{
  const skill=skills[skillId];
- if(getMana(state,2)<skill.cost)return [];
+ if(!canActivate(state,2,skill.activation).ready)return [];
  const context={state,player:2 as const};
  if(skill.legalSources){
   return skill.legalSources(context).flatMap((source)=>skill.legalTargets(context,source).map((target)=>({kind:'skill' as const,skillId,source,target})));
@@ -30,7 +31,7 @@ export function cpuActionCandidates(state:CombatState,heroId:HeroId,loadoutOrSki
  return [...cpuPlaceCandidates(state),...(enabled?loadout.skillIds.flatMap((skillId)=>cpuSkillCandidates(state,skillId)):[])];
 }
 
-/** CPU actions use the same hero-aware resolution as the player so passives, Mana refunds and win checks stay consistent. The candidate set is derived from the CPU's actual equipped loadout. */
+/** CPU actions use the same hero-aware resolution as the player. */
 export function resolveCpuTurn(state:CombatState,heroId:HeroId='arcanist',cpuLevel:number=CPU_BASELINE_LEVEL,policy:CpuRuntimePolicy=FULL_CPU_RUNTIME_POLICY,loadout:Loadout=createLoadout(heroId)):CpuResolution{
  const profile=cpuDifficulty(cpuLevel),manaBefore=getMana(state,2),selected=chooseCpuAction(state,cpuActionCandidates(state,heroId,loadout,policy.skillsEnabled),profile);const meta={cpuLevel:profile.level,decisionScore:selected?.score??null,decisionBestScore:selected?.bestScore??null,decisionRegret:selected?.regret??null,decisionReason:selected?.decisionReason??null,topCandidates:selected?.topCandidates??[],manaBefore};if(!selected)return {outcome:'draw',state,at:null,action:null,passiveTriggered:false,...meta};const action=selected.action;
  if(action.kind==='place'){const result=resolvePlaceAction(state,heroId,2,action.at);if(!result.ok)return {outcome:'blocked',state,at:null,action,passiveTriggered:false,...meta};return {outcome:result.won?'won':'moved',state:{...result.state,activePlayer:1},at:action.at,action,passiveTriggered:result.passiveTriggered,...meta};}
