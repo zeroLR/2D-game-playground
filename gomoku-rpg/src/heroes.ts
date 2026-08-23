@@ -1,11 +1,11 @@
 import type { AbilityActivationRule, AbilityEconomyDefinition } from './ability-economy';
 import type { EffectTag, SkillId } from './skills';
 
-export type HeroId='vanguard'|'arcanist'|'shade'|'architect';
-export type PassiveId='fortified'|'flow'|'pressure'|'formation';
-export type HeroRole='defense'|'control'|'disruption';
+export type HeroId='vanguard'|'arcanist'|'shade'|'architect'|'swordmaster';
+export type PassiveId='fortified'|'flow'|'pressure'|'formation'|'momentum';
+export type HeroRole='defense'|'control'|'disruption'|'offense';
 export type HeroTier=1|2|3;
-export type PlaystyleTag='defense'|'tempo'|'control'|'zone'|'disruption'|'pressure'|'setup';
+export type PlaystyleTag='defense'|'tempo'|'control'|'zone'|'disruption'|'pressure'|'setup'|'momentum'|'offense';
 
 export type HeroDefinition={
   id:HeroId;nameKey:HeroId;role:HeroRole;baseClass:HeroId;tier:HeroTier;parentHeroId:HeroId|null;variants:readonly HeroId[];
@@ -22,6 +22,7 @@ const LEGACY_MANA_ECONOMY:AbilityEconomyDefinition={kind:'resource',resourceId:'
 const VANGUARD_COOLDOWN_ECONOMY:AbilityEconomyDefinition={kind:'cooldown'};
 const SHADE_PRESSURE_ECONOMY:AbilityEconomyDefinition={kind:'resource',resourceId:'pressure',max:3};
 const ARCHITECT_FORMATION_ECONOMY:AbilityEconomyDefinition={kind:'conditional'};
+const SWORDMASTER_MOMENTUM_ECONOMY:AbilityEconomyDefinition={kind:'momentum',resourceId:'momentum',max:3};
 const VANGUARD_ACTIVATIONS:Partial<Record<SkillId,AbilityActivationRule>>={blink:{kind:'cooldown',turns:3},guard:{kind:'cooldown',turns:3},charge:{kind:'cooldown',turns:4},bulwark:{kind:'cooldown',turns:5}};
 const SHADE_ACTIVATIONS:Partial<Record<SkillId,AbilityActivationRule>>={blink:{kind:'resource',resourceId:'pressure',amount:2},corrupt:{kind:'resource',resourceId:'pressure',amount:3}};
 const ARCHITECT_ACTIVATIONS:Partial<Record<SkillId,AbilityActivationRule>>={
@@ -29,18 +30,25 @@ const ARCHITECT_ACTIVATIONS:Partial<Record<SkillId,AbilityActivationRule>>={
   rally:{kind:'condition',conditionId:'rally-ready'},
   lattice:{kind:'condition',conditionId:'lattice-ready'},
 };
-const passiveFallback:Record<HeroId,PassiveId>={vanguard:'fortified',arcanist:'flow',shade:'pressure',architect:'formation'};
+const SWORDMASTER_ACTIVATIONS:Partial<Record<SkillId,AbilityActivationRule>>={
+  blink:{kind:'resource',resourceId:'momentum',amount:2},
+  step:{kind:'resource',resourceId:'momentum',amount:1},
+  sever:{kind:'resource',resourceId:'momentum',amount:3},
+};
+const passiveFallback:Record<HeroId,PassiveId>={vanguard:'fortified',arcanist:'flow',shade:'pressure',architect:'formation',swordmaster:'momentum'};
 function compatibilityFields(heroId:HeroId,skillIds:readonly [SkillId,SkillId]){const passive=heroes[heroId]?.signaturePassive??passiveFallback[heroId];const commonSkill=skillIds.includes(COMMON_SKILL)?COMMON_SKILL:null;const heroSkills=skillIds.filter((skillId)=>skillId!==COMMON_SKILL);return {passive,commonSkill,heroSkills,skills:[...skillIds]};}
 function initialLoadout(heroId:HeroId,passive:PassiveId,skillIds:readonly [SkillId,SkillId]):HeroLoadout{const commonSkill=skillIds.includes(COMMON_SKILL)?COMMON_SKILL:null;const heroSkills=skillIds.filter((skillId)=>skillId!==COMMON_SKILL);return {heroId,skillIds:[...skillIds] as [SkillId,SkillId],passive,commonSkill,heroSkills,skills:[...skillIds]};}
 const vanguardLoadout=initialLoadout('vanguard','fortified',['blink','charge']);
 const arcanistLoadout=initialLoadout('arcanist','flow',['blink','phase']);
 const shadeLoadout=initialLoadout('shade','pressure',['blink','corrupt']);
 const architectLoadout=initialLoadout('architect','formation',['rally','lattice']);
+const swordmasterLoadout=initialLoadout('swordmaster','momentum',['step','sever']);
 export const heroes:Record<HeroId,HeroDefinition>={
   vanguard:{id:'vanguard',nameKey:'vanguard',role:'defense',baseClass:'vanguard',tier:1,parentHeroId:null,variants:[],signaturePassive:'fortified',abilityEconomy:VANGUARD_COOLDOWN_ECONOMY,abilityActivationOverrides:VANGUARD_ACTIVATIONS,skillPool:['blink','guard','bulwark','charge'],defaultLoadout:vanguardLoadout,playstyleTags:['defense','tempo'],synergyTags:['protection','setup'],counterTags:['disruption'],innatePassive:'fortified',passive:'fortified',heroSkills:['charge'],activeSkills:['blink','charge']},
   arcanist:{id:'arcanist',nameKey:'arcanist',role:'control',baseClass:'arcanist',tier:1,parentHeroId:null,variants:[],signaturePassive:'flow',abilityEconomy:LEGACY_MANA_ECONOMY,abilityActivationOverrides:{},skillPool:['blink','seal','phase'],defaultLoadout:arcanistLoadout,playstyleTags:['control','zone'],synergyTags:['zone','resource'],counterTags:['reposition'],innatePassive:'flow',passive:'flow',heroSkills:['phase'],activeSkills:['blink','phase']},
   shade:{id:'shade',nameKey:'shade',role:'disruption',baseClass:'shade',tier:1,parentHeroId:null,variants:[],signaturePassive:'pressure',abilityEconomy:SHADE_PRESSURE_ECONOMY,abilityActivationOverrides:SHADE_ACTIVATIONS,skillPool:['blink','corrupt'],defaultLoadout:shadeLoadout,playstyleTags:['disruption','pressure'],synergyTags:['remove','resource'],counterTags:['protection'],innatePassive:'pressure',passive:'pressure',heroSkills:['corrupt'],activeSkills:['blink','corrupt']},
   architect:{id:'architect',nameKey:'architect',role:'control',baseClass:'architect',tier:1,parentHeroId:null,variants:[],signaturePassive:'formation',abilityEconomy:ARCHITECT_FORMATION_ECONOMY,abilityActivationOverrides:ARCHITECT_ACTIVATIONS,skillPool:['blink','rally','lattice'],defaultLoadout:architectLoadout,playstyleTags:['setup','control'],synergyTags:['pattern','setup','zone'],counterTags:['disruption','reposition'],innatePassive:'formation',passive:'formation',heroSkills:['rally','lattice'],activeSkills:['rally','lattice']},
+  swordmaster:{id:'swordmaster',nameKey:'swordmaster',role:'offense',baseClass:'swordmaster',tier:1,parentHeroId:null,variants:[],signaturePassive:'momentum',abilityEconomy:SWORDMASTER_MOMENTUM_ECONOMY,abilityActivationOverrides:SWORDMASTER_ACTIVATIONS,skillPool:['blink','step','sever'],defaultLoadout:swordmasterLoadout,playstyleTags:['offense','tempo','momentum'],synergyTags:['pattern','tempo','reposition'],counterTags:['disruption','protection'],innatePassive:'momentum',passive:'momentum',heroSkills:['step','sever'],activeSkills:['step','sever']},
 };
 export const heroIds=Object.keys(heroes) as HeroId[];
 export function isSkillAccessible(heroId:HeroId,skillId:SkillId){return heroes[heroId].skillPool.includes(skillId);}
