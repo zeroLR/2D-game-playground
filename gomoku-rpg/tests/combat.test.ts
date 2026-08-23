@@ -1,4 +1,5 @@
 import { describe,expect,it } from 'vitest';
+import { getAbilityResource,setAbilityResource } from '../src/ability-economy';
 import { createCombatState,executePlace,expireEffectsAfterTurn,getMana,isCorrupted,isGuarded,isSealed } from '../src/combat';
 import { createBoard } from '../src/game';
 import { bulwarkSkill,corruptSkill,guardSkill,isLegalPosition,sealSkill } from '../src/skills';
@@ -19,11 +20,12 @@ describe('M1 persistent skills',()=>{
 describe('M2 passives',()=>{
  it('Fortified guards a pattern placement',()=>{const b=createBoard();b[4][2]=b[4][3]=1;const p={row:4,col:4};const a=executePlace(createCombatState(b),{kind:'place',at:p});expect(isGuarded(applyAfterPlacePassive(a.state,'vanguard',1,p,a.manaGained).state,p)).toBe(true);});
  it('Flow refunds Mana after activation spending',()=>{const r=resolveSkillAction(createCombatState(createBoard(),2),'arcanist',1,'seal',{row:4,col:4});expect(r.ok).toBe(true);expect(getMana(r.state,1)).toBe(1);});
- it('Pressure gains Mana adjacent to enemy',()=>{const b=createBoard();b[4][4]=2;const p={row:4,col:5};const a=executePlace(createCombatState(b),{kind:'place',at:p});expect(applyAfterPlacePassive(a.state,'shade',1,p,a.manaGained).manaGained).toBe(1);});
+ it('Pressure gains its own resource adjacent to enemy',()=>{const b=createBoard();b[4][4]=2;const p={row:4,col:5};const a=executePlace(createCombatState(b),{kind:'place',at:p});const passive=applyAfterPlacePassive(a.state,'shade',1,p,a.manaGained);expect(passive.manaGained).toBeUndefined();expect(passive.resourceGained).toEqual({resourceId:'pressure',amount:1});expect(getAbilityResource(passive.state,1,'pressure')).toBe(1);});
+ it('Pressure caps at three',()=>{const b=createBoard();b[4][4]=2;const p={row:4,col:5};let state=setAbilityResource(createCombatState(b),1,'pressure',3);state=applyAfterPlacePassive(state,'shade',1,p,0).state;expect(getAbilityResource(state,1,'pressure')).toBe(3);});
 });
 
 describe('M2.4 Shade Corrupted Zone',()=>{
- it('Corrupt removes the target and creates a blocked intersection',()=>{const b=createBoard();b[4][4]=1;b[4][5]=2;const target={row:4,col:5};const r=resolveSkillAction(createCombatState(b,3),'shade',1,'corrupt',target);expect(r.ok).toBe(true);expect(r.state.board[4][5]).toBe(0);expect(isCorrupted(r.state,target)).toBe(true);expect(isSealed(r.state,target)).toBe(true);expect(getMana(r.state,1)).toBe(0);});
+ it('Corrupt removes the target and creates a blocked intersection',()=>{const b=createBoard();b[4][4]=1;b[4][5]=2;const target={row:4,col:5};const state=setAbilityResource(createCombatState(b),1,'pressure',3);const r=resolveSkillAction(state,'shade',1,'corrupt',target);expect(r.ok).toBe(true);expect(r.state.board[4][5]).toBe(0);expect(isCorrupted(r.state,target)).toBe(true);expect(isSealed(r.state,target)).toBe(true);expect(getAbilityResource(r.state,1,'pressure')).toBe(0);});
 });
 
 describe('M2.4 Vanguard Bulwark',()=>{
