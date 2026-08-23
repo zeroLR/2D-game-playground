@@ -20,7 +20,8 @@ describe('V2 ability economy activation boundary',()=>{
  });
  it('keeps future economy primitives explicit instead of treating them as Mana',()=>{
   const state=createCombatState(createBoard(),5);
-  expect(canActivate(state,1,{kind:'cooldown',turns:3})).toEqual({ready:false,reason:'cooldown'});
+  expect(canActivate(state,1,{kind:'cooldown',turns:3},'future-skill')).toEqual({ready:true});
+  expect(canActivate(state,1,{kind:'cooldown',turns:3})).toEqual({ready:false,reason:'missing-ability-id'});
   expect(canActivate(state,1,{kind:'condition',conditionId:'formation-ready'})).toEqual({ready:false,reason:'condition'});
   expect(legacyManaCost({kind:'cooldown',turns:3})).toBe(0);
  });
