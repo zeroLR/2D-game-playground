@@ -9,8 +9,8 @@ describe('CPU random opponent deferred reveal',()=>{
     runtime.reset();
     expect(runtime.cpuHeroId()).toBe('vanguard');
     expect(random).not.toHaveBeenCalled();
-    expect(runtime.randomizeCpuHero()).toBe('architect');
-    expect(runtime.cpuHeroId()).toBe('architect');
+    expect(runtime.randomizeCpuHero()).toBe('swordmaster');
+    expect(runtime.cpuHeroId()).toBe('swordmaster');
     expect(random).toHaveBeenCalledTimes(1);
     runtime.dispose();
   });
