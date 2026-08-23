@@ -11,6 +11,7 @@ function activationText(ctx:ViewContext,item:SkillBarItem){
   const m=getMessages(ctx.locale);
   if(item.activation.kind==='cooldown')return item.cooldownRemaining>0?(ctx.locale==='en'?`CD ${item.cooldownRemaining}`:`冷卻 ${item.cooldownRemaining}`):(ctx.locale==='en'?`READY · CD ${item.activation.turns}`:`可用 · 冷卻 ${item.activation.turns}`);
   if(item.activation.kind==='resource'&&item.activation.resourceId==='mana')return m.costMana(item.activation.amount);
+  if(item.activation.kind==='resource'&&item.activation.resourceId==='pressure')return ctx.locale==='en'?`PRESSURE ${item.resourceCurrent}/${item.resourceMax} · COST ${item.activation.amount}`:`壓迫 ${item.resourceCurrent}/${item.resourceMax} · 消耗 ${item.activation.amount}`;
   return item.enabled?(ctx.locale==='en'?'READY':'可使用'):(ctx.locale==='en'?'LOCKED':'未就緒');
 }
 /** Active skill buttons. Availability comes from the presentation model. */
