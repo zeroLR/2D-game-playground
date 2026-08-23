@@ -26,11 +26,12 @@ describe('Slice 2 configurable loadout contract',()=>{
 });
 
 describe('V2 hero ability economy contract',()=>{
- it('migrates Vanguard to cooldown and Shade to pressure while retaining Mana for Arcanist and Architect',()=>{expect(heroes.vanguard.abilityEconomy).toEqual({kind:'cooldown'});expect(heroes.shade.abilityEconomy).toEqual({kind:'resource',resourceId:'pressure',max:3});for(const id of ['arcanist','architect'] as const)expect(heroes[id].abilityEconomy).toEqual({kind:'resource',resourceId:'mana',max:5});});
- it('resolves shared Blink differently by hero economy',()=>{expect(resolveAbilityActivation('vanguard','blink')).toEqual({kind:'cooldown',turns:3});expect(resolveAbilityActivation('arcanist','blink')).toEqual({kind:'resource',resourceId:'mana',amount:2});expect(resolveAbilityActivation('shade','blink')).toEqual({kind:'resource',resourceId:'pressure',amount:2});});
+ it('uses distinct economy primitives across the migrated roster',()=>{expect(heroes.vanguard.abilityEconomy).toEqual({kind:'cooldown'});expect(heroes.shade.abilityEconomy).toEqual({kind:'resource',resourceId:'pressure',max:3});expect(heroes.architect.abilityEconomy).toEqual({kind:'conditional'});expect(heroes.arcanist.abilityEconomy).toEqual({kind:'resource',resourceId:'mana',max:5});});
+ it('resolves shared Blink differently by hero economy',()=>{expect(resolveAbilityActivation('vanguard','blink')).toEqual({kind:'cooldown',turns:3});expect(resolveAbilityActivation('arcanist','blink')).toEqual({kind:'resource',resourceId:'mana',amount:2});expect(resolveAbilityActivation('shade','blink')).toEqual({kind:'resource',resourceId:'pressure',amount:2});expect(resolveAbilityActivation('architect','blink')).toEqual({kind:'condition',conditionId:'formation-ready'});});
  it('defines Vanguard cooldown seeds per tactical ability',()=>{expect(resolveAbilityActivation('vanguard','guard')).toEqual({kind:'cooldown',turns:3});expect(resolveAbilityActivation('vanguard','charge')).toEqual({kind:'cooldown',turns:4});expect(resolveAbilityActivation('vanguard','bulwark')).toEqual({kind:'cooldown',turns:5});});
  it('defines Corrupt as a full-pressure commitment',()=>{expect(resolveAbilityActivation('shade','corrupt')).toEqual({kind:'resource',resourceId:'pressure',amount:3});});
- it('keeps skill activation metadata as the default rule for non-overridden heroes',()=>{expect(skills.blink.activation).toEqual({kind:'resource',resourceId:'mana',amount:2});expect(skills.lattice.activation).toEqual({kind:'resource',resourceId:'mana',amount:3});});
+ it('defines Architect abilities as live board conditions',()=>{expect(resolveAbilityActivation('architect','rally')).toEqual({kind:'condition',conditionId:'rally-ready'});expect(resolveAbilityActivation('architect','lattice')).toEqual({kind:'condition',conditionId:'lattice-ready'});});
+ it('keeps skill activation metadata as the default rule beneath hero overrides',()=>{expect(skills.blink.activation).toEqual({kind:'resource',resourceId:'mana',amount:2});expect(skills.lattice.activation).toEqual({kind:'resource',resourceId:'mana',amount:3});});
 });
 
 describe('Slice 1 skill domain contract',()=>{

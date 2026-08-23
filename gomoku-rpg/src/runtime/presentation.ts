@@ -2,19 +2,19 @@ import { canActivate, getAbilityCooldown, getAbilityResource, legacyManaCost, ty
 import { Player } from '../game';
 import { CombatState } from '../combat';
 import { HeroId, Loadout, heroes } from '../heroes';
-import { resolveAbilityActivation } from '../hero-ability-activation';
+import { prepareHeroAbilityState, resolveAbilityActivation } from '../hero-ability-activation';
 import { SkillId, skills } from '../skills';
 import { SkillTargetingState, targetingSkill } from './targeting';
 import { TurnState, isPlayerInput } from './turn-runtime';
 
-export interface SkillBarItem{skillId:SkillId;cost:number;enabled:boolean;selected:boolean;descriptionKey:string;activation:AbilityActivationRule;cooldownRemaining:number;resourceCurrent:number;resourceMax:number;}
+export interface SkillBarItem{skillId:SkillId;cost:number;enabled:boolean;selected:boolean;descriptionKey:string;activation:AbilityActivationRule;cooldownRemaining:number;resourceCurrent:number;resourceMax:number;conditionReady:boolean;}
 
 export function describeSkillBar(state:CombatState,player:Player,heroId:HeroId,loadout:Loadout,turn:TurnState,targeting:SkillTargetingState):SkillBarItem[]{
   const active=targetingSkill(targeting),economy=heroes[heroId].abilityEconomy;
   return loadout.skillIds.map((skillId)=>{
-    const skill=skills[skillId],activation=resolveAbilityActivation(heroId,skillId),readiness=canActivate(state,player,activation,skillId);
+    const skill=skills[skillId],activation=resolveAbilityActivation(heroId,skillId),prepared=prepareHeroAbilityState(state,heroId,player,skillId),readiness=canActivate(prepared,player,activation,skillId);
     const resourceId=activation.kind==='resource'?activation.resourceId:null;
-    return {skillId,cost:legacyManaCost(activation),enabled:isPlayerInput(turn)&&readiness.ready,selected:active===skillId,descriptionKey:skill.descriptionKey,activation,cooldownRemaining:activation.kind==='cooldown'?getAbilityCooldown(state,player,skillId):0,resourceCurrent:resourceId?getAbilityResource(state,player,resourceId):0,resourceMax:economy.kind==='resource'&&resourceId===economy.resourceId?economy.max:0};
+    return {skillId,cost:legacyManaCost(activation),enabled:isPlayerInput(turn)&&readiness.ready,selected:active===skillId,descriptionKey:skill.descriptionKey,activation,cooldownRemaining:activation.kind==='cooldown'?getAbilityCooldown(prepared,player,skillId):0,resourceCurrent:resourceId?getAbilityResource(prepared,player,resourceId):0,resourceMax:economy.kind==='resource'&&resourceId===economy.resourceId?economy.max:0,conditionReady:activation.kind==='condition'&&readiness.ready};
   });
 }
 

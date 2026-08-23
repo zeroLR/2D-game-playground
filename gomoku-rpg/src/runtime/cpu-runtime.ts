@@ -2,7 +2,7 @@ import { canActivate } from '../ability-economy';
 import { Pos } from '../game';
 import { CombatState, forcedPlacementFor, getMana, isSealed, samePos } from '../combat';
 import { HeroId, Loadout, createLoadout } from '../heroes';
-import { resolveAbilityActivation } from '../hero-ability-activation';
+import { prepareHeroAbilityState, resolveAbilityActivation } from '../hero-ability-activation';
 import { SkillId, skills } from '../skills';
 import { resolvePlaceAction, resolveSkillAction } from './action-resolution';
 import { CpuAction, CpuDecisionCandidate, chooseCpuAction } from './cpu-action-evaluator';
@@ -15,9 +15,9 @@ export interface CpuResolution{outcome:CpuOutcome;state:CombatState;at:Pos|null;
 export function cpuLegalCells(state:CombatState):Pos[]{const forced=forcedPlacementFor(state,2);return state.board.flatMap((row,r)=>row.map((cell,c)=>({cell,pos:{row:r,col:c}}))).filter(({cell,pos})=>cell===0&&!isSealed(state,pos)&&(!forced||samePos(forced,pos))).map(({pos})=>pos);}
 export function cpuPlaceCandidates(state:CombatState):CpuAction[]{return cpuLegalCells(state).map((at)=>({kind:'place',at}));}
 function cpuSkillCandidates(state:CombatState,heroId:HeroId,skillId:SkillId):CpuAction[]{
- const skill=skills[skillId],activation=resolveAbilityActivation(heroId,skillId);
- if(!canActivate(state,2,activation,skillId).ready)return [];
- const context={state,player:2 as const};
+ const skill=skills[skillId],activation=resolveAbilityActivation(heroId,skillId),prepared=prepareHeroAbilityState(state,heroId,2,skillId);
+ if(!canActivate(prepared,2,activation,skillId).ready)return [];
+ const context={state:prepared,player:2 as const};
  if(skill.legalSources)return skill.legalSources(context).flatMap((source)=>skill.legalTargets(context,source).map((target)=>({kind:'skill' as const,skillId,source,target})));
  return skill.legalTargets(context).map((target)=>({kind:'skill' as const,skillId,target}));
 }
