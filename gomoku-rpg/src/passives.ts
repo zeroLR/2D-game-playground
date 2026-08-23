@@ -22,11 +22,6 @@ function adjacentFriendlyCount(state:CombatState,placed:Pos,player:Player){
   }
   return count;
 }
-function gainOneMana(state:CombatState,player:Player):PassiveResult{
-  const before=getMana(state,player),after=Math.min(5,before+1);
-  if(after===before)return {state,triggered:false};
-  return {state:setMana(state,player,after),triggered:true,manaGained:after-before};
-}
 function gainOnePressure(state:CombatState,player:Player):PassiveResult{
   const before=getAbilityResource(state,player,'pressure'),after=Math.min(3,before+1);
   if(after===before)return {state,triggered:false};
@@ -41,8 +36,8 @@ export function applyAfterPlacePassive(state:CombatState,heroId:HeroId,player:Pl
   }
   /** Pressure: Shade earns its own resource by contesting enemy-adjacent space. */
   if(passive==='pressure'&&hasAdjacentEnemy(state,placed,player))return gainOnePressure(state,player);
-  /** Formation: Architect remains on Mana until its conditional-economy migration. */
-  if(passive==='formation'&&adjacentFriendlyCount(state,placed,player)>=2)return gainOneMana(state,player);
+  /** Formation: creating a supported three-stone structure opens conditional ability windows; no numeric resource is gained. */
+  if(passive==='formation'&&adjacentFriendlyCount(state,placed,player)>=2)return {state,triggered:true};
   return {state,triggered:false};
 }
 
