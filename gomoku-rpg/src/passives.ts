@@ -1,9 +1,10 @@
+import { getAbilityResource,setAbilityResource } from './ability-economy';
 import { Player, Pos } from './game';
 import { CombatState, addGuard, getMana, setMana } from './combat';
 import { HeroId, heroes } from './heroes';
 
 export type PassiveTrigger = 'after-place'|'after-skill';
-export type PassiveResult = { state: CombatState; triggered: boolean; guarded?: Pos; manaRefunded?: number; manaGained?: number };
+export type PassiveResult = { state: CombatState; triggered: boolean; guarded?: Pos; manaRefunded?: number; manaGained?: number; resourceGained?:{resourceId:'pressure';amount:number} };
 
 function hasAdjacentEnemy(state:CombatState,placed:Pos,player:Player){
   const enemy:Player=player===1?2:1;
@@ -26,6 +27,11 @@ function gainOneMana(state:CombatState,player:Player):PassiveResult{
   if(after===before)return {state,triggered:false};
   return {state:setMana(state,player,after),triggered:true,manaGained:after-before};
 }
+function gainOnePressure(state:CombatState,player:Player):PassiveResult{
+  const before=getAbilityResource(state,player,'pressure'),after=Math.min(3,before+1);
+  if(after===before)return {state,triggered:false};
+  return {state:setAbilityResource(state,player,'pressure',after),triggered:true,resourceGained:{resourceId:'pressure',amount:after-before}};
+}
 
 export function applyAfterPlacePassive(state:CombatState,heroId:HeroId,player:Player,placed:Pos,manaGained:number):PassiveResult {
   const passive=heroes[heroId].passive;
@@ -33,9 +39,9 @@ export function applyAfterPlacePassive(state:CombatState,heroId:HeroId,player:Pl
     if(manaGained<=0)return {state,triggered:false};
     return {state:addGuard(state,placed,player),triggered:true,guarded:placed};
   }
-  /** Pressure: Shade gains 1 Mana when placing next to an enemy stone. */
-  if(passive==='pressure'&&hasAdjacentEnemy(state,placed,player))return gainOneMana(state,player);
-  /** Formation: Architect gains 1 Mana when a placement connects at least two friendly stones. */
+  /** Pressure: Shade earns its own resource by contesting enemy-adjacent space. */
+  if(passive==='pressure'&&hasAdjacentEnemy(state,placed,player))return gainOnePressure(state,player);
+  /** Formation: Architect remains on Mana until its conditional-economy migration. */
   if(passive==='formation'&&adjacentFriendlyCount(state,placed,player)>=2)return gainOneMana(state,player);
   return {state,triggered:false};
 }
