@@ -1,3 +1,4 @@
+import { advanceAbilityEconomyAfterTurn } from '../ability-economy';
 import { Player } from '../game';
 import { CombatState, expireEffectsAfterTurn } from '../combat';
 
@@ -11,8 +12,10 @@ export const createTurnState=():TurnState=>({turn:1,phase:'player',status:'playi
 export const isPlayerInput=(turn:TurnState)=>turn.phase==='player'&&turn.status==='playing';
 export const isMatchOver=(turn:TurnState)=>turn.status!=='playing';
 
-/** Closes one actor's turn: their timed effects (Guard / Seal) expire and Corrupt ticks down. */
-export function advanceTurn(state:CombatState,actor:Player):CombatState{return expireEffectsAfterTurn(state,actor);}
+/** Closes one actor's turn: expire timed board effects and advance that actor's ability economy. */
+export function advanceTurn(state:CombatState,actor:Player):CombatState{
+  return advanceAbilityEconomyAfterTurn(expireEffectsAfterTurn(state,actor),actor);
+}
 
 /** A turn-consuming player action: expire, count the turn, hand the board to the CPU. */
 export function completePlayerTurn(state:CombatState,turn:TurnState):TurnTransition{
