@@ -1,5 +1,5 @@
 import { describe,expect,it,vi } from 'vitest';
-import { setAbilityResource } from '../src/ability-economy';
+import { getAbilityResource,setAbilityResource } from '../src/ability-economy';
 import { createCombatState } from '../src/combat';
 import { createBoard } from '../src/game';
 import { resolveAbilityActionTiming } from '../src/action-timing';
@@ -8,36 +8,47 @@ import { createMatchRuntime } from '../src/runtime/match-runtime';
 function runtimeWith(state:ReturnType<typeof createCombatState>){return createMatchRuntime({heroId:'swordmaster',cpuHeroId:'vanguard',initialState:()=>state,schedule:vi.fn(()=>0 as unknown as ReturnType<typeof setTimeout>),cancel:vi.fn(),onChange:vi.fn(),onEvent:vi.fn()});}
 
 describe('Swordmaster intent-based follow-up model',()=>{
-  it('splits precommitted movement from triggered Sever',()=>{
+  it('keeps Flow Step precommitted and Sever triggered',()=>{
     expect(resolveAbilityActionTiming('swordmaster','step')).toBe('precommit-follow-up');
     expect(resolveAbilityActionTiming('swordmaster','blink')).toBe('precommit-follow-up');
     expect(resolveAbilityActionTiming('swordmaster','sever')).toBe('triggered-follow-up');
     expect(resolveAbilityActionTiming('arcanist','blink')).toBe('primary');
   });
 
-  it('arms Step before placement and resolves it only after the stone is placed',()=>{
+  it('requires Momentum to arm Flow Step',()=>{
     const board=createBoard();board[4][4]=1;
-    const runtime=runtimeWith(setAbilityResource(createCombatState(board),1,'momentum',2));
-    expect(runtime.snapshot().skillBar.find((item)=>item.skillId==='step')?.enabled).toBe(true);
-    runtime.selectSkill('step');
-    expect(runtime.snapshot().pendingTechnique).toBe('step');
-    expect(runtime.snapshot().followUpOpen).toBe(false);
-    runtime.tapCell({row:0,col:0});
-    expect(runtime.snapshot().state.board[0][0]).toBe(1);
-    expect(runtime.snapshot().turn.phase).toBe('player');
-    expect(runtime.snapshot().followUpOpen).toBe(false);
-    runtime.tapCell({row:4,col:4});
-    runtime.tapCell({row:4,col:5});
-    expect(runtime.snapshot().state.board[4][4]).toBe(0);
-    expect(runtime.snapshot().state.board[4][5]).toBe(1);
-    expect(runtime.snapshot().turn.phase).toBe('cpu');
-    expect(runtime.metrics().playerTurns).toBe(1);
+    const empty=runtimeWith(createCombatState(board));
+    expect(empty.snapshot().skillBar.find((item)=>item.skillId==='step')?.enabled).toBe(false);
+    empty.selectSkill('step');
+    expect(empty.snapshot().pendingTechnique).toBe(null);
+
+    const ready=runtimeWith(setAbilityResource(createCombatState(board),1,'momentum',1));
+    expect(ready.snapshot().skillBar.find((item)=>item.skillId==='step')?.enabled).toBe(true);
+    ready.selectSkill('step');
+    expect(ready.snapshot().pendingTechnique).toBe('step');
   });
 
-  it('ordinary placement auto-ends when no triggered finisher exists',()=>{
+  it('preserves Momentum on a quiet placement without moving an existing stone',()=>{
     const board=createBoard();board[4][4]=1;
-    const runtime=runtimeWith(setAbilityResource(createCombatState(board),1,'momentum',1));
+    const runtime=runtimeWith(setAbilityResource(createCombatState(board),1,'momentum',2));
+    runtime.selectSkill('step');
     runtime.tapCell({row:0,col:0});
+    const snapshot=runtime.snapshot();
+    expect(snapshot.state.board[0][0]).toBe(1);
+    expect(snapshot.state.board[4][4]).toBe(1);
+    expect(getAbilityResource(snapshot.state,1,'momentum')).toBe(2);
+    expect(snapshot.pendingTechnique).toBe(null);
+    expect(snapshot.followUpOpen).toBe(false);
+    expect(snapshot.turn.phase).toBe('cpu');
+    expect(runtime.metrics().playerTurns).toBe(1);
+    expect(runtime.metrics().skillUses.step).toBe(1);
+  });
+
+  it('ordinary quiet placement still decays Momentum and auto-ends',()=>{
+    const board=createBoard();board[4][4]=1;
+    const runtime=runtimeWith(setAbilityResource(createCombatState(board),1,'momentum',2));
+    runtime.tapCell({row:0,col:0});
+    expect(getAbilityResource(runtime.snapshot().state,1,'momentum')).toBe(1);
     expect(runtime.snapshot().followUpOpen).toBe(false);
     expect(runtime.snapshot().turn.phase).toBe('cpu');
   });
