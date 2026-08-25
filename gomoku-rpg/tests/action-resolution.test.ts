@@ -25,6 +25,6 @@ describe('R1 skill resolution',()=>{
 });
 
 describe('R1 turn consumption',()=>{
- it('reports consumedTurn from the skill definition',()=>{const b=createBoard();b[4][4]=1;b[4][5]=2;expect(resolveSkillAction(createCombatState(b),'vanguard',1,'blink',{row:5,col:5},{row:4,col:4}).consumedTurn).toBe(true);expect(resolveSkillAction(createCombatState(b),'vanguard',1,'charge',{row:5,col:4},{row:4,col:4}).consumedTurn).toBe(true);const shade=setAbilityResource(createCombatState(b),1,'pressure',3);expect(resolveSkillAction(shade,'shade',1,'corrupt',{row:4,col:5}).consumedTurn).toBe(true);});
- it('declares no free actions after Phase v2',()=>{const free=Object.values(skills).filter((skill)=>!skill.consumesTurn).map((skill)=>skill.id);expect(free).toEqual([]);});
+ it('reports consumedTurn from targetable skill definitions',()=>{const b=createBoard();b[4][4]=1;b[4][5]=2;expect(resolveSkillAction(createCombatState(b),'vanguard',1,'blink',{row:5,col:5},{row:4,col:4}).consumedTurn).toBe(true);expect(resolveSkillAction(createCombatState(b),'vanguard',1,'charge',{row:5,col:4},{row:4,col:4}).consumedTurn).toBe(true);const shade=setAbilityResource(createCombatState(b),1,'pressure',3);expect(resolveSkillAction(shade,'shade',1,'corrupt',{row:4,col:5}).consumedTurn).toBe(true);});
+ it('only exempts the non-targetable Flow Step placement modifier from turn consumption',()=>{const free=Object.values(skills).filter((skill)=>!skill.consumesTurn).map((skill)=>skill.id);expect(free).toEqual(['step']);expect(skills.step.targetType).toBe('none');});
 });
