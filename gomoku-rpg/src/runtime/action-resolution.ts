@@ -8,13 +8,14 @@ import { applyAfterPlacePassive, applyAfterSkillPassive } from '../passives';
 
 export type ActionError='occupied'|'sealed'|'corrupted'|'forced-placement'|'invalid-skill'|'insufficient-mana'|'insufficient-resource'|'ability-unavailable'|'invalid-target';
 export interface ActionResolution {ok:boolean;state:CombatState;consumedTurn:boolean;won:boolean;manaGained:number;passiveTriggered:boolean;passiveMana:number;at:Pos;source?:Pos;skillId?:SkillId;skillCost:number;error?:ActionError;}
+export interface PlaceActionOptions{preserveMomentum?:boolean}
 function rejected(state:CombatState,at:Pos,error:ActionError,skillId?:SkillId):ActionResolution{return {ok:false,state,consumedTurn:false,won:false,manaGained:0,passiveTriggered:false,passiveMana:0,at,skillId,skillCost:0,error};}
-export function resolvePlaceAction(state:CombatState,heroId:HeroId,player:Player,at:Pos):ActionResolution{
+export function resolvePlaceAction(state:CombatState,heroId:HeroId,player:Player,at:Pos,options:PlaceActionOptions={}):ActionResolution{
   const manaBefore=getMana(state,player);
   const result=executePlace({...state,activePlayer:player},{kind:'place',at});if(!result.ok)return rejected(state,at,result.error??'invalid-target');
   const usesMana=heroUsesMana(heroId);
   const economyState=usesMana?result.state:setMana(result.state,player,manaBefore);
-  const passive=applyAfterPlacePassive(economyState,heroId,player,at,result.manaGained);
+  const passive=applyAfterPlacePassive(economyState,heroId,player,at,result.manaGained,{preserveMomentum:options.preserveMomentum});
   return {ok:true,state:passive.state,consumedTurn:true,won:result.won,manaGained:usesMana?result.manaGained:0,passiveTriggered:passive.triggered,passiveMana:passive.manaGained??0,at,skillCost:0};
 }
 export function resolveSkillAction(state:CombatState,heroId:HeroId,player:Player,skillId:SkillId,target:Pos,source?:Pos):ActionResolution{

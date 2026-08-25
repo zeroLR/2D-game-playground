@@ -1,4 +1,4 @@
-import { setAbilityCondition, type AbilityActivationRule } from './ability-economy';
+import { getAbilityResource,setAbilityCondition, type AbilityActivationRule } from './ability-economy';
 import type { CombatState } from './combat';
 import type { Player, Pos } from './game';
 import { heroes, type HeroId } from './heroes';
@@ -28,15 +28,14 @@ function hasFormationAnchor(state:CombatState,player:Player){
   }));
 }
 
-/**
- * Conditional economies are derived from the live board before readiness checks.
- * This keeps Architect counterplay board-driven: breaking a formation immediately
- * closes the corresponding activation window instead of leaving a stale unlock flag.
- */
+/** Live-board/economy conditions are refreshed before every readiness check. */
 export function prepareHeroAbilityState(state:CombatState,heroId:HeroId,player:Player,skillId:SkillId):CombatState{
-  if(heroId!=='architect')return state;
   const activation=resolveAbilityActivation(heroId,skillId);
   if(activation.kind!=='condition')return state;
+  if(heroId==='swordmaster'&&skillId==='step'){
+    return setAbilityCondition(state,player,activation.conditionId,getAbilityResource(state,player,'momentum')>=1);
+  }
+  if(heroId!=='architect')return state;
   const context={state,player};
   let ready=false;
   if(skillId==='rally')ready=(skills.rally.legalSources?.(context).length??0)>0;

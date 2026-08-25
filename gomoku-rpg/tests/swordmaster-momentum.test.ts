@@ -1,9 +1,9 @@
 import { describe,expect,it } from 'vitest';
-import { getAbilityResource,setAbilityResource } from '../src/ability-economy';
+import { canActivate,getAbilityResource,setAbilityResource } from '../src/ability-economy';
 import { createCombatState } from '../src/combat';
 import { createBoard } from '../src/game';
 import { createLoadout,heroes } from '../src/heroes';
-import { resolveAbilityActivation } from '../src/hero-ability-activation';
+import { prepareHeroAbilityState,resolveAbilityActivation } from '../src/hero-ability-activation';
 import { resolvePlaceAction,resolveSkillAction } from '../src/runtime/action-resolution';
 import { cpuActionCandidates } from '../src/runtime/cpu-runtime';
 
@@ -11,7 +11,7 @@ describe('Swordmaster Momentum economy',()=>{
  it('defines the offensive momentum kit and hero-aware activations',()=>{
   expect(heroes.swordmaster.abilityEconomy).toEqual({kind:'momentum',resourceId:'momentum',max:3});
   expect(createLoadout('swordmaster').skillIds).toEqual(['step','sever']);
-  expect(resolveAbilityActivation('swordmaster','step')).toEqual({kind:'resource',resourceId:'momentum',amount:1});
+  expect(resolveAbilityActivation('swordmaster','step')).toEqual({kind:'condition',conditionId:'momentum-present'});
   expect(resolveAbilityActivation('swordmaster','sever')).toEqual({kind:'resource',resourceId:'momentum',amount:3});
   expect(resolveAbilityActivation('swordmaster','blink')).toEqual({kind:'resource',resourceId:'momentum',amount:2});
  });
@@ -23,15 +23,18 @@ describe('Swordmaster Momentum economy',()=>{
   expect(second.ok).toBe(true);expect(getAbilityResource(second.state,1,'momentum')).toBe(3);
  });
  it('decays one Momentum on a quiet placement',()=>{
-  let state=setAbilityResource(createCombatState(createBoard()),1,'momentum',2);
+  const state=setAbilityResource(createCombatState(createBoard()),1,'momentum',2);
   const result=resolvePlaceAction(state,'swordmaster',1,{row:0,col:0});
   expect(result.ok).toBe(true);expect(getAbilityResource(result.state,1,'momentum')).toBe(1);
  });
- it('Step spends 1 Momentum to reposition one adjacent stone',()=>{
+ it('Flow Step requires Momentum but preserves it instead of spending or moving a stone',()=>{
   const board=createBoard();board[4][4]=1;
-  let state=setAbilityResource(createCombatState(board),1,'momentum',1);
-  const result=resolveSkillAction(state,'swordmaster',1,'step',{row:4,col:5},{row:4,col:4});
-  expect(result.ok).toBe(true);expect(result.state.board[4][4]).toBe(0);expect(result.state.board[4][5]).toBe(1);expect(getAbilityResource(result.state,1,'momentum')).toBe(0);
+  const empty=createCombatState(board),activation=resolveAbilityActivation('swordmaster','step');
+  expect(canActivate(prepareHeroAbilityState(empty,'swordmaster',1,'step'),1,activation,'step').ready).toBe(false);
+  const state=setAbilityResource(empty,1,'momentum',1),prepared=prepareHeroAbilityState(state,'swordmaster',1,'step');
+  expect(canActivate(prepared,1,activation,'step').ready).toBe(true);
+  const result=resolvePlaceAction(state,'swordmaster',1,{row:0,col:0},{preserveMomentum:true});
+  expect(result.ok).toBe(true);expect(result.state.board[4][4]).toBe(1);expect(result.state.board[0][0]).toBe(1);expect(getAbilityResource(result.state,1,'momentum')).toBe(1);
  });
  it('Sever is a full-Momentum finisher that pushes rather than removes',()=>{
   const board=createBoard();board[4][3]=1;board[4][4]=2;
