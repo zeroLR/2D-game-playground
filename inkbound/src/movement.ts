@@ -11,6 +11,7 @@ export const CONTEXT_JUMP_SPEED = 190;
 export const CONTEXT_JUMP_DURATION = 0.22;
 export const CONTEXT_STEP_HEIGHT = 52;
 export const CONTEXT_PROBE_DISTANCE = 48;
+export const MOVEMENT_INTENT_THRESHOLD = 0.06;
 export const DASH_SPEED = 390;
 export const DASH_DURATION = 0.18;
 export const DASH_COOLDOWN = 0.45;
@@ -31,13 +32,16 @@ function findRaisedLedge(state: PlayerMotion, dir: -1 | 1, platforms: Rect[]) {
 }
 
 export function stepPlayer(state: PlayerMotion, moveX: number, dashPressed: boolean, dt: number, platforms: Rect[]) {
+  const hasMoveIntent = Math.abs(moveX) >= MOVEMENT_INTENT_THRESHOLD;
   const wasDashReady = state.dashCooldown <= 0;
   state.dashCooldown = Math.max(0, state.dashCooldown - dt);
   if (dashPressed && wasDashReady && state.dashTime <= 0) { state.dashTime = DASH_DURATION; state.dashCooldown = DASH_COOLDOWN; state.contextJumpTime = 0; }
-  if (Math.abs(moveX) > 0.12) state.facing = moveX < 0 ? -1 : 1;
+  if (hasMoveIntent) state.facing = moveX < 0 ? -1 : 1;
 
-  const dir: -1 | 1 = Math.abs(moveX) > 0.12 ? (moveX < 0 ? -1 : 1) : state.facing;
-  const ledge = state.grounded && Math.abs(moveX) > 0.35 ? findRaisedLedge(state, dir, platforms) : undefined;
+  const dir: -1 | 1 = hasMoveIntent ? (moveX < 0 ? -1 : 1) : state.facing;
+  // Context traversal follows actual analog intent, not a half-stick threshold. The previous
+  // 0.35 gate meant a careful/slow walk could leave ground before the raised-ledge assist fired.
+  const ledge = state.grounded && hasMoveIntent ? findRaisedLedge(state, dir, platforms) : undefined;
   if (ledge && state.dashTime <= 0) {
     state.vy = CONTEXT_JUMP_VELOCITY; state.grounded = false;
     state.contextJumpTime = CONTEXT_JUMP_DURATION; state.contextJumpDir = dir;
