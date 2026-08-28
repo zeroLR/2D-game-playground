@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { canActivate,getAbilityResource,setAbilityResource } from '../src/ability-economy';
+import { canActivate,getAbilityCharge,getAbilityResource,setAbilityCharge,setAbilityResource } from '../src/ability-economy';
 import { createCombatState } from '../src/combat';
 import { createBoard } from '../src/game';
 import { createLoadout,heroes } from '../src/heroes';
@@ -15,26 +15,26 @@ describe('Swordmaster Momentum economy',()=>{
   expect(resolveAbilityActivation('swordmaster','sever')).toEqual({kind:'resource',resourceId:'momentum',amount:3});
   expect(resolveAbilityActivation('swordmaster','blink')).toEqual({kind:'resource',resourceId:'momentum',amount:2});
  });
- it('gains Momentum from 3/4-line attack patterns instead of Mana',()=>{
+ it('gains Momentum and refreshes Flow Step charge from 3/4-line attack patterns',()=>{
   const board=createBoard();board[4][2]=board[4][3]=1;
   const first=resolvePlaceAction(createCombatState(board),'swordmaster',1,{row:4,col:4});
-  expect(first.ok).toBe(true);expect(first.manaGained).toBe(0);expect(getAbilityResource(first.state,1,'momentum')).toBe(1);
+  expect(first.ok).toBe(true);expect(first.manaGained).toBe(0);expect(getAbilityResource(first.state,1,'momentum')).toBe(1);expect(getAbilityCharge(first.state,1,'step')).toBe(1);
   const second=resolvePlaceAction(first.state,'swordmaster',1,{row:4,col:5});
-  expect(second.ok).toBe(true);expect(getAbilityResource(second.state,1,'momentum')).toBe(3);
+  expect(second.ok).toBe(true);expect(getAbilityResource(second.state,1,'momentum')).toBe(3);expect(getAbilityCharge(second.state,1,'step')).toBe(1);
  });
  it('decays one Momentum on a quiet placement',()=>{
   const state=setAbilityResource(createCombatState(createBoard()),1,'momentum',2);
   const result=resolvePlaceAction(state,'swordmaster',1,{row:0,col:0});
   expect(result.ok).toBe(true);expect(getAbilityResource(result.state,1,'momentum')).toBe(1);
  });
- it('Flow Step requires Momentum but preserves it instead of spending or moving a stone',()=>{
+ it('Flow Step requires a charge and spends it to preserve one quiet placement',()=>{
   const board=createBoard();board[4][4]=1;
-  const empty=createCombatState(board),activation=resolveAbilityActivation('swordmaster','step');
+  const empty=setAbilityResource(createCombatState(board),1,'momentum',3),activation=resolveAbilityActivation('swordmaster','step');
   expect(canActivate(prepareHeroAbilityState(empty,'swordmaster',1,'step'),1,activation,'step').ready).toBe(false);
-  const state=setAbilityResource(empty,1,'momentum',1),prepared=prepareHeroAbilityState(state,'swordmaster',1,'step');
+  const state=setAbilityCharge(empty,1,'step',1),prepared=prepareHeroAbilityState(state,'swordmaster',1,'step');
   expect(canActivate(prepared,1,activation,'step').ready).toBe(true);
   const result=resolvePlaceAction(state,'swordmaster',1,{row:0,col:0},{preserveMomentum:true});
-  expect(result.ok).toBe(true);expect(result.state.board[4][4]).toBe(1);expect(result.state.board[0][0]).toBe(1);expect(getAbilityResource(result.state,1,'momentum')).toBe(1);
+  expect(result.ok).toBe(true);expect(result.state.board[4][4]).toBe(1);expect(result.state.board[0][0]).toBe(1);expect(getAbilityResource(result.state,1,'momentum')).toBe(3);expect(getAbilityCharge(result.state,1,'step')).toBe(0);
  });
  it('Sever is a full-Momentum finisher that pushes rather than removes',()=>{
   const board=createBoard();board[4][3]=1;board[4][4]=2;
