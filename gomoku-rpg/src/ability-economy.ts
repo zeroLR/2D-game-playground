@@ -39,6 +39,10 @@ export function setAbilityCondition(state:CombatState,player:Player,conditionId:
  return {...state,abilityStates:updateActorAbilityState(state.abilityStates,player,(actor)=>({...actor,conditions:{...actor.conditions,[conditionId]:active}}))};
 }
 
+export function getAbilityCharge(state:CombatState,player:Player,abilityId:AbilityId){return state.abilityStates[player].charges[abilityId]??0;}
+export function setAbilityCharge(state:CombatState,player:Player,abilityId:AbilityId,value:number):CombatState{
+ return {...state,abilityStates:updateActorAbilityState(state.abilityStates,player,(actor)=>({...actor,charges:{...actor.charges,[abilityId]:Math.max(0,value)}}))};
+}
 export function getAbilityCooldown(state:CombatState,player:Player,abilityId:AbilityId){return state.abilityStates[player].cooldowns[abilityId]??0;}
 export function getAbilityUsesSpent(state:CombatState,player:Player,abilityId:AbilityId){return state.abilityStates[player].usesSpent[abilityId]??0;}
 

@@ -1,4 +1,4 @@
-import { getAbilityResource,setAbilityCondition, type AbilityActivationRule } from './ability-economy';
+import { getAbilityCharge,setAbilityCondition, type AbilityActivationRule } from './ability-economy';
 import type { CombatState } from './combat';
 import type { Player, Pos } from './game';
 import { heroes, type HeroId } from './heroes';
@@ -33,7 +33,7 @@ export function prepareHeroAbilityState(state:CombatState,heroId:HeroId,player:P
   const activation=resolveAbilityActivation(heroId,skillId);
   if(activation.kind!=='condition')return state;
   if(heroId==='swordmaster'&&skillId==='step'){
-    return setAbilityCondition(state,player,activation.conditionId,getAbilityResource(state,player,'momentum')>=1);
+    return setAbilityCondition(state,player,activation.conditionId,getAbilityCharge(state,player,'step')>0);
   }
   if(heroId!=='architect')return state;
   const context={state,player};
