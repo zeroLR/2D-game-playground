@@ -1,0 +1,29 @@
+name: bitland CI
+
+on:
+  pull_request:
+    paths:
+      - "bitland/**"
+      - ".github/workflows/bitland.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "bitland/**"
+      - ".github/workflows/bitland.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: bitland
+      install-command: npm install --no-audit --no-fund
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
