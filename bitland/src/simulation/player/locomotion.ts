@@ -65,8 +65,11 @@ export function stepLocomotion(
   maxX: number,
   config: LocomotionConfig = DEFAULT_LOCOMOTION,
 ): void {
+  if (state.grounded) state.coyoteRemaining = config.coyoteTime;
+
   // Elevated platform support is resolved by the world collision layer after this step.
-  // Releasing grounded here means walking beyond a platform edge naturally transitions to a fall.
+  // Releasing grounded here means walking beyond a platform edge naturally transitions to a fall,
+  // while the refreshed coyote timer keeps jumps forgiving at that boundary.
   if (state.grounded && state.y < groundY - 0.5) state.grounded = false;
 
   const moveX = Math.max(-1, Math.min(1, input.moveX));
@@ -75,8 +78,7 @@ export function stepLocomotion(
   if (input.jumpPressed) state.jumpBufferRemaining = config.jumpBufferTime;
   else state.jumpBufferRemaining = Math.max(0, state.jumpBufferRemaining - dt);
 
-  if (state.grounded) state.coyoteRemaining = config.coyoteTime;
-  else state.coyoteRemaining = Math.max(0, state.coyoteRemaining - dt);
+  if (!state.grounded) state.coyoteRemaining = Math.max(0, state.coyoteRemaining - dt);
 
   const speedMultiplier = input.guardHeld ? 0.42 : 1;
   const targetVx = moveX * config.runSpeed * speedMultiplier;
