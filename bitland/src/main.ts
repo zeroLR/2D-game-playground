@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import './style.css';
@@ -116,45 +116,77 @@ function makeMobileControls(input: MobileInputState): Container {
 
   const padRadius = 62;
   const knobRadius = 25;
-  const padCenter = { x: 104, y: LOGICAL_HEIGHT - 96 };
+  const defaultCenter = { x: 104, y: LOGICAL_HEIGHT - 96 };
+  const activeCenter = { ...defaultCenter };
+  const activationZone = new Graphics().rect(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58).fill({ color: 0x000000, alpha: 0.001 });
+  activationZone.eventMode = 'static';
+  activationZone.hitArea = new Rectangle(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58);
+  hud.addChild(activationZone);
 
   const padBase = new Graphics()
     .circle(0, 0, padRadius).fill({ color: 0x071314, alpha: 0.5 })
     .circle(0, 0, padRadius).stroke({ color: 0x7be6d6, width: 2, alpha: 0.55 })
     .moveTo(-38, 0).lineTo(38, 0).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 })
     .moveTo(0, -38).lineTo(0, 38).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 });
-  padBase.position.set(padCenter.x, padCenter.y);
-  padBase.eventMode = 'static';
+  padBase.position.set(defaultCenter.x, defaultCenter.y);
   hud.addChild(padBase);
 
   const knob = new Graphics()
     .circle(0, 0, knobRadius).fill({ color: 0x6ecf78, alpha: 0.28 })
     .circle(0, 0, knobRadius).stroke({ color: 0xb8fff4, width: 2, alpha: 0.8 });
-  knob.position.set(padCenter.x, padCenter.y);
+  knob.position.set(defaultCenter.x, defaultCenter.y);
   hud.addChild(knob);
 
   let padPointerId: number | null = null;
+
+  const setPadCenter = (x: number, y: number) => {
+    activeCenter.x = Math.max(padRadius + 12, Math.min(LOGICAL_WIDTH * 0.5 - padRadius - 12, x));
+    activeCenter.y = Math.max(LOGICAL_HEIGHT * 0.42 + padRadius + 12, Math.min(LOGICAL_HEIGHT - padRadius - 12, y));
+    padBase.position.set(activeCenter.x, activeCenter.y);
+    knob.position.set(activeCenter.x, activeCenter.y);
+  };
+
   const updatePad = (globalX: number, globalY: number) => {
-    const dx = globalX - padCenter.x;
-    const dy = globalY - padCenter.y;
+    const dx = globalX - activeCenter.x;
+    const dy = globalY - activeCenter.y;
     const distance = Math.hypot(dx, dy);
     const clamped = Math.min(distance, padRadius);
     const nx = distance > 0 ? dx / distance : 0;
     const ny = distance > 0 ? dy / distance : 0;
-    knob.position.set(padCenter.x + nx * clamped, padCenter.y + ny * clamped);
+    knob.position.set(activeCenter.x + nx * clamped, activeCenter.y + ny * clamped);
     input.moveX = Math.abs(dx / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dx / padRadius));
     input.moveY = Math.abs(dy / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dy / padRadius));
   };
+
   const resetPad = () => {
     padPointerId = null;
-    knob.position.set(padCenter.x, padCenter.y);
+    activeCenter.x = defaultCenter.x;
+    activeCenter.y = defaultCenter.y;
+    padBase.position.set(defaultCenter.x, defaultCenter.y);
+    knob.position.set(defaultCenter.x, defaultCenter.y);
     input.moveX = 0;
     input.moveY = 0;
   };
-  padBase.on('pointerdown', (event) => { padPointerId = event.pointerId; updatePad(event.global.x, event.global.y); });
-  padBase.on('pointermove', (event) => { if (padPointerId === event.pointerId) updatePad(event.global.x, event.global.y); });
-  padBase.on('pointerup', (event) => { if (padPointerId === event.pointerId) resetPad(); });
-  padBase.on('pointerupoutside', (event) => { if (padPointerId === event.pointerId) resetPad(); });
+
+  activationZone.on('pointerdown', (event) => {
+    if (padPointerId !== null) return;
+    padPointerId = event.pointerId;
+    setPadCenter(event.global.x, event.global.y);
+    input.moveX = 0;
+    input.moveY = 0;
+  });
+  activationZone.on('pointermove', (event) => {
+    if (padPointerId === event.pointerId) updatePad(event.global.x, event.global.y);
+  });
+  activationZone.on('pointerup', (event) => {
+    if (padPointerId === event.pointerId) resetPad();
+  });
+  activationZone.on('pointerupoutside', (event) => {
+    if (padPointerId === event.pointerId) resetPad();
+  });
+  activationZone.on('pointercancel', (event) => {
+    if (padPointerId === event.pointerId) resetPad();
+  });
 
   const makeActionButton = (name: ActionName, x: number, y: number, radius: number, color: number, onPress: () => void, onRelease?: () => void) => {
     const button = new Container();
@@ -189,7 +221,7 @@ function makeStatusHud(): Container {
   const title = new Text({ text: 'BITLAND // P0.1 MOVEMENT + CAMERA', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } });
   title.position.set(24, 22);
   hud.addChild(title);
-  const hint = new Text({ text: 'virtual pad · jump · dodge  // test acceleration, air control and camera look-ahead', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 12 } });
+  const hint = new Text({ text: 'floating virtual pad · jump · dodge  // touch anywhere in the left control zone', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 12 } });
   hint.position.set(24, 50);
   hud.addChild(hint);
   return hud;
