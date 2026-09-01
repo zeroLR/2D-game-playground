@@ -1,10 +1,23 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
+import { createCameraState, stepCamera } from './simulation/player/camera';
+import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import './style.css';
 
 const LOGICAL_WIDTH = 960;
 const LOGICAL_HEIGHT = 540;
+const WORLD_WIDTH = 1920;
 const BOOT_TIMEOUT_MS = 5000;
 const GROUND_Y = 364;
+const PLAYER_MIN_X = 18;
+const PLAYER_MAX_X = WORLD_WIDTH - 18;
+
+type Platform = { x: number; y: number; width: number };
+const PLATFORMS: Platform[] = [
+  { x: 510, y: 310, width: 150 },
+  { x: 760, y: 278, width: 130 },
+  { x: 1120, y: 325, width: 180 },
+  { x: 1420, y: 292, width: 150 },
+];
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('Missing #app');
@@ -22,47 +35,53 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 function makeWorld(): Container {
   const world = new Container();
 
-  const sky = new Graphics().rect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT).fill(0x071314);
+  const sky = new Graphics().rect(0, 0, WORLD_WIDTH, LOGICAL_HEIGHT).fill(0x071314);
   world.addChild(sky);
 
   const far = new Graphics();
-  for (let x = 0; x < LOGICAL_WIDTH; x += 48) {
+  for (let x = 0; x < WORLD_WIDTH; x += 48) {
     const h = 60 + ((x / 48) % 5) * 18;
-    far.rect(x, 270 - h, 34, h).fill(0x0c2a2b);
+    far.rect(x, 270 - h, 34, h).fill(x < 640 ? 0x0c2a2b : x < 1280 ? 0x10263a : 0x30191f);
   }
   world.addChild(far);
 
   const ground = new Graphics()
-    .rect(0, 390, 960, 150).fill(0x102c22)
-    .rect(0, 382, 420, 8).fill(0x6ecf78)
-    .rect(420, 382, 300, 8).fill(0x59d7ea)
-    .rect(720, 382, 240, 8).fill(0xff7a59);
+    .rect(0, 390, WORLD_WIDTH, 150).fill(0x102126)
+    .rect(0, 382, 640, 8).fill(0x6ecf78)
+    .rect(640, 382, 640, 8).fill(0x59d7ea)
+    .rect(1280, 382, 640, 8).fill(0xff7a59);
   world.addChild(ground);
 
-  const crystal = new Graphics()
-    .poly([520, 382, 540, 315, 560, 382]).fill(0x6be8ff)
-    .poly([548, 382, 566, 336, 584, 382]).fill(0xb9f7ff);
-  world.addChild(crystal);
+  const platformGraphics = new Graphics();
+  for (const platform of PLATFORMS) {
+    platformGraphics
+      .rect(platform.x, platform.y + 18, platform.width, 18).fill(0x102126)
+      .rect(platform.x, platform.y + 14, platform.width, 4).fill(0xb8fff4);
+  }
+  world.addChild(platformGraphics);
+
+  const crystals = new Graphics();
+  for (let x = 700; x < 1260; x += 180) {
+    crystals
+      .poly([x, 382, x + 18, 318, x + 38, 382]).fill(0x6be8ff)
+      .poly([x + 30, 382, x + 45, 340, x + 62, 382]).fill(0xb9f7ff);
+  }
+  world.addChild(crystals);
 
   const synthesis = new Graphics()
-    .rect(800, 292, 72, 90).fill(0x25171c)
-    .rect(808, 300, 56, 74).stroke({ color: 0xff8b68, width: 3 })
-    .poly([836, 320, 852, 350, 820, 350]).stroke({ color: 0xffa27e, width: 3 });
+    .rect(1630, 292, 72, 90).fill(0x25171c)
+    .rect(1638, 300, 56, 74).stroke({ color: 0xff8b68, width: 3 })
+    .poly([1666, 320, 1682, 350, 1650, 350]).stroke({ color: 0xffa27e, width: 3 });
   world.addChild(synthesis);
 
-  const title = new Text({
-    text: 'BITLAND // P0.1 MOBILE INPUT',
-    style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 },
-  });
-  title.position.set(24, 22);
-  world.addChild(title);
-
-  const hint = new Text({
-    text: 'LEFT PAD move  ·  RIGHT ACTIONS  ·  keyboard retained for desktop testing',
-    style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 13 },
-  });
-  hint.position.set(24, 50);
-  world.addChild(hint);
+  for (let x = 120; x < WORLD_WIDTH; x += 140) {
+    const glyph = new Text({
+      text: x % 280 === 0 ? '1' : '0',
+      style: { fill: x < 640 ? 0x497f65 : x < 1280 ? 0x44758c : 0x8d493f, fontFamily: 'monospace', fontSize: 18 },
+    });
+    glyph.position.set(x, 120 + (x % 4) * 28);
+    world.addChild(glyph);
+  }
 
   return world;
 }
@@ -77,7 +96,6 @@ function makePlayer(): Container {
     .rect(-7, 8, 5, 10).fill(0x6ecf78)
     .rect(2, 8, 5, 10).fill(0x6ecf78);
   player.addChild(body);
-  player.position.set(180, GROUND_Y);
   return player;
 }
 
@@ -107,7 +125,6 @@ function makeMobileControls(input: MobileInputState): Container {
     .moveTo(0, -38).lineTo(0, 38).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 });
   padBase.position.set(padCenter.x, padCenter.y);
   padBase.eventMode = 'static';
-  padBase.cursor = 'pointer';
   hud.addChild(padBase);
 
   const knob = new Graphics()
@@ -117,7 +134,6 @@ function makeMobileControls(input: MobileInputState): Container {
   hud.addChild(knob);
 
   let padPointerId: number | null = null;
-
   const updatePad = (globalX: number, globalY: number) => {
     const dx = globalX - padCenter.x;
     const dy = globalY - padCenter.y;
@@ -129,71 +145,34 @@ function makeMobileControls(input: MobileInputState): Container {
     input.moveX = Math.abs(dx / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dx / padRadius));
     input.moveY = Math.abs(dy / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dy / padRadius));
   };
-
   const resetPad = () => {
     padPointerId = null;
     knob.position.set(padCenter.x, padCenter.y);
     input.moveX = 0;
     input.moveY = 0;
   };
+  padBase.on('pointerdown', (event) => { padPointerId = event.pointerId; updatePad(event.global.x, event.global.y); });
+  padBase.on('pointermove', (event) => { if (padPointerId === event.pointerId) updatePad(event.global.x, event.global.y); });
+  padBase.on('pointerup', (event) => { if (padPointerId === event.pointerId) resetPad(); });
+  padBase.on('pointerupoutside', (event) => { if (padPointerId === event.pointerId) resetPad(); });
 
-  padBase.on('pointerdown', (event) => {
-    padPointerId = event.pointerId;
-    updatePad(event.global.x, event.global.y);
-  });
-  padBase.on('pointermove', (event) => {
-    if (padPointerId === event.pointerId) updatePad(event.global.x, event.global.y);
-  });
-  padBase.on('pointerup', (event) => {
-    if (padPointerId === event.pointerId) resetPad();
-  });
-  padBase.on('pointerupoutside', (event) => {
-    if (padPointerId === event.pointerId) resetPad();
-  });
-
-  const makeActionButton = (
-    name: ActionName,
-    x: number,
-    y: number,
-    radius: number,
-    color: number,
-    onPress: () => void,
-    onRelease?: () => void,
-  ) => {
+  const makeActionButton = (name: ActionName, x: number, y: number, radius: number, color: number, onPress: () => void, onRelease?: () => void) => {
     const button = new Container();
     button.position.set(x, y);
     button.eventMode = 'static';
-    button.cursor = 'pointer';
-
     const ring = new Graphics()
       .circle(0, 0, radius).fill({ color: 0x071314, alpha: 0.52 })
       .circle(0, 0, radius).stroke({ color, width: 2, alpha: 0.72 });
     button.addChild(ring);
-
-    const label = new Text({
-      text: name,
-      style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : 11, fontWeight: '700' },
-    });
+    const label = new Text({ text: name, style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : 11, fontWeight: '700' } });
     label.anchor.set(0.5);
     button.addChild(label);
-
-    const setPressed = (pressed: boolean) => {
-      button.scale.set(pressed ? 0.9 : 1);
-      ring.alpha = pressed ? 1 : 0.82;
-    };
-
-    button.on('pointerdown', () => {
-      setPressed(true);
-      onPress();
-    });
-    const release = () => {
-      setPressed(false);
-      onRelease?.();
-    };
+    const setPressed = (pressed: boolean) => { button.scale.set(pressed ? 0.9 : 1); ring.alpha = pressed ? 1 : 0.82; };
+    button.on('pointerdown', () => { setPressed(true); onPress(); });
+    const release = () => { setPressed(false); onRelease?.(); };
     button.on('pointerup', release);
     button.on('pointerupoutside', release);
     button.on('pointercancel', release);
-
     hud.addChild(button);
   };
 
@@ -201,8 +180,33 @@ function makeMobileControls(input: MobileInputState): Container {
   makeActionButton('ATK', 782, 472, 32, 0xffb36b, () => { input.attackHeld = true; }, () => { input.attackHeld = false; });
   makeActionButton('GUARD', 852, 505, 28, 0x6be8ff, () => { input.guardHeld = true; }, () => { input.guardHeld = false; });
   makeActionButton('DODGE', 914, 476, 29, 0xd0a6ff, () => { input.dodgePressed = true; });
-
   return hud;
+}
+
+function makeStatusHud(): Container {
+  const hud = new Container();
+  hud.zIndex = 110;
+  const title = new Text({ text: 'BITLAND // P0.1 MOVEMENT + CAMERA', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } });
+  title.position.set(24, 22);
+  hud.addChild(title);
+  const hint = new Text({ text: 'virtual pad · jump · dodge  // test acceleration, air control and camera look-ahead', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 12 } });
+  hint.position.set(24, 50);
+  hud.addChild(hint);
+  return hud;
+}
+
+function landOnPlatforms(previousY: number, locomotion: ReturnType<typeof createLocomotionState>): void {
+  if (locomotion.vy < 0) return;
+  for (const platform of PLATFORMS) {
+    const withinX = locomotion.x >= platform.x - 8 && locomotion.x <= platform.x + platform.width + 8;
+    const crossedTop = previousY <= platform.y && locomotion.y >= platform.y;
+    if (withinX && crossedTop) {
+      locomotion.y = platform.y;
+      locomotion.vy = 0;
+      locomotion.grounded = true;
+      return;
+    }
+  }
 }
 
 async function bootstrap(): Promise<void> {
@@ -210,48 +214,39 @@ async function bootstrap(): Promise<void> {
   const app = new Application();
 
   try {
-    await withTimeout(
-      app.init({
-        width: LOGICAL_WIDTH,
-        height: LOGICAL_HEIGHT,
-        background: '#071314',
-        antialias: false,
-        resolution: Math.min(window.devicePixelRatio || 1, 2),
-        autoDensity: true,
-      }),
-      BOOT_TIMEOUT_MS,
-      'PixiJS renderer initialization',
-    );
+    await withTimeout(app.init({
+      width: LOGICAL_WIDTH,
+      height: LOGICAL_HEIGHT,
+      background: '#071314',
+      antialias: false,
+      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      autoDensity: true,
+    }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
 
     host.replaceChildren(app.canvas);
     console.info('[Bitland] renderer ready; canvas mounted');
-
     app.stage.sortableChildren = true;
     app.stage.eventMode = 'static';
     app.stage.hitArea = app.screen;
 
     const world = makeWorld();
     const player = makePlayer();
+    const locomotion = createLocomotionState(180, GROUND_Y);
+    const camera = createCameraState();
+    player.position.set(locomotion.x, locomotion.y);
     world.addChild(player);
     app.stage.addChild(world);
 
-    const mobileInput: MobileInputState = {
-      moveX: 0,
-      moveY: 0,
-      jumpPressed: false,
-      attackHeld: false,
-      guardHeld: false,
-      dodgePressed: false,
-    };
+    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackHeld: false, guardHeld: false, dodgePressed: false };
     app.stage.addChild(makeMobileControls(mobileInput));
+    app.stage.addChild(makeStatusHud());
 
     const keys = new Set<string>();
-    let velocityY = 0;
-    let grounded = true;
+    let keyboardJumpPressed = false;
     let dodgeCooldown = 0;
-
     window.addEventListener('keydown', (event) => {
       keys.add(event.code);
+      if (event.code === 'Space' && !event.repeat) keyboardJumpPressed = true;
       if (event.code === 'Space') event.preventDefault();
     });
     window.addEventListener('keyup', (event) => keys.delete(event.code));
@@ -259,37 +254,41 @@ async function bootstrap(): Promise<void> {
     app.ticker.add((ticker) => {
       const dt = Math.min(ticker.deltaMS / 1000, 0.05);
       dodgeCooldown = Math.max(0, dodgeCooldown - dt);
-
       const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
       const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis;
-      const speedMultiplier = mobileInput.guardHeld ? 0.42 : 1;
-      player.x = Math.max(18, Math.min(LOGICAL_WIDTH - 18, player.x + axis * 190 * speedMultiplier * dt));
+      const previousY = locomotion.y;
 
-      const wantsJump = mobileInput.jumpPressed || keys.has('Space');
-      if (grounded && wantsJump) {
-        velocityY = -330;
-        grounded = false;
-      }
+      stepLocomotion(locomotion, {
+        moveX: axis,
+        jumpPressed: mobileInput.jumpPressed || keyboardJumpPressed,
+        guardHeld: mobileInput.guardHeld,
+      }, dt, GROUND_Y, PLAYER_MIN_X, PLAYER_MAX_X);
       mobileInput.jumpPressed = false;
+      keyboardJumpPressed = false;
+      landOnPlatforms(previousY, locomotion);
 
       if (mobileInput.dodgePressed && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) {
-        player.x = Math.max(18, Math.min(LOGICAL_WIDTH - 18, player.x + Math.sign(axis) * 46));
+        locomotion.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, locomotion.x + Math.sign(axis) * 58));
+        locomotion.vx = Math.sign(axis) * 260;
         dodgeCooldown = 0.5;
       }
       mobileInput.dodgePressed = false;
 
+      player.position.set(locomotion.x, locomotion.y);
+      player.scale.x = locomotion.facing;
+      player.scale.y = 1;
       player.alpha = mobileInput.guardHeld ? 0.72 : 1;
-      player.scale.set(mobileInput.attackHeld ? 1.06 : 1);
+      if (mobileInput.attackHeld) player.scale.y = 1.06;
 
-      if (!grounded) {
-        velocityY += 900 * dt;
-        player.y += velocityY * dt;
-        if (player.y >= GROUND_Y) {
-          player.y = GROUND_Y;
-          velocityY = 0;
-          grounded = true;
-        }
-      }
+      stepCamera(camera, locomotion.x, locomotion.vx, dt, {
+        viewportWidth: LOGICAL_WIDTH,
+        worldWidth: WORLD_WIDTH,
+        deadZoneHalfWidth: 120,
+        lookAheadDistance: 90,
+        followSharpness: 8,
+        lookAheadSharpness: 6,
+      });
+      world.x = -Math.round(camera.x);
     });
 
     const resize = () => {
@@ -297,7 +296,6 @@ async function bootstrap(): Promise<void> {
       app.canvas.style.width = `${Math.floor(LOGICAL_WIDTH * scale)}px`;
       app.canvas.style.height = `${Math.floor(LOGICAL_HEIGHT * scale)}px`;
     };
-
     window.addEventListener('resize', resize);
     resize();
     console.info('[Bitland] application bootstrap complete');
