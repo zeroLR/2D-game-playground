@@ -34,24 +34,20 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 
 function makeWorld(): Container {
   const world = new Container();
-
   const sky = new Graphics().rect(0, 0, WORLD_WIDTH, LOGICAL_HEIGHT).fill(0x071314);
   world.addChild(sky);
-
   const far = new Graphics();
   for (let x = 0; x < WORLD_WIDTH; x += 48) {
     const h = 60 + ((x / 48) % 5) * 18;
     far.rect(x, 270 - h, 34, h).fill(x < 640 ? 0x0c2a2b : x < 1280 ? 0x10263a : 0x30191f);
   }
   world.addChild(far);
-
   const ground = new Graphics()
     .rect(0, 390, WORLD_WIDTH, 150).fill(0x102126)
     .rect(0, 382, 640, 8).fill(0x6ecf78)
     .rect(640, 382, 640, 8).fill(0x59d7ea)
     .rect(1280, 382, 640, 8).fill(0xff7a59);
   world.addChild(ground);
-
   const platformGraphics = new Graphics();
   for (const platform of PLATFORMS) {
     platformGraphics
@@ -59,7 +55,6 @@ function makeWorld(): Container {
       .rect(platform.x, platform.y + 14, platform.width, 4).fill(0xb8fff4);
   }
   world.addChild(platformGraphics);
-
   const crystals = new Graphics();
   for (let x = 700; x < 1260; x += 180) {
     crystals
@@ -67,13 +62,11 @@ function makeWorld(): Container {
       .poly([x + 30, 382, x + 45, 340, x + 62, 382]).fill(0xb9f7ff);
   }
   world.addChild(crystals);
-
   const synthesis = new Graphics()
     .rect(1630, 292, 72, 90).fill(0x25171c)
     .rect(1638, 300, 56, 74).stroke({ color: 0xff8b68, width: 3 })
     .poly([1666, 320, 1682, 350, 1650, 350]).stroke({ color: 0xffa27e, width: 3 });
   world.addChild(synthesis);
-
   for (let x = 120; x < WORLD_WIDTH; x += 140) {
     const glyph = new Text({
       text: x % 280 === 0 ? '1' : '0',
@@ -82,7 +75,6 @@ function makeWorld(): Container {
     glyph.position.set(x, 120 + (x % 4) * 28);
     world.addChild(glyph);
   }
-
   return world;
 }
 
@@ -113,15 +105,12 @@ type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE';
 function makeMobileControls(input: MobileInputState): Container {
   const hud = new Container();
   hud.zIndex = 100;
+  hud.sortableChildren = true;
 
   const padRadius = 62;
   const knobRadius = 25;
   const defaultCenter = { x: 104, y: LOGICAL_HEIGHT - 96 };
   const activeCenter = { ...defaultCenter };
-  const activationZone = new Graphics().rect(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58).fill({ color: 0x000000, alpha: 0.001 });
-  activationZone.eventMode = 'static';
-  activationZone.hitArea = new Rectangle(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58);
-  hud.addChild(activationZone);
 
   const padBase = new Graphics()
     .circle(0, 0, padRadius).fill({ color: 0x071314, alpha: 0.5 })
@@ -129,13 +118,28 @@ function makeMobileControls(input: MobileInputState): Container {
     .moveTo(-38, 0).lineTo(38, 0).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 })
     .moveTo(0, -38).lineTo(0, 38).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 });
   padBase.position.set(defaultCenter.x, defaultCenter.y);
+  padBase.eventMode = 'none';
+  padBase.zIndex = 1;
   hud.addChild(padBase);
 
   const knob = new Graphics()
     .circle(0, 0, knobRadius).fill({ color: 0x6ecf78, alpha: 0.28 })
     .circle(0, 0, knobRadius).stroke({ color: 0xb8fff4, width: 2, alpha: 0.8 });
   knob.position.set(defaultCenter.x, defaultCenter.y);
+  knob.eventMode = 'none';
+  knob.zIndex = 2;
   hud.addChild(knob);
+
+  // One dedicated hit layer owns every joystick pointer event. The visual pad and
+  // knob never participate in hit testing, so touching directly on them behaves
+  // exactly the same as touching anywhere else in the movement zone.
+  const activationZone = new Graphics()
+    .rect(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58)
+    .fill({ color: 0x000000, alpha: 0.001 });
+  activationZone.eventMode = 'static';
+  activationZone.hitArea = new Rectangle(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58);
+  activationZone.zIndex = 10;
+  hud.addChild(activationZone);
 
   let padPointerId: number | null = null;
 
@@ -192,6 +196,7 @@ function makeMobileControls(input: MobileInputState): Container {
     const button = new Container();
     button.position.set(x, y);
     button.eventMode = 'static';
+    button.zIndex = 20;
     const ring = new Graphics()
       .circle(0, 0, radius).fill({ color: 0x071314, alpha: 0.52 })
       .circle(0, 0, radius).stroke({ color, width: 2, alpha: 0.72 });
