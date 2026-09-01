@@ -65,6 +65,10 @@ export function stepLocomotion(
   maxX: number,
   config: LocomotionConfig = DEFAULT_LOCOMOTION,
 ): void {
+  // Elevated platform support is resolved by the world collision layer after this step.
+  // Releasing grounded here means walking beyond a platform edge naturally transitions to a fall.
+  if (state.grounded && state.y < groundY - 0.5) state.grounded = false;
+
   const moveX = Math.max(-1, Math.min(1, input.moveX));
   if (Math.abs(moveX) > 0.05) state.facing = moveX < 0 ? -1 : 1;
 
