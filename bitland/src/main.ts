@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
+import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from './simulation/combat/combat';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
@@ -36,7 +37,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
   return Promise.race([promise, new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs))]);
 }
 
-function makeWorld(): { world: Container; nodeViews: Map<string, Graphics>; crateView: Graphics } {
+function makeWorld() {
   const world = new Container();
   world.addChild(new Graphics().rect(0, 0, WORLD_WIDTH, LOGICAL_HEIGHT).fill(0x071314));
   const far = new Graphics();
@@ -49,30 +50,31 @@ function makeWorld(): { world: Container; nodeViews: Map<string, Graphics>; crat
   const platformGraphics = new Graphics();
   for (const platform of PLATFORMS) platformGraphics.rect(platform.x, platform.y + 18, platform.width, 18).fill(0x102126).rect(platform.x, platform.y + 14, platform.width, 4).fill(0xb8fff4);
   world.addChild(platformGraphics);
-  const crystals = new Graphics();
-  for (let x = 700; x < 1260; x += 180) crystals.poly([x, 382, x + 18, 318, x + 38, 382]).fill(0x6be8ff).poly([x + 30, 382, x + 45, 340, x + 62, 382]).fill(0xb9f7ff);
-  world.addChild(crystals);
 
   const resourceColors = { MATTER: 0xa9c8b0, ENERGY: 0xffc56b, LIFE: 0x6ecf78, SIGNAL: 0x6be8ff } as const;
   const nodeViews = new Map<string, Graphics>();
   for (const node of RESOURCE_NODES) {
     const view = new Graphics().poly([0, 0, 13, -28, 27, 0]).fill({ color: resourceColors[node.resource], alpha: 0.85 }).circle(13, -13, 5).fill(0x071314);
-    view.position.set(node.x, 382);
-    world.addChild(view);
-    nodeViews.set(node.id, view);
+    view.position.set(node.x, 382); world.addChild(view); nodeViews.set(node.id, view);
   }
 
-  const crateView = new Graphics().rect(-20, -32, 40, 32).fill(0x26342f).rect(-16, -28, 32, 24).stroke({ color: 0xa9c8b0, width: 3 }).moveTo(-10, -20).lineTo(10, -8).stroke({ color: 0xa9c8b0, width: 2 });
-  crateView.position.set(CRATE.x, 382);
-  world.addChild(crateView);
+  const crateView = new Graphics().rect(-20, -32, 40, 32).fill(0x26342f).rect(-16, -28, 32, 24).stroke({ color: 0xa9c8b0, width: 3 });
+  crateView.position.set(CRATE.x, 382); world.addChild(crateView);
 
-  const synthesis = new Graphics().rect(1630, 292, 72, 90).fill(0x25171c).rect(1638, 300, 56, 74).stroke({ color: 0xff8b68, width: 3 }).poly([1666, 320, 1682, 350, 1650, 350]).stroke({ color: 0xffa27e, width: 3 });
-  world.addChild(synthesis);
-  for (let x = 120; x < WORLD_WIDTH; x += 140) {
-    const glyph = new Text({ text: x % 280 === 0 ? '1' : '0', style: { fill: x < 640 ? 0x497f65 : x < 1280 ? 0x44758c : 0x8d493f, fontFamily: 'monospace', fontSize: 18 } });
-    glyph.position.set(x, 120 + (x % 4) * 28); world.addChild(glyph);
+  const enemies = [
+    createEnemy('crawler-a', 820, { resource: 'LIFE', amount: 1 }),
+    createEnemy('crawler-b', 1510, { resource: 'ENERGY', amount: 1 }),
+  ];
+  const enemyViews = new Map<string, Container>();
+  for (const enemy of enemies) {
+    const view = new Container();
+    view.addChild(new Graphics().poly([-22, 0, -10, -22, 10, -22, 22, 0]).fill(0x172b2c).stroke({ color: 0xffb36b, width: 2 }).circle(-8, -13, 3).fill(0xffb36b).circle(8, -13, 3).fill(0xffb36b));
+    const hp = new Graphics(); hp.name = 'hp'; view.addChild(hp);
+    view.position.set(enemy.x, 382); world.addChild(view); enemyViews.set(enemy.id, view);
   }
-  return { world, nodeViews, crateView };
+
+  world.addChild(new Graphics().rect(1630, 292, 72, 90).fill(0x25171c).rect(1638, 300, 56, 74).stroke({ color: 0xff8b68, width: 3 }));
+  return { world, nodeViews, crateView, enemies, enemyViews };
 }
 
 function makePlayer(): Container {
@@ -81,14 +83,14 @@ function makePlayer(): Container {
   return player;
 }
 
-type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackHeld: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean };
+type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackPressed: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean };
 type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE' | 'USE';
 
 function makeMobileControls(input: MobileInputState): Container {
   const hud = new Container(); hud.zIndex = 100; hud.sortableChildren = true;
   const padRadius = 62, knobRadius = 25;
   const defaultCenter = { x: 104, y: LOGICAL_HEIGHT - 96 }, activeCenter = { ...defaultCenter };
-  const padBase = new Graphics().circle(0, 0, padRadius).fill({ color: 0x071314, alpha: 0.5 }).circle(0, 0, padRadius).stroke({ color: 0x7be6d6, width: 2, alpha: 0.55 }).moveTo(-38, 0).lineTo(38, 0).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 }).moveTo(0, -38).lineTo(0, 38).stroke({ color: 0x7be6d6, width: 1, alpha: 0.22 });
+  const padBase = new Graphics().circle(0, 0, padRadius).fill({ color: 0x071314, alpha: 0.5 }).circle(0, 0, padRadius).stroke({ color: 0x7be6d6, width: 2, alpha: 0.55 });
   padBase.position.set(defaultCenter.x, defaultCenter.y); padBase.eventMode = 'none'; padBase.zIndex = 1; hud.addChild(padBase);
   const knob = new Graphics().circle(0, 0, knobRadius).fill({ color: 0x6ecf78, alpha: 0.28 }).circle(0, 0, knobRadius).stroke({ color: 0xb8fff4, width: 2, alpha: 0.8 });
   knob.position.set(defaultCenter.x, defaultCenter.y); knob.eventMode = 'none'; knob.zIndex = 2; hud.addChild(knob);
@@ -96,9 +98,9 @@ function makeMobileControls(input: MobileInputState): Container {
   activationZone.eventMode = 'static'; activationZone.hitArea = new Rectangle(0, LOGICAL_HEIGHT * 0.42, LOGICAL_WIDTH * 0.5, LOGICAL_HEIGHT * 0.58); activationZone.zIndex = 10; hud.addChild(activationZone);
   let padPointerId: number | null = null;
   const setPadCenter = (x: number, y: number) => { activeCenter.x = Math.max(padRadius + 12, Math.min(LOGICAL_WIDTH * 0.5 - padRadius - 12, x)); activeCenter.y = Math.max(LOGICAL_HEIGHT * 0.42 + padRadius + 12, Math.min(LOGICAL_HEIGHT - padRadius - 12, y)); padBase.position.set(activeCenter.x, activeCenter.y); knob.position.set(activeCenter.x, activeCenter.y); };
-  const updatePad = (x: number, y: number) => { const dx = x - activeCenter.x, dy = y - activeCenter.y, distance = Math.hypot(dx, dy), clamped = Math.min(distance, padRadius), nx = distance > 0 ? dx / distance : 0, ny = distance > 0 ? dy / distance : 0; knob.position.set(activeCenter.x + nx * clamped, activeCenter.y + ny * clamped); input.moveX = Math.abs(dx / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dx / padRadius)); input.moveY = Math.abs(dy / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dy / padRadius)); };
+  const updatePad = (x: number, y: number) => { const dx = x - activeCenter.x, dy = y - activeCenter.y, distance = Math.hypot(dx, dy), clamped = Math.min(distance, padRadius), nx = distance ? dx / distance : 0, ny = distance ? dy / distance : 0; knob.position.set(activeCenter.x + nx * clamped, activeCenter.y + ny * clamped); input.moveX = Math.abs(dx / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dx / padRadius)); input.moveY = Math.abs(dy / padRadius) < 0.16 ? 0 : Math.max(-1, Math.min(1, dy / padRadius)); };
   const resetPad = () => { padPointerId = null; Object.assign(activeCenter, defaultCenter); padBase.position.set(defaultCenter.x, defaultCenter.y); knob.position.set(defaultCenter.x, defaultCenter.y); input.moveX = 0; input.moveY = 0; };
-  activationZone.on('pointerdown', e => { if (padPointerId !== null) return; padPointerId = e.pointerId; setPadCenter(e.global.x, e.global.y); input.moveX = 0; input.moveY = 0; });
+  activationZone.on('pointerdown', e => { if (padPointerId !== null) return; padPointerId = e.pointerId; setPadCenter(e.global.x, e.global.y); });
   activationZone.on('pointermove', e => { if (padPointerId === e.pointerId) updatePad(e.global.x, e.global.y); });
   for (const eventName of ['pointerup', 'pointerupoutside', 'pointercancel'] as const) activationZone.on(eventName, e => { if (padPointerId === e.pointerId) resetPad(); });
 
@@ -110,7 +112,7 @@ function makeMobileControls(input: MobileInputState): Container {
   };
   makeButton('JUMP', 856, 421, 40, 0xb8fff4, () => { input.jumpPressed = true; });
   makeButton('USE', 780, 420, 34, 0x6ecf78, () => { input.interactPressed = true; });
-  makeButton('ATK', 776, 490, 29, 0xffb36b, () => { input.attackHeld = true; }, () => { input.attackHeld = false; });
+  makeButton('ATK', 776, 490, 29, 0xffb36b, () => { input.attackPressed = true; });
   makeButton('GUARD', 846, 500, 27, 0x6be8ff, () => { input.guardHeld = true; }, () => { input.guardHeld = false; });
   makeButton('DODGE', 914, 474, 29, 0xd0a6ff, () => { input.dodgePressed = true; });
   return hud;
@@ -118,11 +120,11 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P0.2 INTERACTION + RESOURCES', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
-  const hint = new Text({ text: 'approach nodes/crate · USE to gather or push', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 12 } }); hint.position.set(24, 50); hud.addChild(hint);
-  const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 78); hud.addChild(inventoryText);
-  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 112); hud.addChild(prompt);
-  return { hud, inventoryText, prompt };
+  const title = new Text({ text: 'BITLAND // P0.3 COMBAT FOUNDATION', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
+  const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
+  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 108); hud.addChild(prompt);
+  return { hud, inventoryText, combatText, prompt };
 }
 
 function landOnPlatforms(previousY: number, locomotion: ReturnType<typeof createLocomotionState>): void {
@@ -135,30 +137,46 @@ async function bootstrap(): Promise<void> {
   try {
     await withTimeout(app.init({ width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT, background: '#071314', antialias: false, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
     host.replaceChildren(app.canvas); app.stage.sortableChildren = true; app.stage.eventMode = 'static'; app.stage.hitArea = app.screen;
-    const { world, nodeViews, crateView } = makeWorld(); const player = makePlayer(); const locomotion = createLocomotionState(180, GROUND_Y); const camera = createCameraState(); const inventory = createInventory();
+    const { world, nodeViews, crateView, enemies, enemyViews } = makeWorld();
+    const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
-    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackHeld: false, guardHeld: false, dodgePressed: false, interactPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
+    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
     const status = makeStatusHud(); app.stage.addChild(status.hud);
-    const keys = new Set<string>(); let keyboardJumpPressed = false, keyboardInteractPressed = false, dodgeCooldown = 0;
-    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJumpPressed = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteractPressed = true; if (e.code === 'Space') e.preventDefault(); }); window.addEventListener('keyup', e => keys.delete(e.code));
+    const keys = new Set<string>(); let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0;
+    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if (e.code === 'Space') e.preventDefault(); });
+    window.addEventListener('keyup', e => keys.delete(e.code));
 
     app.ticker.add(ticker => {
-      const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt);
+      const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); tickCombat(combat, enemies, dt);
       const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis; const previousY = locomotion.y;
-      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJumpPressed, guardHeld: mobileInput.guardHeld }, dt, GROUND_Y, PLAYER_MIN_X, PLAYER_MAX_X); mobileInput.jumpPressed = false; keyboardJumpPressed = false; landOnPlatforms(previousY, locomotion);
-      if (mobileInput.dodgePressed && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, locomotion.x + Math.sign(axis) * 58)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; } mobileInput.dodgePressed = false;
+      const guarding = mobileInput.guardHeld || keys.has('KeyK');
+      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, PLAYER_MAX_X); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion);
 
-      const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE);
-      const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
+      if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, locomotion.x + Math.sign(axis) * 58)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat); } mobileInput.dodgePressed = false;
+
+      const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE); const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
       status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? 'USE · PUSH OBJECT' : '';
-      if (mobileInput.interactPressed || keyboardInteractPressed) {
-        if (nearbyNode && gatherNode(nearbyNode, inventory)) nodeViews.get(nearbyNode.id)!.alpha = 0.12;
-        else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34);
-      }
-      mobileInput.interactPressed = false; keyboardInteractPressed = false; crateView.x = CRATE.x;
-      status.inventoryText.text = `MAT ${inventory.MATTER}   ENG ${inventory.ENERGY}   LIFE ${inventory.LIFE}   SIG ${inventory.SIGNAL}`;
+      if (mobileInput.interactPressed || keyboardInteract) { if (nearbyNode && gatherNode(nearbyNode, inventory)) nodeViews.get(nearbyNode.id)!.alpha = 0.12; else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34); }
+      mobileInput.interactPressed = false; keyboardInteract = false; crateView.x = CRATE.x;
 
-      player.position.set(locomotion.x, locomotion.y); player.scale.x = locomotion.facing; player.scale.y = mobileInput.attackHeld ? 1.06 : 1; player.alpha = mobileInput.guardHeld ? 0.72 : 1;
+      if (mobileInput.attackPressed || keyboardAttack) {
+        const target = enemies.filter(enemy => enemy.alive && Math.sign(enemy.x - locomotion.x) === locomotion.facing).sort((a, b) => Math.abs(a.x - locomotion.x) - Math.abs(b.x - locomotion.x))[0];
+        if (target && attackEnemy(combat, target, Math.abs(target.x - locomotion.x))) { attackFlash = 0.12; if (!target.alive) grantEnemyLoot(target, inventory); }
+      }
+      mobileInput.attackPressed = false; keyboardAttack = false;
+
+      for (const enemy of enemies) {
+        const view = enemyViews.get(enemy.id)!; view.visible = enemy.alive; if (!enemy.alive) continue;
+        const distance = Math.abs(enemy.x - locomotion.x);
+        if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * dt;
+        view.x = enemy.x;
+        if (enemyContactHit(combat, enemy, distance, guarding)) hitFlash = 0.16;
+        const hpView = view.getChildByName('hp') as Graphics; hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
+      }
+
+      status.inventoryText.text = `MAT ${inventory.MATTER}   ENG ${inventory.ENERGY}   LIFE ${inventory.LIFE}   SIG ${inventory.SIGNAL}`;
+      status.combatText.text = `HP ${'■'.repeat(combat.hp)}${'□'.repeat(combat.maxHp - combat.hp)}   ATK / GUARD / DODGE`;
+      player.position.set(locomotion.x, locomotion.y); player.scale.x = locomotion.facing; player.scale.y = attackFlash > 0 ? 1.1 : 1; player.alpha = hitFlash > 0 ? 0.35 : guarding ? 0.72 : 1;
       stepCamera(camera, locomotion.x, locomotion.vx, dt, { viewportWidth: LOGICAL_WIDTH, worldWidth: WORLD_WIDTH, deadZoneHalfWidth: 120, lookAheadDistance: 90, followSharpness: 8, lookAheadSharpness: 6 }); world.x = -Math.round(camera.x);
     });
     const resize = () => { const scale = Math.min(window.innerWidth / LOGICAL_WIDTH, window.innerHeight / LOGICAL_HEIGHT); app.canvas.style.width = `${Math.floor(LOGICAL_WIDTH * scale)}px`; app.canvas.style.height = `${Math.floor(LOGICAL_HEIGHT * scale)}px`; }; window.addEventListener('resize', resize); resize(); console.info('[Bitland] application bootstrap complete');
