@@ -4,6 +4,7 @@ import { createCodexState, recordDiscovery, type CodexState } from './simulation
 import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from './simulation/combat/combat';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
+import { activeEffectSummary, locomotionConfigForEffects, resolveDiscoveryEffects } from './simulation/synthesis/effects';
 import { availablePairs, createSynthesisState, synthesize, type Discovery } from './simulation/synthesis/synthesis';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
 import './style.css';
@@ -126,20 +127,21 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P1.2 CODEX + PERSISTENCE', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // P1.3 DISCOVERY EFFECTS', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
-  const codexCount = new Text({ text: 'CODEX // 0 discovered', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 11 } }); codexCount.position.set(24, 114); hud.addChild(codexCount);
-  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 140); hud.addChild(prompt);
-  return { hud, inventoryText, combatText, discoveryText, codexCount, prompt };
+  const activeText = new Text({ text: 'ACTIVE // none', style: { fill: 0xffd58a, fontFamily: 'monospace', fontSize: 11 } }); activeText.position.set(24, 114); hud.addChild(activeText);
+  const codexCount = new Text({ text: 'CODEX // 0 discovered', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 11 } }); codexCount.position.set(24, 134); hud.addChild(codexCount);
+  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 158); hud.addChild(prompt);
+  return { hud, inventoryText, combatText, discoveryText, activeText, codexCount, prompt };
 }
 
 function makeCodexPanel() {
   const panel = new Container(); panel.zIndex = 200; panel.visible = false;
   panel.addChild(new Graphics().roundRect(150, 70, 660, 400, 18).fill({ color: 0x061012, alpha: 0.96 }).stroke({ color: 0x78d5c7, width: 2, alpha: 0.75 }));
   const title = new Text({ text: 'WORLD CODEX // DISCOVERED LAWS', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18, fontWeight: '700' } }); title.position.set(182, 100); panel.addChild(title);
-  const hint = new Text({ text: 'CODEX / C to close  ·  discoveries persist across reloads', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
+  const hint = new Text({ text: 'CODEX / C to close  ·  last discovery is currently active', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
   const body = new Text({ text: '', style: { fill: 0xe1fff9, fontFamily: 'monospace', fontSize: 12, lineHeight: 22, wordWrap: true, wordWrapWidth: 590 } }); body.position.set(182, 166); panel.addChild(body);
   return { panel, body };
 }
@@ -168,6 +170,7 @@ async function bootstrap(): Promise<void> {
     const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
     const synthesis = saved?.synthesis ?? createSynthesisState();
     const codex = saved?.codex ?? createCodexState();
+    let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
     const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
     const status = makeStatusHud(); app.stage.addChild(status.hud);
@@ -178,6 +181,7 @@ async function bootstrap(): Promise<void> {
 
     const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex)));
     if (synthesis.lastDiscovery) { status.discoveryText.text = discoveryLabel(synthesis.lastDiscovery); resultOrb.visible = true; }
+    status.activeText.text = activeEffectSummary(activeDiscovery);
     status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
 
     app.ticker.add(ticker => {
@@ -188,26 +192,28 @@ async function bootstrap(): Promise<void> {
       if (codexOpen) return;
 
       const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); discoveryFlash = Math.max(0, discoveryFlash - dt); tickCombat(combat, enemies, dt);
+      const effects = resolveDiscoveryEffects(activeDiscovery);
       const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis; const previousY = locomotion.y;
       const guarding = mobileInput.guardHeld || keys.has('KeyK');
-      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, PLAYER_MAX_X); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion);
+      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, PLAYER_MAX_X, locomotionConfigForEffects(effects)); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion);
 
-      if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, locomotion.x + Math.sign(axis) * 58)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat); } mobileInput.dodgePressed = false;
+      if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, locomotion.x + Math.sign(axis) * 58 * effects.dodgeDistanceMultiplier)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat); } mobileInput.dodgePressed = false;
 
       const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE);
       const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
       const nearSynth = Math.abs(SYNTH_X - locomotion.x) <= INTERACT_RANGE + 10;
       const pair = availablePairs(inventory)[0];
-      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? 'USE · PUSH OBJECT' : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : '';
+      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : '';
 
       if (mobileInput.interactPressed || keyboardInteract) {
         if (nearbyNode && gatherNode(nearbyNode, inventory)) nodeViews.get(nearbyNode.id)!.alpha = 0.12;
-        else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34);
+        else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34 * effects.pushMultiplier);
         else if (nearSynth && pair) {
           const discovery = synthesize(synthesis, inventory, WORLD_SEED, pair[0], pair[1]);
           if (discovery) {
+            activeDiscovery = discovery;
             recordDiscovery(codex, discovery, pair); persistKnowledge();
-            status.discoveryText.text = discoveryLabel(discovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
+            status.discoveryText.text = discoveryLabel(discovery); status.activeText.text = activeEffectSummary(activeDiscovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
             codexPanel.body.text = codexLabel(codex); resultOrb.visible = true; discoveryFlash = 0.5;
           }
         }
@@ -216,7 +222,7 @@ async function bootstrap(): Promise<void> {
 
       if (mobileInput.attackPressed || keyboardAttack) {
         const target = enemies.filter(enemy => enemy.alive && Math.sign(enemy.x - locomotion.x) === locomotion.facing).sort((a, b) => Math.abs(a.x - locomotion.x) - Math.abs(b.x - locomotion.x))[0];
-        if (target && attackEnemy(combat, target, Math.abs(target.x - locomotion.x))) { attackFlash = 0.12; if (!target.alive) grantEnemyLoot(target, inventory); }
+        if (target && attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) { attackFlash = 0.12; if (!target.alive) grantEnemyLoot(target, inventory); }
       }
       mobileInput.attackPressed = false; keyboardAttack = false;
 
