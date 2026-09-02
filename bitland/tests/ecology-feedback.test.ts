@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyResourceRecovery, feedbackForEcology, regionStressLevel } from '../src/simulation/ecology/feedback';
+import { clearWorldAdvanceSignal } from '../src/simulation/ecology/worldAdvanceSignal';
 import { createEcologyState } from '../src/simulation/ecology/worldTick';
 import { createRegionState, generateNextRegion } from '../src/simulation/world/regions';
 import { createWorldPressure } from '../src/simulation/world/pressure';
@@ -15,17 +16,20 @@ describe('ecology feedback', () => {
     expect(feedback.contactPressureMultiplier).toBeGreaterThan(1);
   });
 
-  it('recovers depleted resources only when ecology shift is positive', () => {
+  it('restores depleted resources with harvestable capacity when ecology shift is positive', () => {
+    clearWorldAdvanceSignal();
     const ecology = createEcologyState();
+    ecology.tickIndex = 1;
     ecology.resourceShift.LIFE = 2;
     ecology.resourceShift.MATTER = -2;
     const nodes: ResourceNode[] = [
-      { id: 'life', resource: 'LIFE', amount: 1, x: 0, depleted: true },
-      { id: 'matter', resource: 'MATTER', amount: 1, x: 0, depleted: true },
+      { id: 'life', resource: 'LIFE', amount: 0, capacity: 2, x: 0, depleted: true },
+      { id: 'matter', resource: 'MATTER', amount: 0, capacity: 2, x: 0, depleted: true },
     ];
     expect(applyResourceRecovery(nodes, ecology)).toEqual(['LIFE']);
-    expect(nodes[0].depleted).toBe(false);
-    expect(nodes[1].depleted).toBe(true);
+    expect(nodes[0]).toMatchObject({ depleted: false, amount: 2, capacity: 2 });
+    expect(nodes[1]).toMatchObject({ depleted: true, amount: 0 });
+    clearWorldAdvanceSignal();
   });
 
   it('maps persisted region stress into readable anomaly levels', () => {
