@@ -1,4 +1,5 @@
 import type { Trait } from '../synthesis/synthesis';
+import { createRegionPoi, type RegionPoi } from './poi';
 import { cloneWorldPressure, createWorldPressure, traitUsageCount, type WorldPressure } from './pressure';
 import type { RootResource } from './resources';
 
@@ -22,6 +23,7 @@ export type RegionDescriptor = {
   resourceBias: RootResource;
   encounterPressure: EncounterPressure;
   platformHeights: number[];
+  poi?: RegionPoi;
 };
 
 export type RegionState = {
@@ -130,9 +132,10 @@ export function generateNextRegion(
   const biome = chooseBiome(signature, normalizedTraits, pressure);
   const startX = BASE_WORLD_WIDTH + index * REGION_WIDTH;
   const platformHeights = [0, 1, 2].map((offset) => 286 + ((signature >>> (offset * 5)) % 4) * 22);
+  const id = `${worldSeed}::region::${index}::${signature.toString(16)}`;
 
   const region: RegionDescriptor = {
-    id: `${worldSeed}::region::${index}::${signature.toString(16)}`,
+    id,
     index,
     startX,
     width: REGION_WIDTH,
@@ -142,6 +145,7 @@ export function generateNextRegion(
     resourceBias: chooseResourceBias(biome, pressure, signature >>> 8),
     encounterPressure: chooseEncounterPressure(pressure, normalizedTraits),
     platformHeights,
+    poi: createRegionPoi(id, biome, startX, REGION_WIDTH, signature),
   };
   state.generated.push(region);
   return cloneRegion(region);
@@ -152,6 +156,7 @@ function fallbackResourceBias(biome: BiomeId): RootResource {
 }
 
 export function cloneRegion(region: RegionDescriptor): RegionDescriptor {
+  const poi = region.poi ?? createRegionPoi(region.id, region.biome, region.startX, region.width, region.signature);
   return {
     ...region,
     influence: {
@@ -162,5 +167,6 @@ export function cloneRegion(region: RegionDescriptor): RegionDescriptor {
     resourceBias: region.resourceBias ?? fallbackResourceBias(region.biome),
     encounterPressure: region.encounterPressure ?? 'LOW',
     platformHeights: [...region.platformHeights],
+    poi: { ...poi },
   };
 }
