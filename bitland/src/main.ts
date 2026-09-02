@@ -116,7 +116,8 @@ function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
 
   const marker = new Text({ text: `REGION ${String(region.index + 1).padStart(2, '0')} // ${region.biome.replace('_', ' ')}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } });
   marker.position.set(28, 224); view.addChild(marker);
-  const influence = new Text({ text: `OBSERVED @ CODEX ${region.influence.codexCount} · ${region.influence.activeTraits.join(' + ') || 'NO ACTIVE TRAITS'}`, style: { fill: palette.accent, alpha: 0.65, fontFamily: 'monospace', fontSize: 10 } });
+  const influence = new Text({ text: `OBSERVED @ CODEX ${region.influence.codexCount} · ${region.influence.activeTraits.join(' + ') || 'NO ACTIVE TRAITS'}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 10 } });
+  influence.alpha = 0.65;
   influence.position.set(28, 246); view.addChild(influence);
   layer.addChild(view);
   return platforms;
