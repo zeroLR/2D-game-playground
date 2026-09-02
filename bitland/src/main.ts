@@ -2,6 +2,8 @@ import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import { createKnowledgeSave, parseKnowledgeSave, SAVE_KEY, serializeKnowledgeSave } from './persistence/save';
 import { createCodexState, recordDiscovery } from './simulation/codex/codex';
 import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from './simulation/combat/combat';
+import { applyResourceRecovery, feedbackForEcology, regionStressLevel } from './simulation/ecology/feedback';
+import { createEcologyState, runWorldTick } from './simulation/ecology/worldTick';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import { activeEffectSummary, locomotionConfigForEffects, resolveDiscoveryEffects } from './simulation/synthesis/effects';
@@ -19,6 +21,7 @@ const GROUND_Y = 364;
 const PLAYER_MIN_X = 18;
 const INTERACT_RANGE = 72;
 const SYNTH_X = 1666;
+const WORLD_TICK_X = 1810;
 const WORLD_SEED = 'bitland-alpha';
 
 type Platform = { x: number; y: number; width: number };
@@ -82,9 +85,15 @@ function makeWorld() {
   const resultOrb = new Graphics().circle(0, -108, 12).fill({ color: 0xb8fff4, alpha: 0.18 }).circle(0, -108, 12).stroke({ color: 0xb8fff4, width: 2, alpha: 0.35 }); resultOrb.visible = false;
   synthesisView.addChild(resultOrb); world.addChild(synthesisView);
 
+  const tickTerminal = new Container(); tickTerminal.position.set(WORLD_TICK_X, 382);
+  tickTerminal.addChild(new Graphics().rect(-30, -74, 60, 74).fill(0x0e2424).rect(-23, -66, 46, 54).stroke({ color: 0x7be6d6, width: 3 }).circle(0, -39, 10).stroke({ color: 0xffd58a, width: 3 }));
+  const tickLabel = new Text({ text: 'TICK', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 10, fontWeight: '700' } }); tickLabel.anchor.set(0.5); tickLabel.position.set(0, -20); tickTerminal.addChild(tickLabel); world.addChild(tickTerminal);
+
   const regionLayer = new Container();
   world.addChild(regionLayer);
-  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer };
+  const anomalyLayer = new Container();
+  world.addChild(anomalyLayer);
+  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer };
 }
 
 function regionPlatforms(region: RegionDescriptor): Platform[] {
@@ -100,14 +109,12 @@ function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
       ? { bg: 0x0a1727, ground: 0x14273a, accent: 0x6be8ff }
       : { bg: 0x271217, ground: 0x321a20, accent: 0xff7a59 };
   view.addChild(new Graphics().rect(0, 0, region.width, LOGICAL_HEIGHT).fill(palette.bg).rect(0, 390, region.width, 150).fill(palette.ground).rect(0, 382, region.width, 8).fill(palette.accent));
-
   const skyline = new Graphics();
   for (let x = 24; x < region.width; x += 64) {
     const height = 48 + ((region.signature >>> ((x / 64) % 16)) % 5) * 18;
     skyline.rect(x, 280 - height, 38, height).fill({ color: palette.accent, alpha: 0.08 });
   }
   view.addChild(skyline);
-
   const platforms = regionPlatforms(region);
   const platformGraphics = new Graphics();
   for (const platform of platforms) {
@@ -115,16 +122,27 @@ function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
     platformGraphics.rect(localX, platform.y + 18, platform.width, 18).fill(palette.ground).rect(localX, platform.y + 14, platform.width, 4).fill(palette.accent);
   }
   view.addChild(platformGraphics);
-
   const marker = new Text({ text: `REGION ${String(region.index + 1).padStart(2, '0')} // ${region.biome.replace('_', ' ')}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } });
   marker.position.set(28, 216); view.addChild(marker);
   const recipe = new Text({ text: `RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 10 } });
   recipe.position.set(28, 238); view.addChild(recipe);
   const influence = new Text({ text: `OBSERVED @ CODEX ${region.influence.codexCount} · ${region.influence.activeTraits.join(' + ') || 'NO ACTIVE TRAITS'}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 10 } });
-  influence.alpha = 0.65;
-  influence.position.set(28, 256); view.addChild(influence);
+  influence.alpha = 0.65; influence.position.set(28, 256); view.addChild(influence);
   layer.addChild(view);
   return platforms;
+}
+
+function renderEcologyAnomalies(layer: Container, regions: ReturnType<typeof createRegionState>, ecology: ReturnType<typeof createEcologyState>): void {
+  layer.removeChildren();
+  for (const region of regions.generated) {
+    const level = regionStressLevel(ecology, region.id);
+    if (level === 'CALM') continue;
+    const stress = ecology.regionStress[region.id] ?? 0;
+    const anomaly = new Container(); anomaly.position.set(region.startX, 0);
+    anomaly.addChild(new Graphics().rect(0, 0, region.width, 382).fill({ color: 0xff5b6e, alpha: level === 'ANOMALOUS' ? 0.08 : 0.035 }));
+    const label = new Text({ text: `${level} // STRESS ${stress}`, style: { fill: 0xff8b90, fontFamily: 'monospace', fontSize: 11, fontWeight: '700' } }); label.position.set(28, 278); anomaly.addChild(label);
+    layer.addChild(anomaly);
+  }
 }
 
 function makePlayer(): Container {
@@ -153,7 +171,6 @@ function makeMobileControls(input: MobileInputState): Container {
   activationZone.on('pointerdown', e => { if (padPointerId !== null) return; padPointerId = e.pointerId; setPadCenter(e.global.x, e.global.y); });
   activationZone.on('pointermove', e => { if (padPointerId === e.pointerId) updatePad(e.global.x, e.global.y); });
   for (const eventName of ['pointerup', 'pointerupoutside', 'pointercancel'] as const) activationZone.on(eventName, e => { if (padPointerId === e.pointerId) resetPad(); });
-
   const makeButton = (name: ActionName, x: number, y: number, radius: number, color: number, press: () => void, release?: () => void) => {
     const button = new Container(); button.position.set(x, y); button.eventMode = 'static'; button.zIndex = 20;
     const ring = new Graphics().circle(0, 0, radius).fill({ color: 0x071314, alpha: 0.52 }).circle(0, 0, radius).stroke({ color, width: 2, alpha: 0.72 }); button.addChild(ring);
@@ -171,13 +188,13 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P2.2 WORLD-STATE INFLUENCE', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // P3.2 ECOLOGICAL FEEDBACK', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
   const activeText = new Text({ text: 'ACTIVE // none', style: { fill: 0xffd58a, fontFamily: 'monospace', fontSize: 11 } }); activeText.position.set(24, 114); hud.addChild(activeText);
   const codexCount = new Text({ text: 'CODEX // 0 discovered', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 11 } }); codexCount.position.set(24, 134); hud.addChild(codexCount);
-  const worldText = new Text({ text: 'WORLD // 1 observed region', style: { fill: 0xa9c8ff, fontFamily: 'monospace', fontSize: 11 } }); worldText.position.set(24, 154); hud.addChild(worldText);
+  const worldText = new Text({ text: 'WORLD // tick 0', style: { fill: 0xa9c8ff, fontFamily: 'monospace', fontSize: 11 } }); worldText.position.set(24, 154); hud.addChild(worldText);
   const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 180); hud.addChild(prompt);
   return { hud, inventoryText, combatText, discoveryText, activeText, codexCount, worldText, prompt };
 }
@@ -196,15 +213,17 @@ async function bootstrap(): Promise<void> {
   try {
     await withTimeout(app.init({ width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT, background: '#071314', antialias: false, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
     host.replaceChildren(app.canvas); app.stage.sortableChildren = true; app.stage.eventMode = 'static'; app.stage.hitArea = app.screen;
-    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer } = makeWorld();
+    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer } = makeWorld();
     const saved = parseKnowledgeSave(window.localStorage.getItem(SAVE_KEY));
     const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
     const synthesis = saved?.synthesis ?? createSynthesisState();
     const codex = saved?.codex ?? createCodexState();
     const regions = saved?.regions ?? createRegionState();
     const pressure = saved?.pressure ?? createWorldPressure();
+    const ecology = saved?.ecology ?? createEcologyState();
     const platforms = [...PLATFORMS];
     for (const region of regions.generated) platforms.push(...renderRegion(regionLayer, region));
+    renderEcologyAnomalies(anomalyLayer, regions, ecology);
     let observedWorldWidth = worldExtent(regions);
     let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
@@ -214,70 +233,33 @@ async function bootstrap(): Promise<void> {
     const codexModal = createCodexModal(); app.stage.addChild(codexModal.panel);
     const keys = new Set<string>();
     let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false, codexPage = 0;
-
-    const clearQueuedGameplayInput = () => {
-      mobileInput.jumpPressed = false;
-      mobileInput.attackPressed = false;
-      mobileInput.guardHeld = false;
-      mobileInput.dodgePressed = false;
-      mobileInput.interactPressed = false;
-      keyboardJump = false;
-      keyboardInteract = false;
-      keyboardAttack = false;
-      keys.delete('KeyK');
-      keys.delete('ShiftLeft');
-    };
-    const setCodexOpen = (open: boolean) => {
-      codexOpen = open;
-      codexModal.panel.visible = open;
-      mobileControls.visible = !open;
-      status.hud.visible = !open;
-      if (open) {
-        clearQueuedGameplayInput();
-        codexPage = refreshCodexModal(codexModal, codex, codexPage);
-      }
-    };
+    const clearQueuedGameplayInput = () => { mobileInput.jumpPressed = false; mobileInput.attackPressed = false; mobileInput.guardHeld = false; mobileInput.dodgePressed = false; mobileInput.interactPressed = false; keyboardJump = false; keyboardInteract = false; keyboardAttack = false; keys.delete('KeyK'); keys.delete('ShiftLeft'); };
+    const setCodexOpen = (open: boolean) => { codexOpen = open; codexModal.panel.visible = open; mobileControls.visible = !open; status.hud.visible = !open; if (open) { clearQueuedGameplayInput(); codexPage = refreshCodexModal(codexModal, codex, codexPage); } };
     codexModal.closeButton.on('pointerdown', () => setCodexOpen(false));
     codexModal.prevButton.on('pointerdown', () => { codexPage = refreshCodexModal(codexModal, codex, codexPage - 1); });
     codexModal.nextButton.on('pointerdown', () => { codexPage = refreshCodexModal(codexModal, codex, codexPage + 1); });
-
-    window.addEventListener('keydown', e => {
-      keys.add(e.code);
-      if (e.code === 'Space' && !e.repeat) keyboardJump = true;
-      if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true;
-      if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true;
-      if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true;
-      if (e.code === 'Space') e.preventDefault();
-    });
+    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
-    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure)));
+    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure, ecology)));
     if (synthesis.lastDiscovery) { status.discoveryText.text = discoveryLabel(synthesis.lastDiscovery); resultOrb.visible = true; }
     status.activeText.text = activeEffectSummary(activeDiscovery);
     status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
-    status.worldText.text = `WORLD // ${regions.generated.length + 1} observed · edge ${observedWorldWidth}`;
+    status.worldText.text = `WORLD // TICK ${ecology.tickIndex} · HOSTILITY ${ecology.hostility} · ${regions.generated.length + 1} observed`;
 
     app.ticker.add(ticker => {
-      if (mobileInput.codexPressed || keyboardCodex) {
-        mobileInput.codexPressed = false; keyboardCodex = false;
-        setCodexOpen(!codexOpen);
-      }
+      if (mobileInput.codexPressed || keyboardCodex) { mobileInput.codexPressed = false; keyboardCodex = false; setCodexOpen(!codexOpen); }
       if (codexOpen) return;
-
       const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); discoveryFlash = Math.max(0, discoveryFlash - dt); tickCombat(combat, enemies, dt);
       const effects = resolveDiscoveryEffects(activeDiscovery);
+      const ecologyFeedback = feedbackForEcology(ecology, regions);
       const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis; const previousY = locomotion.y;
       const guarding = mobileInput.guardHeld || keys.has('KeyK');
       stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, observedWorldWidth - 18, locomotionConfigForEffects(effects)); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion, platforms);
 
       if (shouldRevealNextRegion(locomotion.x, regions)) {
         const region = generateNextRegion(regions, WORLD_SEED, { codexCount: codex.entries.length, activeTraits: activeDiscovery?.traits ?? [], pressure });
-        if (region) {
-          platforms.push(...renderRegion(regionLayer, region));
-          observedWorldWidth = worldExtent(regions);
-          status.worldText.text = `WORLD // ${region.biome.replace('_', ' ')} · RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`;
-          persistKnowledge();
-        }
+        if (region) { platforms.push(...renderRegion(regionLayer, region)); observedWorldWidth = worldExtent(regions); renderEcologyAnomalies(anomalyLayer, regions, ecology); status.worldText.text = `WORLD // ${region.biome.replace('_', ' ')} · RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`; persistKnowledge(); }
       }
 
       if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(observedWorldWidth - 18, locomotion.x + Math.sign(axis) * 58 * effects.dodgeDistanceMultiplier)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat); } mobileInput.dodgePressed = false;
@@ -285,56 +267,41 @@ async function bootstrap(): Promise<void> {
       const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE);
       const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
       const nearSynth = Math.abs(SYNTH_X - locomotion.x) <= INTERACT_RANGE + 10;
+      const nearWorldTick = Math.abs(WORLD_TICK_X - locomotion.x) <= INTERACT_RANGE;
       const pair = availablePairs(inventory)[0];
-      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : '';
+      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : nearWorldTick ? `USE · ADVANCE WORLD TICK ${ecology.tickIndex + 1}` : '';
 
       if (mobileInput.interactPressed || keyboardInteract) {
         if (nearbyNode) {
           const gatheredAmount = nearbyNode.amount;
-          if (gatherNode(nearbyNode, inventory)) {
-            recordGatherPressure(pressure, nearbyNode.resource, gatheredAmount);
-            const nodeView = nodeViews.get(nearbyNode.id);
-            if (nodeView) nodeView.alpha = 0.12;
-            persistKnowledge();
-          }
+          if (gatherNode(nearbyNode, inventory)) { recordGatherPressure(pressure, nearbyNode.resource, gatheredAmount); const nodeView = nodeViews.get(nearbyNode.id); if (nodeView) nodeView.alpha = 0.12; persistKnowledge(); }
         } else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34 * effects.pushMultiplier);
         else if (nearSynth && pair) {
           const discovery = synthesize(synthesis, inventory, WORLD_SEED, pair[0], pair[1]);
-          if (discovery) {
-            activeDiscovery = discovery;
-            recordTraitUsage(pressure, discovery.traits);
-            recordDiscovery(codex, discovery, pair); persistKnowledge();
-            status.discoveryText.text = discoveryLabel(discovery); status.activeText.text = activeEffectSummary(activeDiscovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
-            codexPage = refreshCodexModal(codexModal, codex, codexPage); resultOrb.visible = true; discoveryFlash = 0.5;
-          }
+          if (discovery) { activeDiscovery = discovery; recordTraitUsage(pressure, discovery.traits); recordDiscovery(codex, discovery, pair); persistKnowledge(); status.discoveryText.text = discoveryLabel(discovery); status.activeText.text = activeEffectSummary(activeDiscovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`; codexPage = refreshCodexModal(codexModal, codex, codexPage); resultOrb.visible = true; discoveryFlash = 0.5; }
+        } else if (nearWorldTick) {
+          const delta = runWorldTick(ecology, pressure, regions, WORLD_SEED);
+          const recovered = applyResourceRecovery(RESOURCE_NODES, ecology);
+          for (const node of RESOURCE_NODES) { const view = nodeViews.get(node.id); if (view) view.alpha = node.depleted ? 0.12 : 0.85; }
+          renderEcologyAnomalies(anomalyLayer, regions, ecology);
+          status.worldText.text = `WORLD // TICK ${delta.tickIndex} · HOSTILITY ${ecology.hostility} · RECOVER ${recovered.join('/') || 'NONE'}`;
+          persistKnowledge();
         }
       }
       mobileInput.interactPressed = false; keyboardInteract = false; crateView.x = CRATE.x;
 
       if (mobileInput.attackPressed || keyboardAttack) {
         const target = enemies.filter(enemy => enemy.alive && Math.sign(enemy.x - locomotion.x) === locomotion.facing).sort((a, b) => Math.abs(a.x - locomotion.x) - Math.abs(b.x - locomotion.x))[0];
-        if (target) {
-          const wasAlive = target.alive;
-          if (attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) {
-            attackFlash = 0.12;
-            if (wasAlive && !target.alive) {
-              recordCreatureDefeat(pressure);
-              grantEnemyLoot(target, inventory);
-              persistKnowledge();
-            }
-          }
-        }
+        if (target) { const wasAlive = target.alive; if (attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) { attackFlash = 0.12; if (wasAlive && !target.alive) { recordCreatureDefeat(pressure); grantEnemyLoot(target, inventory); persistKnowledge(); } } }
       }
       mobileInput.attackPressed = false; keyboardAttack = false;
 
       for (const enemy of enemies) {
-        const view = enemyViews.get(enemy.id);
-        if (!view) continue;
-        view.visible = enemy.alive; if (!enemy.alive) continue;
-        const distance = Math.abs(enemy.x - locomotion.x); if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * dt; view.x = enemy.x;
+        const view = enemyViews.get(enemy.id); if (!view) continue; view.visible = enemy.alive; if (!enemy.alive) continue;
+        const distance = Math.abs(enemy.x - locomotion.x); if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * ecologyFeedback.enemySpeedMultiplier * dt; view.x = enemy.x;
+        view.scale.set(1 + Math.min(ecology.hostility, 8) * 0.012);
         if (enemyContactHit(combat, enemy, distance, guarding)) hitFlash = 0.16;
-        const hpView = view.getChildByName('hp');
-        if (hpView instanceof Graphics) hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
+        const hpView = view.getChildByName('hp'); if (hpView instanceof Graphics) hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
       }
 
       resultOrb.alpha = discoveryFlash > 0 ? 1 : 0.55; resultOrb.scale.set(discoveryFlash > 0 ? 1.35 : 1);
