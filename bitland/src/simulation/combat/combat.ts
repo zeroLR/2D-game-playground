@@ -53,9 +53,9 @@ export function respawnEnemy(enemy: EnemyState): void {
 
 export function applyEnemyRepopulation(enemies: EnemyState[], hostility: number, signature: number): string[] {
   const dead = enemies.filter(enemy => !enemy.alive).sort((a, b) => a.id.localeCompare(b.id));
-  if (dead.length === 0 || hostility <= 0) return [];
+  if (dead.length === 0) return [];
 
-  const count = Math.min(dead.length, 1 + Math.floor(Math.min(hostility, 8) / 4));
+  const count = Math.min(dead.length, hostility >= 4 ? 2 : 1);
   const start = signature % dead.length;
   const repopulated: string[] = [];
   for (let index = 0; index < count; index += 1) {
