@@ -9,18 +9,18 @@ function discovery(traits: Discovery['traits']): Discovery {
 describe('world affordances', () => {
   it('requires CONDUCTIVE for the signal relay', () => {
     expect(canActivateAffordance('SIGNAL_RELAY', discovery(['CONDUCTIVE']))).toBe(true);
-    expect(canActivateAffordance('SIGNAL_RELAY', discovery(['HOT']))).toBe(false);
+    expect(canActivateAffordance('SIGNAL_RELAY', discovery(['HEAVY']))).toBe(false);
   });
 
-  it('requires HOT for the thermal vent', () => {
-    expect(canActivateAffordance('THERMAL_VENT', discovery(['HOT']))).toBe(true);
-    expect(canActivateAffordance('THERMAL_VENT', discovery(['CONDUCTIVE']))).toBe(false);
+  it('requires HEAVY for the mass anchor', () => {
+    expect(canActivateAffordance('MASS_ANCHOR', discovery(['HEAVY']))).toBe(true);
+    expect(canActivateAffordance('MASS_ANCHOR', discovery(['CONDUCTIVE']))).toBe(false);
   });
 
   it('persists one-way activation instead of following the current discovery', () => {
     const state = createAffordanceState();
     expect(activateAffordance(state, 'SIGNAL_RELAY', discovery(['CONDUCTIVE']))).toBe('ACTIVATED');
     expect(isAffordanceActive(state, 'SIGNAL_RELAY')).toBe(true);
-    expect(activateAffordance(state, 'SIGNAL_RELAY', discovery(['HOT']))).toBe('ALREADY_ACTIVE');
+    expect(activateAffordance(state, 'SIGNAL_RELAY', discovery(['HEAVY']))).toBe('ALREADY_ACTIVE');
   });
 });
