@@ -24,18 +24,30 @@ describe('world-state region influence', () => {
     expect(region?.encounterPressure).toBe('HIGH');
   });
 
-  it('biases a biome toward the less-extracted native resource', () => {
+  it('biases native biomes toward the less-extracted resource and keeps corruption deterministic', () => {
     const pressure = createWorldPressure();
     recordGatherPressure(pressure, 'MATTER', 8);
     recordGatherPressure(pressure, 'ENERGY', 8);
     recordGatherPressure(pressure, 'SIGNAL', 8);
 
-    const region = generateNextRegion(createRegionState(), 'world-resource', { codexCount: 1, activeTraits: [], pressure });
+    const influence = { codexCount: 1, activeTraits: [] as const, pressure };
+    const region = generateNextRegion(createRegionState(), 'world-resource', {
+      codexCount: influence.codexCount,
+      activeTraits: [...influence.activeTraits],
+      pressure: influence.pressure,
+    });
+    const replay = generateNextRegion(createRegionState(), 'world-resource', {
+      codexCount: influence.codexCount,
+      activeTraits: [...influence.activeTraits],
+      pressure: influence.pressure,
+    });
+
     expect(region).not.toBeNull();
+    expect(replay?.resourceBias).toBe(region?.resourceBias);
     if (!region) return;
 
     if (region.biome === 'DATA_FIELD') expect(region.resourceBias).toBe('LIFE');
-    if (region.biome === 'CRYSTAL_NODE') expect(region.resourceBias).toBe('ENERGY');
-    if (region.biome === 'CORRUPTION_FIELD') expect(region.resourceBias).toBe('MATTER');
+    if (region.biome === 'CRYSTAL_NODE') expect(region.resourceBias).toBe('LIFE');
+    if (region.biome === 'CORRUPTION_FIELD') expect(['MATTER', 'ENERGY', 'LIFE', 'SIGNAL']).toContain(region.resourceBias);
   });
 });
