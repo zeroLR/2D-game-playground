@@ -2,6 +2,7 @@ import type { CodexState } from '../simulation/codex/codex';
 import { cloneEcologyState, createEcologyState, type EcologyState } from '../simulation/ecology/worldTick';
 import type { SynthesisState } from '../simulation/synthesis/synthesis';
 import { cloneAffordanceState, createAffordanceState, type AffordanceState } from '../simulation/world/affordances';
+import { clonePoiObservationState, createPoiObservationState, type PoiObservationState } from '../simulation/world/poi';
 import { cloneWorldPressure, createWorldPressure, type WorldPressure } from '../simulation/world/pressure';
 import { createRegionState, type RegionState } from '../simulation/world/regions';
 
@@ -16,6 +17,7 @@ export type BitlandKnowledgeSave = {
   pressure?: WorldPressure;
   ecology?: EcologyState;
   affordances?: AffordanceState;
+  poiObservations?: PoiObservationState;
 };
 
 export function createKnowledgeSave(
@@ -25,6 +27,7 @@ export function createKnowledgeSave(
   pressure: WorldPressure = createWorldPressure(),
   ecology: EcologyState = createEcologyState(),
   affordances: AffordanceState = createAffordanceState(),
+  poiObservations: PoiObservationState = createPoiObservationState(),
 ): BitlandKnowledgeSave {
   return {
     version: SAVE_VERSION,
@@ -39,6 +42,7 @@ export function createKnowledgeSave(
     pressure: cloneWorldPressure(pressure),
     ecology: cloneEcologyState(ecology),
     affordances: cloneAffordanceState(affordances),
+    poiObservations: clonePoiObservationState(poiObservations),
   };
 }
 
@@ -59,6 +63,7 @@ export function parseKnowledgeSave(raw: string | null): BitlandKnowledgeSave | n
       pressure: parsed.pressure ? cloneWorldPressure(parsed.pressure) : createWorldPressure(),
       ecology: parsed.ecology ? cloneEcologyState(parsed.ecology) : createEcologyState(),
       affordances: parsed.affordances ? cloneAffordanceState(parsed.affordances) : createAffordanceState(),
+      poiObservations: parsed.poiObservations ? clonePoiObservationState(parsed.poiObservations) : createPoiObservationState(),
     } as BitlandKnowledgeSave;
   } catch {
     return null;
