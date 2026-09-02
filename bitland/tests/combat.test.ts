@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from '../src/simulation/combat/combat';
+import { applyEnemyRepopulation, attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from '../src/simulation/combat/combat';
 import { createInventory } from '../src/simulation/world/resources';
 
 describe('combat foundation', () => {
@@ -32,5 +32,22 @@ describe('combat foundation', () => {
     expect(grantEnemyLoot(enemy, inventory)).toBe(true);
     expect(inventory.LIFE).toBe(2);
     expect(grantEnemyLoot(enemy, inventory)).toBe(false);
+  });
+
+  it('repopulates defeated enemies from their spawn baseline when hostility is present', () => {
+    const first = createEnemy('crawler-a', 120, { resource: 'LIFE', amount: 1 });
+    const second = createEnemy('crawler-b', 260, { resource: 'ENERGY', amount: 1 });
+    first.alive = false;
+    first.hp = 0;
+    first.x = 400;
+    first.loot.amount = 0;
+    second.alive = false;
+    second.hp = 0;
+    second.loot.amount = 0;
+
+    const repopulated = applyEnemyRepopulation([first, second], 1, 0);
+    expect(repopulated).toEqual(['crawler-a']);
+    expect(first).toMatchObject({ alive: true, hp: 3, x: 120, loot: { resource: 'LIFE', amount: 1 } });
+    expect(second.alive).toBe(false);
   });
 });
