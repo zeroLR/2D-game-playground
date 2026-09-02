@@ -1,4 +1,6 @@
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
+import { createKnowledgeSave, parseKnowledgeSave, SAVE_KEY, serializeKnowledgeSave } from './persistence/save';
+import { createCodexState, recordDiscovery, type CodexState } from './simulation/codex/codex';
 import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from './simulation/combat/combat';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
@@ -64,10 +66,7 @@ function makeWorld() {
   const crateView = new Graphics().rect(-20, -32, 40, 32).fill(0x26342f).rect(-16, -28, 32, 24).stroke({ color: 0xa9c8b0, width: 3 });
   crateView.position.set(CRATE.x, 382); world.addChild(crateView);
 
-  const enemies = [
-    createEnemy('crawler-a', 820, { resource: 'LIFE', amount: 1 }),
-    createEnemy('crawler-b', 1510, { resource: 'ENERGY', amount: 1 }),
-  ];
+  const enemies = [createEnemy('crawler-a', 820, { resource: 'LIFE', amount: 1 }), createEnemy('crawler-b', 1510, { resource: 'ENERGY', amount: 1 })];
   const enemyViews = new Map<string, Container>();
   for (const enemy of enemies) {
     const view = new Container();
@@ -76,14 +75,10 @@ function makeWorld() {
     view.position.set(enemy.x, 382); world.addChild(view); enemyViews.set(enemy.id, view);
   }
 
-  const synthesisView = new Container();
-  synthesisView.position.set(SYNTH_X, 382);
+  const synthesisView = new Container(); synthesisView.position.set(SYNTH_X, 382);
   synthesisView.addChild(new Graphics().rect(-36, -90, 72, 90).fill(0x25171c).rect(-28, -82, 56, 74).stroke({ color: 0xff8b68, width: 3 }).poly([0, -68, 16, -38, -16, -38]).stroke({ color: 0xffa27e, width: 3 }));
-  const resultOrb = new Graphics().circle(0, -108, 12).fill({ color: 0xb8fff4, alpha: 0.18 }).circle(0, -108, 12).stroke({ color: 0xb8fff4, width: 2, alpha: 0.35 });
-  resultOrb.visible = false;
-  synthesisView.addChild(resultOrb);
-  world.addChild(synthesisView);
-
+  const resultOrb = new Graphics().circle(0, -108, 12).fill({ color: 0xb8fff4, alpha: 0.18 }).circle(0, -108, 12).stroke({ color: 0xb8fff4, width: 2, alpha: 0.35 }); resultOrb.visible = false;
+  synthesisView.addChild(resultOrb); world.addChild(synthesisView);
   return { world, nodeViews, crateView, enemies, enemyViews, resultOrb };
 }
 
@@ -93,8 +88,8 @@ function makePlayer(): Container {
   return player;
 }
 
-type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackPressed: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean };
-type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE' | 'USE';
+type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackPressed: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean; codexPressed: boolean };
+type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE' | 'USE' | 'CODEX';
 
 function makeMobileControls(input: MobileInputState): Container {
   const hud = new Container(); hud.zIndex = 100; hud.sortableChildren = true;
@@ -117,7 +112,7 @@ function makeMobileControls(input: MobileInputState): Container {
   const makeButton = (name: ActionName, x: number, y: number, radius: number, color: number, press: () => void, release?: () => void) => {
     const button = new Container(); button.position.set(x, y); button.eventMode = 'static'; button.zIndex = 20;
     const ring = new Graphics().circle(0, 0, radius).fill({ color: 0x071314, alpha: 0.52 }).circle(0, 0, radius).stroke({ color, width: 2, alpha: 0.72 }); button.addChild(ring);
-    const label = new Text({ text: name, style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : 10, fontWeight: '700' } }); label.anchor.set(0.5); button.addChild(label);
+    const label = new Text({ text: name, style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : name === 'CODEX' ? 9 : 10, fontWeight: '700' } }); label.anchor.set(0.5); button.addChild(label);
     button.on('pointerdown', () => { button.scale.set(0.9); press(); }); const up = () => { button.scale.set(1); release?.(); }; button.on('pointerup', up); button.on('pointerupoutside', up); button.on('pointercancel', up); hud.addChild(button);
   };
   makeButton('JUMP', 856, 421, 40, 0xb8fff4, () => { input.jumpPressed = true; });
@@ -125,17 +120,33 @@ function makeMobileControls(input: MobileInputState): Container {
   makeButton('ATK', 776, 490, 29, 0xffb36b, () => { input.attackPressed = true; });
   makeButton('GUARD', 846, 500, 27, 0x6be8ff, () => { input.guardHeld = true; }, () => { input.guardHeld = false; });
   makeButton('DODGE', 914, 474, 29, 0xd0a6ff, () => { input.dodgePressed = true; });
+  makeButton('CODEX', 906, 74, 30, 0x9adfd5, () => { input.codexPressed = true; });
   return hud;
 }
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P1.1 SYNTHESIS NODE', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // P1.2 CODEX + PERSISTENCE', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
-  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 124); hud.addChild(prompt);
-  return { hud, inventoryText, combatText, discoveryText, prompt };
+  const codexCount = new Text({ text: 'CODEX // 0 discovered', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 11 } }); codexCount.position.set(24, 114); hud.addChild(codexCount);
+  const prompt = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } }); prompt.anchor.set(0.5); prompt.position.set(LOGICAL_WIDTH / 2, 140); hud.addChild(prompt);
+  return { hud, inventoryText, combatText, discoveryText, codexCount, prompt };
+}
+
+function makeCodexPanel() {
+  const panel = new Container(); panel.zIndex = 200; panel.visible = false;
+  panel.addChild(new Graphics().roundRect(150, 70, 660, 400, 18).fill({ color: 0x061012, alpha: 0.96 }).stroke({ color: 0x78d5c7, width: 2, alpha: 0.75 }));
+  const title = new Text({ text: 'WORLD CODEX // DISCOVERED LAWS', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18, fontWeight: '700' } }); title.position.set(182, 100); panel.addChild(title);
+  const hint = new Text({ text: 'CODEX / C to close  ·  discoveries persist across reloads', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
+  const body = new Text({ text: '', style: { fill: 0xe1fff9, fontFamily: 'monospace', fontSize: 12, lineHeight: 22, wordWrap: true, wordWrapWidth: 590 } }); body.position.set(182, 166); panel.addChild(body);
+  return { panel, body };
+}
+
+function codexLabel(codex: CodexState): string {
+  if (codex.entries.length === 0) return 'No discoveries recorded.\n\nExplore → gather → synthesize to reveal the first law.';
+  return codex.entries.slice(-11).map(entry => `${String(entry.firstDiscoveredOrder).padStart(2, '0')}  ${entry.displayName}\n    ${entry.inputs.join(' + ')}  //  ${entry.traits.join(' · ')}  //  #${entry.discoveryIndex + 1}`).join('\n');
 }
 
 function landOnPlatforms(previousY: number, locomotion: ReturnType<typeof createLocomotionState>): void {
@@ -153,15 +164,29 @@ async function bootstrap(): Promise<void> {
     await withTimeout(app.init({ width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT, background: '#071314', antialias: false, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
     host.replaceChildren(app.canvas); app.stage.sortableChildren = true; app.stage.eventMode = 'static'; app.stage.hitArea = app.screen;
     const { world, nodeViews, crateView, enemies, enemyViews, resultOrb } = makeWorld();
-    const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState(), synthesis = createSynthesisState();
+    const saved = parseKnowledgeSave(window.localStorage.getItem(SAVE_KEY));
+    const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
+    const synthesis = saved?.synthesis ?? createSynthesisState();
+    const codex = saved?.codex ?? createCodexState();
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
-    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
+    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
     const status = makeStatusHud(); app.stage.addChild(status.hud);
-    const keys = new Set<string>(); let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0;
-    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if (e.code === 'Space') e.preventDefault(); });
+    const codexPanel = makeCodexPanel(); app.stage.addChild(codexPanel.panel);
+    const keys = new Set<string>(); let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false;
+    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if (e.code === 'KeyC' && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
+    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex)));
+    if (synthesis.lastDiscovery) { status.discoveryText.text = discoveryLabel(synthesis.lastDiscovery); resultOrb.visible = true; }
+    status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
+
     app.ticker.add(ticker => {
+      if (mobileInput.codexPressed || keyboardCodex) {
+        codexOpen = !codexOpen; mobileInput.codexPressed = false; keyboardCodex = false;
+        codexPanel.panel.visible = codexOpen; codexPanel.body.text = codexLabel(codex);
+      }
+      if (codexOpen) return;
+
       const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); discoveryFlash = Math.max(0, discoveryFlash - dt); tickCombat(combat, enemies, dt);
       const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis; const previousY = locomotion.y;
       const guarding = mobileInput.guardHeld || keys.has('KeyK');
@@ -172,8 +197,7 @@ async function bootstrap(): Promise<void> {
       const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE);
       const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
       const nearSynth = Math.abs(SYNTH_X - locomotion.x) <= INTERACT_RANGE + 10;
-      const pairs = availablePairs(inventory);
-      const pair = pairs[0];
+      const pair = availablePairs(inventory)[0];
       status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? 'USE · PUSH OBJECT' : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : '';
 
       if (mobileInput.interactPressed || keyboardInteract) {
@@ -181,7 +205,11 @@ async function bootstrap(): Promise<void> {
         else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34);
         else if (nearSynth && pair) {
           const discovery = synthesize(synthesis, inventory, WORLD_SEED, pair[0], pair[1]);
-          if (discovery) { status.discoveryText.text = discoveryLabel(discovery); resultOrb.visible = true; discoveryFlash = 0.5; }
+          if (discovery) {
+            recordDiscovery(codex, discovery, pair); persistKnowledge();
+            status.discoveryText.text = discoveryLabel(discovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
+            codexPanel.body.text = codexLabel(codex); resultOrb.visible = true; discoveryFlash = 0.5;
+          }
         }
       }
       mobileInput.interactPressed = false; keyboardInteract = false; crateView.x = CRATE.x;
@@ -194,15 +222,12 @@ async function bootstrap(): Promise<void> {
 
       for (const enemy of enemies) {
         const view = enemyViews.get(enemy.id)!; view.visible = enemy.alive; if (!enemy.alive) continue;
-        const distance = Math.abs(enemy.x - locomotion.x);
-        if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * dt;
-        view.x = enemy.x;
+        const distance = Math.abs(enemy.x - locomotion.x); if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * dt; view.x = enemy.x;
         if (enemyContactHit(combat, enemy, distance, guarding)) hitFlash = 0.16;
         const hpView = view.getChildByName('hp') as Graphics; hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
       }
 
-      resultOrb.alpha = discoveryFlash > 0 ? 1 : 0.55;
-      resultOrb.scale.set(discoveryFlash > 0 ? 1.35 : 1);
+      resultOrb.alpha = discoveryFlash > 0 ? 1 : 0.55; resultOrb.scale.set(discoveryFlash > 0 ? 1.35 : 1);
       status.inventoryText.text = `MAT ${inventory.MATTER}   ENG ${inventory.ENERGY}   LIFE ${inventory.LIFE}   SIG ${inventory.SIGNAL}`;
       status.combatText.text = `HP ${'■'.repeat(combat.hp)}${'□'.repeat(combat.maxHp - combat.hp)}   ATK / GUARD / DODGE`;
       player.position.set(locomotion.x, locomotion.y); player.scale.x = locomotion.facing; player.scale.y = attackFlash > 0 ? 1.1 : 1; player.alpha = hitFlash > 0 ? 0.35 : guarding ? 0.72 : 1;
