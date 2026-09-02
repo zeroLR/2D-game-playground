@@ -1,5 +1,6 @@
 import type { CodexState } from '../simulation/codex/codex';
 import type { SynthesisState } from '../simulation/synthesis/synthesis';
+import { cloneWorldPressure, createWorldPressure, type WorldPressure } from '../simulation/world/pressure';
 import { createRegionState, type RegionState } from '../simulation/world/regions';
 
 export const SAVE_VERSION = 1;
@@ -10,12 +11,14 @@ export type BitlandKnowledgeSave = {
   synthesis: SynthesisState;
   codex: CodexState;
   regions?: RegionState;
+  pressure?: WorldPressure;
 };
 
 export function createKnowledgeSave(
   synthesis: SynthesisState,
   codex: CodexState,
   regions: RegionState = createRegionState(),
+  pressure: WorldPressure = createWorldPressure(),
 ): BitlandKnowledgeSave {
   return {
     version: SAVE_VERSION,
@@ -27,6 +30,7 @@ export function createKnowledgeSave(
     },
     codex: { entries: codex.entries.map(entry => ({ ...entry, inputs: [...entry.inputs], traits: [...entry.traits] })) },
     regions: createRegionState(regions.generated),
+    pressure: cloneWorldPressure(pressure),
   };
 }
 
@@ -44,6 +48,7 @@ export function parseKnowledgeSave(raw: string | null): BitlandKnowledgeSave | n
       synthesis: parsed.synthesis,
       codex: parsed.codex,
       regions: createRegionState(parsed.regions?.generated ?? []),
+      pressure: parsed.pressure ? cloneWorldPressure(parsed.pressure) : createWorldPressure(),
     } as BitlandKnowledgeSave;
   } catch {
     return null;
