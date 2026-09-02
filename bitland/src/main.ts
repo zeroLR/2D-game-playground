@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js';
 import { createKnowledgeSave, parseKnowledgeSave, SAVE_KEY, serializeKnowledgeSave } from './persistence/save';
-import { createCodexState, recordDiscovery, type CodexState } from './simulation/codex/codex';
+import { createCodexState, recordDiscovery } from './simulation/codex/codex';
 import { attackEnemy, createEnemy, createPlayerCombatState, enemyContactHit, grantEnemyLoot, startDodgeInvulnerability, tickCombat } from './simulation/combat/combat';
 import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
@@ -9,6 +9,7 @@ import { availablePairs, createSynthesisState, synthesize, type Discovery } from
 import { createWorldPressure, recordCreatureDefeat, recordGatherPressure, recordTraitUsage } from './simulation/world/pressure';
 import { BASE_WORLD_WIDTH, createRegionState, generateNextRegion, shouldRevealNextRegion, worldExtent, type RegionDescriptor } from './simulation/world/regions';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
+import { createCodexModal, refreshCodexModal } from './ui/codexModal';
 import './style.css';
 
 const LOGICAL_WIDTH = 960;
@@ -181,20 +182,6 @@ function makeStatusHud() {
   return { hud, inventoryText, combatText, discoveryText, activeText, codexCount, worldText, prompt };
 }
 
-function makeCodexPanel() {
-  const panel = new Container(); panel.zIndex = 200; panel.visible = false;
-  panel.addChild(new Graphics().roundRect(150, 70, 660, 400, 18).fill({ color: 0x061012, alpha: 0.96 }).stroke({ color: 0x78d5c7, width: 2, alpha: 0.75 }));
-  const title = new Text({ text: 'WORLD CODEX // DISCOVERED LAWS', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18, fontWeight: '700' } }); title.position.set(182, 100); panel.addChild(title);
-  const hint = new Text({ text: 'CODEX / C to close  ·  actions shape future region recipes', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
-  const body = new Text({ text: '', style: { fill: 0xe1fff9, fontFamily: 'monospace', fontSize: 12, lineHeight: 22, wordWrap: true, wordWrapWidth: 590 } }); body.position.set(182, 166); panel.addChild(body);
-  return { panel, body };
-}
-
-function codexLabel(codex: CodexState): string {
-  if (codex.entries.length === 0) return 'No discoveries recorded.\n\nExplore → gather → synthesize to reveal the first law.';
-  return codex.entries.slice(-11).map(entry => `${String(entry.firstDiscoveredOrder).padStart(2, '0')}  ${entry.displayName}\n    ${entry.inputs.join(' + ')}  //  ${entry.traits.join(' · ')}  //  #${entry.discoveryIndex + 1}`).join('\n');
-}
-
 function landOnPlatforms(previousY: number, locomotion: ReturnType<typeof createLocomotionState>, platforms: Platform[]): void {
   if (locomotion.vy < 0) return;
   for (const platform of platforms) if (locomotion.x >= platform.x - 8 && locomotion.x <= platform.x + platform.width + 8 && previousY <= platform.y && locomotion.y >= platform.y) { locomotion.y = platform.y; locomotion.vy = 0; locomotion.grounded = true; return; }
@@ -221,11 +208,47 @@ async function bootstrap(): Promise<void> {
     let observedWorldWidth = worldExtent(regions);
     let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
-    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false }; app.stage.addChild(makeMobileControls(mobileInput));
+    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false };
+    const mobileControls = makeMobileControls(mobileInput); app.stage.addChild(mobileControls);
     const status = makeStatusHud(); app.stage.addChild(status.hud);
-    const codexPanel = makeCodexPanel(); app.stage.addChild(codexPanel.panel);
-    const keys = new Set<string>(); let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false;
-    window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if (e.code === 'KeyC' && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
+    const codexModal = createCodexModal(); app.stage.addChild(codexModal.panel);
+    const keys = new Set<string>();
+    let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false, codexPage = 0;
+
+    const clearQueuedGameplayInput = () => {
+      mobileInput.jumpPressed = false;
+      mobileInput.attackPressed = false;
+      mobileInput.guardHeld = false;
+      mobileInput.dodgePressed = false;
+      mobileInput.interactPressed = false;
+      keyboardJump = false;
+      keyboardInteract = false;
+      keyboardAttack = false;
+      keys.delete('KeyK');
+      keys.delete('ShiftLeft');
+    };
+    const setCodexOpen = (open: boolean) => {
+      codexOpen = open;
+      codexModal.panel.visible = open;
+      mobileControls.visible = !open;
+      status.hud.visible = !open;
+      if (open) {
+        clearQueuedGameplayInput();
+        codexPage = refreshCodexModal(codexModal, codex, codexPage);
+      }
+    };
+    codexModal.closeButton.on('pointerdown', () => setCodexOpen(false));
+    codexModal.prevButton.on('pointerdown', () => { codexPage = refreshCodexModal(codexModal, codex, codexPage - 1); });
+    codexModal.nextButton.on('pointerdown', () => { codexPage = refreshCodexModal(codexModal, codex, codexPage + 1); });
+
+    window.addEventListener('keydown', e => {
+      keys.add(e.code);
+      if (e.code === 'Space' && !e.repeat) keyboardJump = true;
+      if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true;
+      if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true;
+      if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true;
+      if (e.code === 'Space') e.preventDefault();
+    });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
     const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure)));
@@ -236,8 +259,8 @@ async function bootstrap(): Promise<void> {
 
     app.ticker.add(ticker => {
       if (mobileInput.codexPressed || keyboardCodex) {
-        codexOpen = !codexOpen; mobileInput.codexPressed = false; keyboardCodex = false;
-        codexPanel.panel.visible = codexOpen; codexPanel.body.text = codexLabel(codex);
+        mobileInput.codexPressed = false; keyboardCodex = false;
+        setCodexOpen(!codexOpen);
       }
       if (codexOpen) return;
 
@@ -282,7 +305,7 @@ async function bootstrap(): Promise<void> {
             recordTraitUsage(pressure, discovery.traits);
             recordDiscovery(codex, discovery, pair); persistKnowledge();
             status.discoveryText.text = discoveryLabel(discovery); status.activeText.text = activeEffectSummary(activeDiscovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
-            codexPanel.body.text = codexLabel(codex); resultOrb.visible = true; discoveryFlash = 0.5;
+            codexPage = refreshCodexModal(codexModal, codex, codexPage); resultOrb.visible = true; discoveryFlash = 0.5;
           }
         }
       }
