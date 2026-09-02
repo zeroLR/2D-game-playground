@@ -24,7 +24,7 @@ describe('world-state region influence', () => {
     expect(region?.encounterPressure).toBe('HIGH');
   });
 
-  it('biases native biomes toward the less-extracted resource and keeps corruption deterministic', () => {
+  it('keeps resource bias within the biome native pair and deterministic under ties', () => {
     const pressure = createWorldPressure();
     recordGatherPressure(pressure, 'MATTER', 8);
     recordGatherPressure(pressure, 'ENERGY', 8);
@@ -47,7 +47,7 @@ describe('world-state region influence', () => {
     if (!region) return;
 
     if (region.biome === 'DATA_FIELD') expect(region.resourceBias).toBe('LIFE');
-    if (region.biome === 'CRYSTAL_NODE') expect(region.resourceBias).toBe('LIFE');
-    if (region.biome === 'CORRUPTION_FIELD') expect(['MATTER', 'ENERGY', 'LIFE', 'SIGNAL']).toContain(region.resourceBias);
+    if (region.biome === 'CRYSTAL_NODE') expect(['SIGNAL', 'ENERGY']).toContain(region.resourceBias);
+    if (region.biome === 'CORRUPTION_FIELD') expect(['ENERGY', 'MATTER']).toContain(region.resourceBias);
   });
 });
