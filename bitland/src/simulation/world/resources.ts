@@ -8,6 +8,7 @@ export type ResourceNode = {
   amount: number;
   x: number;
   depleted: boolean;
+  capacity?: number;
 };
 
 export type PushableObject = {
@@ -21,9 +22,19 @@ export const createInventory = (): Inventory => ({ MATTER: 0, ENERGY: 0, LIFE: 0
 
 export function gatherNode(node: ResourceNode, inventory: Inventory): boolean {
   if (node.depleted || node.amount <= 0) return false;
+  node.capacity ??= node.amount;
   inventory[node.resource] += node.amount;
   node.amount = 0;
   node.depleted = true;
+  return true;
+}
+
+export function restoreResourceNode(node: ResourceNode): boolean {
+  if (!node.depleted) return false;
+  const capacity = Math.max(1, node.capacity ?? node.amount);
+  node.capacity = capacity;
+  node.amount = capacity;
+  node.depleted = false;
   return true;
 }
 

@@ -1,6 +1,7 @@
+import { publishWorldAdvanceSignal } from './worldAdvanceSignal';
 import type { EcologyState } from './worldTick';
 import type { RegionState } from '../world/regions';
-import type { ResourceNode, RootResource } from '../world/resources';
+import { restoreResourceNode, type ResourceNode, type RootResource } from '../world/resources';
 
 export type EcologyFeedback = {
   enemySpeedMultiplier: number;
@@ -24,11 +25,16 @@ export function shouldRecoverResource(resource: RootResource, ecology: EcologySt
 }
 
 export function applyResourceRecovery(nodes: ResourceNode[], ecology: EcologyState): RootResource[] {
+  publishWorldAdvanceSignal({
+    tickIndex: ecology.tickIndex,
+    hostility: ecology.hostility,
+    signature: ecology.lastSignature ?? 0,
+  });
+
   const recovered: RootResource[] = [];
   for (const node of nodes) {
     if (!node.depleted || !shouldRecoverResource(node.resource, ecology)) continue;
-    node.depleted = false;
-    recovered.push(node.resource);
+    if (restoreResourceNode(node)) recovered.push(node.resource);
   }
   return recovered;
 }
