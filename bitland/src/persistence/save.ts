@@ -1,4 +1,5 @@
 import type { CodexState } from '../simulation/codex/codex';
+import { cloneEcologyState, createEcologyState, type EcologyState } from '../simulation/ecology/worldTick';
 import type { SynthesisState } from '../simulation/synthesis/synthesis';
 import { cloneWorldPressure, createWorldPressure, type WorldPressure } from '../simulation/world/pressure';
 import { createRegionState, type RegionState } from '../simulation/world/regions';
@@ -12,6 +13,7 @@ export type BitlandKnowledgeSave = {
   codex: CodexState;
   regions?: RegionState;
   pressure?: WorldPressure;
+  ecology?: EcologyState;
 };
 
 export function createKnowledgeSave(
@@ -19,6 +21,7 @@ export function createKnowledgeSave(
   codex: CodexState,
   regions: RegionState = createRegionState(),
   pressure: WorldPressure = createWorldPressure(),
+  ecology: EcologyState = createEcologyState(),
 ): BitlandKnowledgeSave {
   return {
     version: SAVE_VERSION,
@@ -31,6 +34,7 @@ export function createKnowledgeSave(
     codex: { entries: codex.entries.map(entry => ({ ...entry, inputs: [...entry.inputs], traits: [...entry.traits] })) },
     regions: createRegionState(regions.generated),
     pressure: cloneWorldPressure(pressure),
+    ecology: cloneEcologyState(ecology),
   };
 }
 
@@ -49,6 +53,7 @@ export function parseKnowledgeSave(raw: string | null): BitlandKnowledgeSave | n
       codex: parsed.codex,
       regions: createRegionState(parsed.regions?.generated ?? []),
       pressure: parsed.pressure ? cloneWorldPressure(parsed.pressure) : createWorldPressure(),
+      ecology: parsed.ecology ? cloneEcologyState(parsed.ecology) : createEcologyState(),
     } as BitlandKnowledgeSave;
   } catch {
     return null;
