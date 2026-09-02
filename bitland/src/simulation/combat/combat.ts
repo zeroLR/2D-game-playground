@@ -17,6 +17,11 @@ export type EnemyState = {
   loot: { resource: RootResource; amount: number };
 };
 
+export type AttackModifiers = {
+  damageBonus?: number;
+  rangeBonus?: number;
+};
+
 export function createPlayerCombatState(): PlayerCombatState {
   return { hp: 5, maxHp: 5, invulnerableRemaining: 0, attackCooldownRemaining: 0 };
 }
@@ -35,10 +40,12 @@ export function startDodgeInvulnerability(player: PlayerCombatState): void {
   player.invulnerableRemaining = Math.max(player.invulnerableRemaining, 0.22);
 }
 
-export function attackEnemy(player: PlayerCombatState, enemy: EnemyState, distance: number): boolean {
-  if (!enemy.alive || player.attackCooldownRemaining > 0 || distance > 58) return false;
+export function attackEnemy(player: PlayerCombatState, enemy: EnemyState, distance: number, modifiers: AttackModifiers = {}): boolean {
+  const range = 58 + Math.max(0, modifiers.rangeBonus ?? 0);
+  if (!enemy.alive || player.attackCooldownRemaining > 0 || distance > range) return false;
   player.attackCooldownRemaining = 0.28;
-  enemy.hp = Math.max(0, enemy.hp - 1);
+  const damage = 1 + Math.max(0, Math.floor(modifiers.damageBonus ?? 0));
+  enemy.hp = Math.max(0, enemy.hp - damage);
   if (enemy.hp === 0) enemy.alive = false;
   return true;
 }
