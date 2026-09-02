@@ -8,6 +8,7 @@ import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import { activeEffectSummary, locomotionConfigForEffects, resolveDiscoveryEffects } from './simulation/synthesis/effects';
 import { availablePairs, createSynthesisState, synthesize, type Discovery } from './simulation/synthesis/synthesis';
+import { activateAffordance, canActivateAffordance, createAffordanceState, isAffordanceActive, type AffordanceId, type AffordanceState } from './simulation/world/affordances';
 import { createWorldPressure, recordCreatureDefeat, recordGatherPressure, recordTraitUsage } from './simulation/world/pressure';
 import { BASE_WORLD_WIDTH, createRegionState, generateNextRegion, shouldRevealNextRegion, worldExtent, type RegionDescriptor } from './simulation/world/regions';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
@@ -22,6 +23,8 @@ const PLAYER_MIN_X = 18;
 const INTERACT_RANGE = 72;
 const SYNTH_X = 1666;
 const WORLD_TICK_X = 1810;
+const SIGNAL_RELAY_X = 1980;
+const MASS_ANCHOR_X = 2220;
 const WORLD_SEED = 'bitland-alpha';
 
 type Platform = { x: number; y: number; width: number };
@@ -31,6 +34,8 @@ const PLATFORMS: Platform[] = [
   { x: 1120, y: 325, width: 180 },
   { x: 1420, y: 292, width: 150 },
 ];
+const PHASE_BRIDGE: Platform = { x: 2040, y: 302, width: 170 };
+const MASS_LIFT: Platform = { x: 2280, y: 270, width: 136 };
 const RESOURCE_NODES: ResourceNode[] = [
   { id: 'matter-1', resource: 'MATTER', amount: 2, x: 340, depleted: false },
   { id: 'life-1', resource: 'LIFE', amount: 2, x: 610, depleted: false },
@@ -89,11 +94,23 @@ function makeWorld() {
   tickTerminal.addChild(new Graphics().rect(-30, -74, 60, 74).fill(0x0e2424).rect(-23, -66, 46, 54).stroke({ color: 0x7be6d6, width: 3 }).circle(0, -39, 10).stroke({ color: 0xffd58a, width: 3 }));
   const tickLabel = new Text({ text: 'TICK', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 10, fontWeight: '700' } }); tickLabel.anchor.set(0.5); tickLabel.position.set(0, -20); tickTerminal.addChild(tickLabel); world.addChild(tickTerminal);
 
-  const regionLayer = new Container();
-  world.addChild(regionLayer);
-  const anomalyLayer = new Container();
-  world.addChild(anomalyLayer);
-  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer };
+  const regionLayer = new Container(); world.addChild(regionLayer);
+  const anomalyLayer = new Container(); world.addChild(anomalyLayer);
+
+  const signalRelayView = new Container(); signalRelayView.position.set(SIGNAL_RELAY_X, 382);
+  signalRelayView.addChild(new Graphics().rect(-24, -76, 48, 76).fill(0x0a2028).rect(-18, -68, 36, 54).stroke({ color: 0x6be8ff, width: 3 }).poly([-11, -41, 0, -56, 11, -41, 0, -26]).stroke({ color: 0x6be8ff, width: 2 }));
+  const relayLabel = new Text({ text: 'RELAY', style: { fill: 0x6be8ff, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } }); relayLabel.anchor.set(0.5); relayLabel.position.set(0, -10); signalRelayView.addChild(relayLabel); world.addChild(signalRelayView);
+
+  const massAnchorView = new Container(); massAnchorView.position.set(MASS_ANCHOR_X, 382);
+  massAnchorView.addChild(new Graphics().rect(-34, -12, 68, 12).fill(0x273026).rect(-27, -22, 54, 10).stroke({ color: 0xffd58a, width: 3 }).poly([-16, -24, 0, -44, 16, -24]).fill(0x4a4630).stroke({ color: 0xffd58a, width: 2 }));
+  const anchorLabel = new Text({ text: 'MASS', style: { fill: 0xffd58a, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } }); anchorLabel.anchor.set(0.5); anchorLabel.position.set(0, -52); massAnchorView.addChild(anchorLabel); world.addChild(massAnchorView);
+
+  const phaseBridgeView = new Graphics().rect(PHASE_BRIDGE.x, PHASE_BRIDGE.y + 18, PHASE_BRIDGE.width, 18).fill({ color: 0x163844, alpha: 0.92 }).rect(PHASE_BRIDGE.x, PHASE_BRIDGE.y + 14, PHASE_BRIDGE.width, 4).fill(0x6be8ff);
+  phaseBridgeView.visible = false; world.addChild(phaseBridgeView);
+  const massLiftView = new Graphics().rect(MASS_LIFT.x, MASS_LIFT.y + 18, MASS_LIFT.width, 18).fill({ color: 0x39372a, alpha: 0.95 }).rect(MASS_LIFT.x, MASS_LIFT.y + 14, MASS_LIFT.width, 4).fill(0xffd58a);
+  massLiftView.visible = false; world.addChild(massLiftView);
+
+  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView };
 }
 
 function regionPlatforms(region: RegionDescriptor): Platform[] {
@@ -145,6 +162,30 @@ function renderEcologyAnomalies(layer: Container, regions: ReturnType<typeof cre
   }
 }
 
+function ensurePlatform(platforms: Platform[], platform: Platform): void {
+  if (!platforms.some(existing => existing.x === platform.x && existing.y === platform.y && existing.width === platform.width)) platforms.push(platform);
+}
+
+function syncAffordancePlatforms(platforms: Platform[], affordances: AffordanceState): void {
+  if (isAffordanceActive(affordances, 'SIGNAL_RELAY')) ensurePlatform(platforms, PHASE_BRIDGE);
+  if (isAffordanceActive(affordances, 'MASS_ANCHOR')) ensurePlatform(platforms, MASS_LIFT);
+}
+
+function refreshAffordanceViews(
+  affordances: AffordanceState,
+  signalRelayView: Container,
+  massAnchorView: Container,
+  phaseBridgeView: Graphics,
+  massLiftView: Graphics,
+): void {
+  const relayActive = isAffordanceActive(affordances, 'SIGNAL_RELAY');
+  const anchorActive = isAffordanceActive(affordances, 'MASS_ANCHOR');
+  signalRelayView.alpha = relayActive ? 1 : 0.55;
+  massAnchorView.alpha = anchorActive ? 1 : 0.55;
+  phaseBridgeView.visible = relayActive;
+  massLiftView.visible = anchorActive;
+}
+
 function makePlayer(): Container {
   const player = new Container();
   player.addChild(new Graphics().rect(-10, -16, 20, 24).fill(0x0c1517).rect(-8, -14, 16, 10).stroke({ color: 0xb8fff4, width: 2 }).rect(-4, -10, 3, 3).fill(0xb8fff4).rect(3, -10, 3, 3).fill(0xb8fff4).rect(-7, 8, 5, 10).fill(0x6ecf78).rect(2, 8, 5, 10).fill(0x6ecf78));
@@ -188,7 +229,7 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P3.2 ECOLOGICAL FEEDBACK', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // CORE LOOP VALIDATION · WORLD AFFORDANCES', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 16 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
@@ -213,7 +254,7 @@ async function bootstrap(): Promise<void> {
   try {
     await withTimeout(app.init({ width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT, background: '#071314', antialias: false, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
     host.replaceChildren(app.canvas); app.stage.sortableChildren = true; app.stage.eventMode = 'static'; app.stage.hitArea = app.screen;
-    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer } = makeWorld();
+    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView } = makeWorld();
     const saved = parseKnowledgeSave(window.localStorage.getItem(SAVE_KEY));
     const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
     const synthesis = saved?.synthesis ?? createSynthesisState();
@@ -221,8 +262,11 @@ async function bootstrap(): Promise<void> {
     const regions = saved?.regions ?? createRegionState();
     const pressure = saved?.pressure ?? createWorldPressure();
     const ecology = saved?.ecology ?? createEcologyState();
+    const affordances = saved?.affordances ?? createAffordanceState();
     const platforms = [...PLATFORMS];
     for (const region of regions.generated) platforms.push(...renderRegion(regionLayer, region));
+    syncAffordancePlatforms(platforms, affordances);
+    refreshAffordanceViews(affordances, signalRelayView, massAnchorView, phaseBridgeView, massLiftView);
     renderEcologyAnomalies(anomalyLayer, regions, ecology);
     let observedWorldWidth = worldExtent(regions);
     let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
@@ -241,7 +285,19 @@ async function bootstrap(): Promise<void> {
     window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
-    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure, ecology)));
+    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure, ecology, affordances)));
+    const applyAffordanceActivation = (id: AffordanceId) => {
+      const result = activateAffordance(affordances, id, activeDiscovery);
+      if (result === 'ACTIVATED') {
+        syncAffordancePlatforms(platforms, affordances);
+        refreshAffordanceViews(affordances, signalRelayView, massAnchorView, phaseBridgeView, massLiftView);
+        status.worldText.text = id === 'SIGNAL_RELAY' ? 'WORLD // SIGNAL RELAY ONLINE · PHASE BRIDGE MATERIALIZED' : 'WORLD // MASS ANCHOR ENGAGED · LIFT RAISED';
+        persistKnowledge();
+      } else if (result === 'MISSING_TRAIT') {
+        status.worldText.text = id === 'SIGNAL_RELAY' ? 'AFFORDANCE // SIGNAL RELAY NEEDS CONDUCTIVE' : 'AFFORDANCE // MASS ANCHOR NEEDS HEAVY';
+      }
+    };
+
     if (synthesis.lastDiscovery) { status.discoveryText.text = discoveryLabel(synthesis.lastDiscovery); resultOrb.visible = true; }
     status.activeText.text = activeEffectSummary(activeDiscovery);
     status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
@@ -268,8 +324,12 @@ async function bootstrap(): Promise<void> {
       const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
       const nearSynth = Math.abs(SYNTH_X - locomotion.x) <= INTERACT_RANGE + 10;
       const nearWorldTick = Math.abs(WORLD_TICK_X - locomotion.x) <= INTERACT_RANGE;
+      const nearSignalRelay = Math.abs(SIGNAL_RELAY_X - locomotion.x) <= INTERACT_RANGE;
+      const nearMassAnchor = Math.abs(MASS_ANCHOR_X - locomotion.x) <= INTERACT_RANGE;
       const pair = availablePairs(inventory)[0];
-      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : nearWorldTick ? `USE · ADVANCE WORLD TICK ${ecology.tickIndex + 1}` : '';
+      const signalPrompt = isAffordanceActive(affordances, 'SIGNAL_RELAY') ? 'SIGNAL RELAY // ONLINE' : canActivateAffordance('SIGNAL_RELAY', activeDiscovery) ? 'USE · POWER SIGNAL RELAY [CONDUCTIVE]' : 'SIGNAL RELAY · NEED CONDUCTIVE';
+      const massPrompt = isAffordanceActive(affordances, 'MASS_ANCHOR') ? 'MASS ANCHOR // ENGAGED' : canActivateAffordance('MASS_ANCHOR', activeDiscovery) ? 'USE · ENGAGE MASS ANCHOR [HEAVY]' : 'MASS ANCHOR · NEED HEAVY';
+      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : nearWorldTick ? `USE · ADVANCE WORLD TICK ${ecology.tickIndex + 1}` : nearSignalRelay ? signalPrompt : nearMassAnchor ? massPrompt : '';
 
       if (mobileInput.interactPressed || keyboardInteract) {
         if (nearbyNode) {
@@ -286,7 +346,8 @@ async function bootstrap(): Promise<void> {
           renderEcologyAnomalies(anomalyLayer, regions, ecology);
           status.worldText.text = `WORLD // TICK ${delta.tickIndex} · HOSTILITY ${ecology.hostility} · RECOVER ${recovered.join('/') || 'NONE'}`;
           persistKnowledge();
-        }
+        } else if (nearSignalRelay) applyAffordanceActivation('SIGNAL_RELAY');
+        else if (nearMassAnchor) applyAffordanceActivation('MASS_ANCHOR');
       }
       mobileInput.interactPressed = false; keyboardInteract = false; crateView.x = CRATE.x;
 
