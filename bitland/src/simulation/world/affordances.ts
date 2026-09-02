@@ -1,6 +1,6 @@
 import type { Discovery, Trait } from '../synthesis/synthesis';
 
-export type AffordanceId = 'SIGNAL_RELAY' | 'THERMAL_VENT';
+export type AffordanceId = 'SIGNAL_RELAY' | 'MASS_ANCHOR';
 
 export type AffordanceState = {
   activated: AffordanceId[];
@@ -14,7 +14,7 @@ export type AffordanceDefinition = {
 
 export const AFFORDANCE_DEFINITIONS: Record<AffordanceId, AffordanceDefinition> = {
   SIGNAL_RELAY: { id: 'SIGNAL_RELAY', requiredTrait: 'CONDUCTIVE', label: 'SIGNAL RELAY' },
-  THERMAL_VENT: { id: 'THERMAL_VENT', requiredTrait: 'HOT', label: 'THERMAL VENT' },
+  MASS_ANCHOR: { id: 'MASS_ANCHOR', requiredTrait: 'HEAVY', label: 'MASS ANCHOR' },
 };
 
 export function createAffordanceState(activated: AffordanceId[] = []): AffordanceState {
