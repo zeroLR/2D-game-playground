@@ -6,6 +6,7 @@ import { createCameraState, stepCamera } from './simulation/player/camera';
 import { createLocomotionState, stepLocomotion } from './simulation/player/locomotion';
 import { activeEffectSummary, locomotionConfigForEffects, resolveDiscoveryEffects } from './simulation/synthesis/effects';
 import { availablePairs, createSynthesisState, synthesize, type Discovery } from './simulation/synthesis/synthesis';
+import { createWorldPressure, recordCreatureDefeat, recordGatherPressure, recordTraitUsage } from './simulation/world/pressure';
 import { BASE_WORLD_WIDTH, createRegionState, generateNextRegion, shouldRevealNextRegion, worldExtent, type RegionDescriptor } from './simulation/world/regions';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
 import './style.css';
@@ -115,10 +116,12 @@ function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
   view.addChild(platformGraphics);
 
   const marker = new Text({ text: `REGION ${String(region.index + 1).padStart(2, '0')} // ${region.biome.replace('_', ' ')}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' } });
-  marker.position.set(28, 224); view.addChild(marker);
+  marker.position.set(28, 216); view.addChild(marker);
+  const recipe = new Text({ text: `RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 10 } });
+  recipe.position.set(28, 238); view.addChild(recipe);
   const influence = new Text({ text: `OBSERVED @ CODEX ${region.influence.codexCount} · ${region.influence.activeTraits.join(' + ') || 'NO ACTIVE TRAITS'}`, style: { fill: palette.accent, fontFamily: 'monospace', fontSize: 10 } });
   influence.alpha = 0.65;
-  influence.position.set(28, 246); view.addChild(influence);
+  influence.position.set(28, 256); view.addChild(influence);
   layer.addChild(view);
   return platforms;
 }
@@ -167,7 +170,7 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // P2.1 LAZY REGION GENERATION', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // P2.2 WORLD-STATE INFLUENCE', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
@@ -182,7 +185,7 @@ function makeCodexPanel() {
   const panel = new Container(); panel.zIndex = 200; panel.visible = false;
   panel.addChild(new Graphics().roundRect(150, 70, 660, 400, 18).fill({ color: 0x061012, alpha: 0.96 }).stroke({ color: 0x78d5c7, width: 2, alpha: 0.75 }));
   const title = new Text({ text: 'WORLD CODEX // DISCOVERED LAWS', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 18, fontWeight: '700' } }); title.position.set(182, 100); panel.addChild(title);
-  const hint = new Text({ text: 'CODEX / C to close  ·  discoveries influence future observed regions', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
+  const hint = new Text({ text: 'CODEX / C to close  ·  actions shape future region recipes', style: { fill: 0x78a9a2, fontFamily: 'monospace', fontSize: 11 } }); hint.position.set(182, 128); panel.addChild(hint);
   const body = new Text({ text: '', style: { fill: 0xe1fff9, fontFamily: 'monospace', fontSize: 12, lineHeight: 22, wordWrap: true, wordWrapWidth: 590 } }); body.position.set(182, 166); panel.addChild(body);
   return { panel, body };
 }
@@ -212,6 +215,7 @@ async function bootstrap(): Promise<void> {
     const synthesis = saved?.synthesis ?? createSynthesisState();
     const codex = saved?.codex ?? createCodexState();
     const regions = saved?.regions ?? createRegionState();
+    const pressure = saved?.pressure ?? createWorldPressure();
     const platforms = [...PLATFORMS];
     for (const region of regions.generated) platforms.push(...renderRegion(regionLayer, region));
     let observedWorldWidth = worldExtent(regions);
@@ -224,7 +228,7 @@ async function bootstrap(): Promise<void> {
     window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if (e.code === 'KeyC' && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
-    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions)));
+    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure)));
     if (synthesis.lastDiscovery) { status.discoveryText.text = discoveryLabel(synthesis.lastDiscovery); resultOrb.visible = true; }
     status.activeText.text = activeEffectSummary(activeDiscovery);
     status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
@@ -244,11 +248,11 @@ async function bootstrap(): Promise<void> {
       stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, observedWorldWidth - 18, locomotionConfigForEffects(effects)); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion, platforms);
 
       if (shouldRevealNextRegion(locomotion.x, regions)) {
-        const region = generateNextRegion(regions, WORLD_SEED, { codexCount: codex.entries.length, activeTraits: activeDiscovery?.traits ?? [] });
+        const region = generateNextRegion(regions, WORLD_SEED, { codexCount: codex.entries.length, activeTraits: activeDiscovery?.traits ?? [], pressure });
         if (region) {
           platforms.push(...renderRegion(regionLayer, region));
           observedWorldWidth = worldExtent(regions);
-          status.worldText.text = `WORLD // REGION ${region.index + 1} OBSERVED · ${region.biome.replace('_', ' ')} · edge ${observedWorldWidth}`;
+          status.worldText.text = `WORLD // ${region.biome.replace('_', ' ')} · RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`;
           persistKnowledge();
         }
       }
@@ -262,12 +266,20 @@ async function bootstrap(): Promise<void> {
       status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : '';
 
       if (mobileInput.interactPressed || keyboardInteract) {
-        if (nearbyNode && gatherNode(nearbyNode, inventory)) nodeViews.get(nearbyNode.id)!.alpha = 0.12;
-        else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34 * effects.pushMultiplier);
+        if (nearbyNode) {
+          const gatheredAmount = nearbyNode.amount;
+          if (gatherNode(nearbyNode, inventory)) {
+            recordGatherPressure(pressure, nearbyNode.resource, gatheredAmount);
+            const nodeView = nodeViews.get(nearbyNode.id);
+            if (nodeView) nodeView.alpha = 0.12;
+            persistKnowledge();
+          }
+        } else if (nearCrate) pushObject(CRATE, locomotion.x, locomotion.facing, 34 * effects.pushMultiplier);
         else if (nearSynth && pair) {
           const discovery = synthesize(synthesis, inventory, WORLD_SEED, pair[0], pair[1]);
           if (discovery) {
             activeDiscovery = discovery;
+            recordTraitUsage(pressure, discovery.traits);
             recordDiscovery(codex, discovery, pair); persistKnowledge();
             status.discoveryText.text = discoveryLabel(discovery); status.activeText.text = activeEffectSummary(activeDiscovery); status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
             codexPanel.body.text = codexLabel(codex); resultOrb.visible = true; discoveryFlash = 0.5;
@@ -278,15 +290,28 @@ async function bootstrap(): Promise<void> {
 
       if (mobileInput.attackPressed || keyboardAttack) {
         const target = enemies.filter(enemy => enemy.alive && Math.sign(enemy.x - locomotion.x) === locomotion.facing).sort((a, b) => Math.abs(a.x - locomotion.x) - Math.abs(b.x - locomotion.x))[0];
-        if (target && attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) { attackFlash = 0.12; if (!target.alive) grantEnemyLoot(target, inventory); }
+        if (target) {
+          const wasAlive = target.alive;
+          if (attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) {
+            attackFlash = 0.12;
+            if (wasAlive && !target.alive) {
+              recordCreatureDefeat(pressure);
+              grantEnemyLoot(target, inventory);
+              persistKnowledge();
+            }
+          }
+        }
       }
       mobileInput.attackPressed = false; keyboardAttack = false;
 
       for (const enemy of enemies) {
-        const view = enemyViews.get(enemy.id)!; view.visible = enemy.alive; if (!enemy.alive) continue;
+        const view = enemyViews.get(enemy.id);
+        if (!view) continue;
+        view.visible = enemy.alive; if (!enemy.alive) continue;
         const distance = Math.abs(enemy.x - locomotion.x); if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * dt; view.x = enemy.x;
         if (enemyContactHit(combat, enemy, distance, guarding)) hitFlash = 0.16;
-        const hpView = view.getChildByName('hp') as Graphics; hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
+        const hpView = view.getChildByName('hp');
+        if (hpView instanceof Graphics) hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
       }
 
       resultOrb.alpha = discoveryFlash > 0 ? 1 : 0.55; resultOrb.scale.set(discoveryFlash > 0 ? 1.35 : 1);
