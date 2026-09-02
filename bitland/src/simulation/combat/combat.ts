@@ -1,3 +1,4 @@
+import { consumeWorldAdvanceSignal } from '../ecology/worldAdvanceSignal';
 import type { Inventory, RootResource } from '../world/resources';
 
 export type PlayerCombatState = {
@@ -10,11 +11,13 @@ export type PlayerCombatState = {
 export type EnemyState = {
   id: string;
   x: number;
+  spawnX: number;
   hp: number;
   maxHp: number;
   alive: boolean;
   contactCooldownRemaining: number;
   loot: { resource: RootResource; amount: number };
+  lootAmount: number;
 };
 
 export type AttackModifiers = {
@@ -27,10 +30,46 @@ export function createPlayerCombatState(): PlayerCombatState {
 }
 
 export function createEnemy(id: string, x: number, loot: EnemyState['loot']): EnemyState {
-  return { id, x, hp: 3, maxHp: 3, alive: true, contactCooldownRemaining: 0, loot };
+  return {
+    id,
+    x,
+    spawnX: x,
+    hp: 3,
+    maxHp: 3,
+    alive: true,
+    contactCooldownRemaining: 0,
+    loot: { ...loot },
+    lootAmount: loot.amount,
+  };
+}
+
+export function respawnEnemy(enemy: EnemyState): void {
+  enemy.x = enemy.spawnX;
+  enemy.hp = enemy.maxHp;
+  enemy.alive = true;
+  enemy.contactCooldownRemaining = 0;
+  enemy.loot.amount = enemy.lootAmount;
+}
+
+export function applyEnemyRepopulation(enemies: EnemyState[], hostility: number, signature: number): string[] {
+  const dead = enemies.filter(enemy => !enemy.alive).sort((a, b) => a.id.localeCompare(b.id));
+  if (dead.length === 0 || hostility <= 0) return [];
+
+  const count = Math.min(dead.length, 1 + Math.floor(Math.min(hostility, 8) / 4));
+  const start = signature % dead.length;
+  const repopulated: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const enemy = dead[(start + index) % dead.length];
+    respawnEnemy(enemy);
+    repopulated.push(enemy.id);
+  }
+  return repopulated;
 }
 
 export function tickCombat(player: PlayerCombatState, enemies: EnemyState[], dt: number): void {
+  const worldAdvance = consumeWorldAdvanceSignal();
+  if (worldAdvance) applyEnemyRepopulation(enemies, worldAdvance.hostility, worldAdvance.signature);
+
   player.invulnerableRemaining = Math.max(0, player.invulnerableRemaining - dt);
   player.attackCooldownRemaining = Math.max(0, player.attackCooldownRemaining - dt);
   for (const enemy of enemies) enemy.contactCooldownRemaining = Math.max(0, enemy.contactCooldownRemaining - dt);
