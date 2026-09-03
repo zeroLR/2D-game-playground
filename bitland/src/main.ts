@@ -9,6 +9,7 @@ import { createLocomotionState, stepLocomotion } from './simulation/player/locom
 import { activeEffectSummary, locomotionConfigForEffects, resolveDiscoveryEffects } from './simulation/synthesis/effects';
 import { availablePairs, createSynthesisState, synthesize, type Discovery } from './simulation/synthesis/synthesis';
 import { activateAffordance, canActivateAffordance, createAffordanceState, isAffordanceActive, type AffordanceId, type AffordanceState } from './simulation/world/affordances';
+import { createPoiObservationState, isPoiScanned, poiLabel, scanPoi, type PoiObservationState, type RegionPoi } from './simulation/world/poi';
 import { createWorldPressure, recordCreatureDefeat, recordGatherPressure, recordTraitUsage } from './simulation/world/pressure';
 import { BASE_WORLD_WIDTH, createRegionState, generateNextRegion, shouldRevealNextRegion, worldExtent, type RegionDescriptor } from './simulation/world/regions';
 import { createInventory, gatherNode, pushObject, type ResourceNode, type PushableObject } from './simulation/world/resources';
@@ -21,6 +22,7 @@ const BOOT_TIMEOUT_MS = 5000;
 const GROUND_Y = 364;
 const PLAYER_MIN_X = 18;
 const INTERACT_RANGE = 72;
+const POI_SCAN_RANGE = 92;
 const SYNTH_X = 1666;
 const WORLD_TICK_X = 1810;
 const SIGNAL_RELAY_X = 1980;
@@ -62,6 +64,7 @@ function makeWorld() {
   }
   world.addChild(far);
   world.addChild(new Graphics().rect(0, 390, BASE_WORLD_WIDTH, 150).fill(0x102126).rect(0, 382, 640, 8).fill(0x6ecf78).rect(640, 382, 640, 8).fill(0x59d7ea).rect(1280, 382, 640, 8).fill(0xff7a59));
+
   const platformGraphics = new Graphics();
   for (const platform of PLATFORMS) platformGraphics.rect(platform.x, platform.y + 18, platform.width, 18).fill(0x102126).rect(platform.x, platform.y + 14, platform.width, 4).fill(0xb8fff4);
   world.addChild(platformGraphics);
@@ -87,30 +90,34 @@ function makeWorld() {
 
   const synthesisView = new Container(); synthesisView.position.set(SYNTH_X, 382);
   synthesisView.addChild(new Graphics().rect(-36, -90, 72, 90).fill(0x25171c).rect(-28, -82, 56, 74).stroke({ color: 0xff8b68, width: 3 }).poly([0, -68, 16, -38, -16, -38]).stroke({ color: 0xffa27e, width: 3 }));
-  const resultOrb = new Graphics().circle(0, -108, 12).fill({ color: 0xb8fff4, alpha: 0.18 }).circle(0, -108, 12).stroke({ color: 0xb8fff4, width: 2, alpha: 0.35 }); resultOrb.visible = false;
-  synthesisView.addChild(resultOrb); world.addChild(synthesisView);
+  const resultOrb = new Graphics().circle(0, -108, 12).fill({ color: 0xb8fff4, alpha: 0.18 }).circle(0, -108, 12).stroke({ color: 0xb8fff4, width: 2, alpha: 0.35 });
+  resultOrb.visible = false; synthesisView.addChild(resultOrb); world.addChild(synthesisView);
 
   const tickTerminal = new Container(); tickTerminal.position.set(WORLD_TICK_X, 382);
   tickTerminal.addChild(new Graphics().rect(-30, -74, 60, 74).fill(0x0e2424).rect(-23, -66, 46, 54).stroke({ color: 0x7be6d6, width: 3 }).circle(0, -39, 10).stroke({ color: 0xffd58a, width: 3 }));
-  const tickLabel = new Text({ text: 'TICK', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 10, fontWeight: '700' } }); tickLabel.anchor.set(0.5); tickLabel.position.set(0, -20); tickTerminal.addChild(tickLabel); world.addChild(tickTerminal);
+  const tickLabel = new Text({ text: 'TICK', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 10, fontWeight: '700' } });
+  tickLabel.anchor.set(0.5); tickLabel.position.set(0, -20); tickTerminal.addChild(tickLabel); world.addChild(tickTerminal);
 
   const regionLayer = new Container(); world.addChild(regionLayer);
   const anomalyLayer = new Container(); world.addChild(anomalyLayer);
+  const poiLayer = new Container(); world.addChild(poiLayer);
 
   const signalRelayView = new Container(); signalRelayView.position.set(SIGNAL_RELAY_X, 382);
   signalRelayView.addChild(new Graphics().rect(-24, -76, 48, 76).fill(0x0a2028).rect(-18, -68, 36, 54).stroke({ color: 0x6be8ff, width: 3 }).poly([-11, -41, 0, -56, 11, -41, 0, -26]).stroke({ color: 0x6be8ff, width: 2 }));
-  const relayLabel = new Text({ text: 'RELAY', style: { fill: 0x6be8ff, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } }); relayLabel.anchor.set(0.5); relayLabel.position.set(0, -10); signalRelayView.addChild(relayLabel); world.addChild(signalRelayView);
+  const relayLabel = new Text({ text: 'RELAY', style: { fill: 0x6be8ff, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } });
+  relayLabel.anchor.set(0.5); relayLabel.position.set(0, -10); signalRelayView.addChild(relayLabel); world.addChild(signalRelayView);
 
   const massAnchorView = new Container(); massAnchorView.position.set(MASS_ANCHOR_X, 382);
   massAnchorView.addChild(new Graphics().rect(-34, -12, 68, 12).fill(0x273026).rect(-27, -22, 54, 10).stroke({ color: 0xffd58a, width: 3 }).poly([-16, -24, 0, -44, 16, -24]).fill(0x4a4630).stroke({ color: 0xffd58a, width: 2 }));
-  const anchorLabel = new Text({ text: 'MASS', style: { fill: 0xffd58a, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } }); anchorLabel.anchor.set(0.5); anchorLabel.position.set(0, -52); massAnchorView.addChild(anchorLabel); world.addChild(massAnchorView);
+  const anchorLabel = new Text({ text: 'MASS', style: { fill: 0xffd58a, fontFamily: 'monospace', fontSize: 9, fontWeight: '700' } });
+  anchorLabel.anchor.set(0.5); anchorLabel.position.set(0, -52); massAnchorView.addChild(anchorLabel); world.addChild(massAnchorView);
 
   const phaseBridgeView = new Graphics().rect(PHASE_BRIDGE.x, PHASE_BRIDGE.y + 18, PHASE_BRIDGE.width, 18).fill({ color: 0x163844, alpha: 0.92 }).rect(PHASE_BRIDGE.x, PHASE_BRIDGE.y + 14, PHASE_BRIDGE.width, 4).fill(0x6be8ff);
   phaseBridgeView.visible = false; world.addChild(phaseBridgeView);
   const massLiftView = new Graphics().rect(MASS_LIFT.x, MASS_LIFT.y + 18, MASS_LIFT.width, 18).fill({ color: 0x39372a, alpha: 0.95 }).rect(MASS_LIFT.x, MASS_LIFT.y + 14, MASS_LIFT.width, 4).fill(0xffd58a);
   massLiftView.visible = false; world.addChild(massLiftView);
 
-  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView };
+  return { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, poiLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView };
 }
 
 function regionPlatforms(region: RegionDescriptor): Platform[] {
@@ -118,13 +125,15 @@ function regionPlatforms(region: RegionDescriptor): Platform[] {
   return region.platformHeights.map((y, index) => ({ x: region.startX + offsets[index], y, width: 116 }));
 }
 
+function regionPalette(region: RegionDescriptor) {
+  if (region.biome === 'DATA_FIELD') return { bg: 0x081c1c, ground: 0x102824, accent: 0x6ecf78 };
+  if (region.biome === 'CRYSTAL_NODE') return { bg: 0x0a1727, ground: 0x14273a, accent: 0x6be8ff };
+  return { bg: 0x271217, ground: 0x321a20, accent: 0xff7a59 };
+}
+
 function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
   const view = new Container(); view.position.set(region.startX, 0);
-  const palette = region.biome === 'DATA_FIELD'
-    ? { bg: 0x081c1c, ground: 0x102824, accent: 0x6ecf78 }
-    : region.biome === 'CRYSTAL_NODE'
-      ? { bg: 0x0a1727, ground: 0x14273a, accent: 0x6be8ff }
-      : { bg: 0x271217, ground: 0x321a20, accent: 0xff7a59 };
+  const palette = regionPalette(region);
   view.addChild(new Graphics().rect(0, 0, region.width, LOGICAL_HEIGHT).fill(palette.bg).rect(0, 390, region.width, 150).fill(palette.ground).rect(0, 382, region.width, 8).fill(palette.accent));
   const skyline = new Graphics();
   for (let x = 24; x < region.width; x += 64) {
@@ -149,6 +158,46 @@ function renderRegion(layer: Container, region: RegionDescriptor): Platform[] {
   return platforms;
 }
 
+function createPoiView(region: RegionDescriptor, observations: PoiObservationState): Container | null {
+  const poi = region.poi;
+  if (!poi) return null;
+  const view = new Container();
+  view.position.set(poi.x, 382);
+  const scanned = isPoiScanned(observations, poi.id);
+  const graphic = new Graphics();
+  if (poi.kind === 'MEMORY_BLOOM') {
+    graphic.rect(-5, -118, 10, 118).fill(0x183f32)
+      .rect(-42, -94, 84, 4).fill({ color: 0x6ecf78, alpha: 0.55 })
+      .rect(-30, -68, 60, 4).fill({ color: 0x6ecf78, alpha: 0.4 })
+      .circle(-42, -94, 12).stroke({ color: 0x8dffab, width: 3 })
+      .circle(42, -94, 12).stroke({ color: 0x8dffab, width: 3 })
+      .circle(0, -126, 18).fill({ color: 0x6ecf78, alpha: 0.18 }).stroke({ color: 0xb8ffc8, width: 3 });
+  } else if (poi.kind === 'SIGNAL_SPIRE') {
+    graphic.poly([0, -148, 30, -20, 12, 0, -12, 0, -30, -20]).fill({ color: 0x153b50, alpha: 0.9 }).stroke({ color: 0x6be8ff, width: 3 })
+      .poly([0, -124, 15, -62, 0, -76, -15, -62]).stroke({ color: 0xb8f8ff, width: 2 })
+      .circle(0, -158, 12).fill({ color: 0x6be8ff, alpha: 0.24 }).stroke({ color: 0xb8f8ff, width: 3 });
+  } else {
+    graphic.circle(0, -24, 42).fill({ color: 0x3d111b, alpha: 0.88 }).stroke({ color: 0xff5b6e, width: 4 })
+      .circle(0, -24, 22).stroke({ color: 0xff9a6b, width: 3 })
+      .poly([-8, -138, 14, -98, -6, -76, 18, -48, 0, -20, -24, -62, -8, -88, -28, -112]).stroke({ color: 0xff5b6e, width: 4 });
+  }
+  graphic.alpha = scanned ? 0.78 : 1;
+  view.addChild(graphic);
+  const tag = new Text({ text: scanned ? poiLabel(poi.kind) : '???', style: { fill: scanned ? 0xd8fff8 : 0xffffff, fontFamily: 'monospace', fontSize: 11, fontWeight: '700' } });
+  tag.name = 'poi-label'; tag.anchor.set(0.5); tag.position.set(0, -176); view.addChild(tag);
+  const pulse = new Text({ text: scanned ? 'SCANNED' : 'UNKNOWN SIGNAL', style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 8 } });
+  pulse.name = 'poi-state'; pulse.anchor.set(0.5); pulse.alpha = scanned ? 0.42 : 0.72; pulse.position.set(0, -160); view.addChild(pulse);
+  return view;
+}
+
+function renderPoiLayer(layer: Container, regions: ReturnType<typeof createRegionState>, observations: PoiObservationState): void {
+  layer.removeChildren();
+  for (const region of regions.generated) {
+    const view = createPoiView(region, observations);
+    if (view) layer.addChild(view);
+  }
+}
+
 function renderEcologyAnomalies(layer: Container, regions: ReturnType<typeof createRegionState>, ecology: ReturnType<typeof createEcologyState>): void {
   layer.removeChildren();
   for (const region of regions.generated) {
@@ -157,8 +206,8 @@ function renderEcologyAnomalies(layer: Container, regions: ReturnType<typeof cre
     const stress = ecology.regionStress[region.id] ?? 0;
     const anomaly = new Container(); anomaly.position.set(region.startX, 0);
     anomaly.addChild(new Graphics().rect(0, 0, region.width, 382).fill({ color: 0xff5b6e, alpha: level === 'ANOMALOUS' ? 0.08 : 0.035 }));
-    const label = new Text({ text: `${level} // STRESS ${stress}`, style: { fill: 0xff8b90, fontFamily: 'monospace', fontSize: 11, fontWeight: '700' } }); label.position.set(28, 278); anomaly.addChild(label);
-    layer.addChild(anomaly);
+    const label = new Text({ text: `${level} // STRESS ${stress}`, style: { fill: 0xff8b90, fontFamily: 'monospace', fontSize: 11, fontWeight: '700' } });
+    label.position.set(28, 278); anomaly.addChild(label); layer.addChild(anomaly);
   }
 }
 
@@ -171,13 +220,7 @@ function syncAffordancePlatforms(platforms: Platform[], affordances: AffordanceS
   if (isAffordanceActive(affordances, 'MASS_ANCHOR')) ensurePlatform(platforms, MASS_LIFT);
 }
 
-function refreshAffordanceViews(
-  affordances: AffordanceState,
-  signalRelayView: Container,
-  massAnchorView: Container,
-  phaseBridgeView: Graphics,
-  massLiftView: Graphics,
-): void {
+function refreshAffordanceViews(affordances: AffordanceState, signalRelayView: Container, massAnchorView: Container, phaseBridgeView: Graphics, massLiftView: Graphics): void {
   const relayActive = isAffordanceActive(affordances, 'SIGNAL_RELAY');
   const anchorActive = isAffordanceActive(affordances, 'MASS_ANCHOR');
   signalRelayView.alpha = relayActive ? 1 : 0.55;
@@ -229,7 +272,7 @@ function makeMobileControls(input: MobileInputState): Container {
 
 function makeStatusHud() {
   const hud = new Container(); hud.zIndex = 110;
-  const title = new Text({ text: 'BITLAND // CORE LOOP VALIDATION · WORLD AFFORDANCES', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 16 } }); title.position.set(24, 22); hud.addChild(title);
+  const title = new Text({ text: 'BITLAND // CORE LOOP VALIDATION · BIOME CURIOSITIES', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 16 } }); title.position.set(24, 22); hud.addChild(title);
   const inventoryText = new Text({ text: '', style: { fill: 0xd8fff8, fontFamily: 'monospace', fontSize: 12 } }); inventoryText.position.set(24, 50); hud.addChild(inventoryText);
   const combatText = new Text({ text: '', style: { fill: 0xffd8aa, fontFamily: 'monospace', fontSize: 12 } }); combatText.position.set(24, 72); hud.addChild(combatText);
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 12 } }); discoveryText.position.set(24, 94); hud.addChild(discoveryText);
@@ -249,12 +292,19 @@ function discoveryLabel(discovery: Discovery): string {
   return `DISCOVERY // ${discovery.displayName}  [${discovery.traits.join(' + ')}]  #${discovery.discoveryIndex + 1}`;
 }
 
+function nearbyPoi(regions: ReturnType<typeof createRegionState>, playerX: number): RegionPoi | null {
+  for (const region of regions.generated) if (region.poi && Math.abs(region.poi.x - playerX) <= POI_SCAN_RANGE) return region.poi;
+  return null;
+}
+
 async function bootstrap(): Promise<void> {
-  console.info('[Bitland] renderer bootstrap started'); const app = new Application();
+  console.info('[Bitland] renderer bootstrap started');
+  const app = new Application();
   try {
     await withTimeout(app.init({ width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT, background: '#071314', antialias: false, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true }), BOOT_TIMEOUT_MS, 'PixiJS renderer initialization');
     host.replaceChildren(app.canvas); app.stage.sortableChildren = true; app.stage.eventMode = 'static'; app.stage.hitArea = app.screen;
-    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView } = makeWorld();
+
+    const { world, nodeViews, crateView, enemies, enemyViews, resultOrb, regionLayer, anomalyLayer, poiLayer, signalRelayView, massAnchorView, phaseBridgeView, massLiftView } = makeWorld();
     const saved = parseKnowledgeSave(window.localStorage.getItem(SAVE_KEY));
     const player = makePlayer(), locomotion = createLocomotionState(180, GROUND_Y), camera = createCameraState(), inventory = createInventory(), combat = createPlayerCombatState();
     const synthesis = saved?.synthesis ?? createSynthesisState();
@@ -263,20 +313,25 @@ async function bootstrap(): Promise<void> {
     const pressure = saved?.pressure ?? createWorldPressure();
     const ecology = saved?.ecology ?? createEcologyState();
     const affordances = saved?.affordances ?? createAffordanceState();
+    const poiObservations = saved?.poiObservations ?? createPoiObservationState();
     const platforms = [...PLATFORMS];
     for (const region of regions.generated) platforms.push(...renderRegion(regionLayer, region));
+    renderPoiLayer(poiLayer, regions, poiObservations);
     syncAffordancePlatforms(platforms, affordances);
     refreshAffordanceViews(affordances, signalRelayView, massAnchorView, phaseBridgeView, massLiftView);
     renderEcologyAnomalies(anomalyLayer, regions, ecology);
+
     let observedWorldWidth = worldExtent(regions);
     let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
+
     const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false };
     const mobileControls = makeMobileControls(mobileInput); app.stage.addChild(mobileControls);
     const status = makeStatusHud(); app.stage.addChild(status.hud);
     const codexModal = createCodexModal(); app.stage.addChild(codexModal.panel);
     const keys = new Set<string>();
     let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false, codexPage = 0;
+
     const clearQueuedGameplayInput = () => { mobileInput.jumpPressed = false; mobileInput.attackPressed = false; mobileInput.guardHeld = false; mobileInput.dodgePressed = false; mobileInput.interactPressed = false; keyboardJump = false; keyboardInteract = false; keyboardAttack = false; keys.delete('KeyK'); keys.delete('ShiftLeft'); };
     const setCodexOpen = (open: boolean) => { codexOpen = open; codexModal.panel.visible = open; mobileControls.visible = !open; status.hud.visible = !open; if (open) { clearQueuedGameplayInput(); codexPage = refreshCodexModal(codexModal, codex, codexPage); } };
     codexModal.closeButton.on('pointerdown', () => setCodexOpen(false));
@@ -285,7 +340,7 @@ async function bootstrap(): Promise<void> {
     window.addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space' && !e.repeat) keyboardJump = true; if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true; if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true; if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true; if (e.code === 'Space') e.preventDefault(); });
     window.addEventListener('keyup', e => keys.delete(e.code));
 
-    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure, ecology, affordances)));
+    const persistKnowledge = () => window.localStorage.setItem(SAVE_KEY, serializeKnowledgeSave(createKnowledgeSave(synthesis, codex, regions, pressure, ecology, affordances, poiObservations)));
     const applyAffordanceActivation = (id: AffordanceId) => {
       const result = activateAffordance(affordances, id, activeDiscovery);
       if (result === 'ACTIVATED') {
@@ -306,19 +361,30 @@ async function bootstrap(): Promise<void> {
     app.ticker.add(ticker => {
       if (mobileInput.codexPressed || keyboardCodex) { mobileInput.codexPressed = false; keyboardCodex = false; setCodexOpen(!codexOpen); }
       if (codexOpen) return;
-      const dt = Math.min(ticker.deltaMS / 1000, 0.05); dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); discoveryFlash = Math.max(0, discoveryFlash - dt); tickCombat(combat, enemies, dt);
+      const dt = Math.min(ticker.deltaMS / 1000, 0.05);
+      dodgeCooldown = Math.max(0, dodgeCooldown - dt); hitFlash = Math.max(0, hitFlash - dt); attackFlash = Math.max(0, attackFlash - dt); discoveryFlash = Math.max(0, discoveryFlash - dt); tickCombat(combat, enemies, dt);
       const effects = resolveDiscoveryEffects(activeDiscovery);
       const ecologyFeedback = feedbackForEcology(ecology, regions);
-      const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis; const previousY = locomotion.y;
+      const keyboardAxis = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+      const axis = Math.abs(mobileInput.moveX) > 0.01 ? mobileInput.moveX : keyboardAxis;
+      const previousY = locomotion.y;
       const guarding = mobileInput.guardHeld || keys.has('KeyK');
-      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, observedWorldWidth - 18, locomotionConfigForEffects(effects)); mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion, platforms);
+      stepLocomotion(locomotion, { moveX: axis, jumpPressed: mobileInput.jumpPressed || keyboardJump, guardHeld: guarding }, dt, GROUND_Y, PLAYER_MIN_X, observedWorldWidth - 18, locomotionConfigForEffects(effects));
+      mobileInput.jumpPressed = false; keyboardJump = false; landOnPlatforms(previousY, locomotion, platforms);
 
       if (shouldRevealNextRegion(locomotion.x, regions)) {
         const region = generateNextRegion(regions, WORLD_SEED, { codexCount: codex.entries.length, activeTraits: activeDiscovery?.traits ?? [], pressure });
-        if (region) { platforms.push(...renderRegion(regionLayer, region)); observedWorldWidth = worldExtent(regions); renderEcologyAnomalies(anomalyLayer, regions, ecology); status.worldText.text = `WORLD // ${region.biome.replace('_', ' ')} · RESOURCE ${region.resourceBias} · ENCOUNTER ${region.encounterPressure}`; persistKnowledge(); }
+        if (region) {
+          platforms.push(...renderRegion(regionLayer, region)); observedWorldWidth = worldExtent(regions); renderPoiLayer(poiLayer, regions, poiObservations); renderEcologyAnomalies(anomalyLayer, regions, ecology);
+          status.worldText.text = `WORLD // ${region.biome.replace('_', ' ')} · UNKNOWN SIGNAL DETECTED`;
+          persistKnowledge();
+        }
       }
 
-      if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) { locomotion.x = Math.max(PLAYER_MIN_X, Math.min(observedWorldWidth - 18, locomotion.x + Math.sign(axis) * 58 * effects.dodgeDistanceMultiplier)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat); } mobileInput.dodgePressed = false;
+      if ((mobileInput.dodgePressed || keys.has('ShiftLeft')) && dodgeCooldown <= 0 && Math.abs(axis) > 0.1) {
+        locomotion.x = Math.max(PLAYER_MIN_X, Math.min(observedWorldWidth - 18, locomotion.x + Math.sign(axis) * 58 * effects.dodgeDistanceMultiplier)); locomotion.vx = Math.sign(axis) * 260; dodgeCooldown = 0.5; startDodgeInvulnerability(combat);
+      }
+      mobileInput.dodgePressed = false;
 
       const nearbyNode = RESOURCE_NODES.find(node => !node.depleted && Math.abs(node.x - locomotion.x) <= INTERACT_RANGE);
       const nearCrate = Math.abs(CRATE.x - locomotion.x) <= INTERACT_RANGE;
@@ -326,10 +392,12 @@ async function bootstrap(): Promise<void> {
       const nearWorldTick = Math.abs(WORLD_TICK_X - locomotion.x) <= INTERACT_RANGE;
       const nearSignalRelay = Math.abs(SIGNAL_RELAY_X - locomotion.x) <= INTERACT_RANGE;
       const nearMassAnchor = Math.abs(MASS_ANCHOR_X - locomotion.x) <= INTERACT_RANGE;
+      const poi = nearbyPoi(regions, locomotion.x);
       const pair = availablePairs(inventory)[0];
       const signalPrompt = isAffordanceActive(affordances, 'SIGNAL_RELAY') ? 'SIGNAL RELAY // ONLINE' : canActivateAffordance('SIGNAL_RELAY', activeDiscovery) ? 'USE · POWER SIGNAL RELAY [CONDUCTIVE]' : 'SIGNAL RELAY · NEED CONDUCTIVE';
       const massPrompt = isAffordanceActive(affordances, 'MASS_ANCHOR') ? 'MASS ANCHOR // ENGAGED' : canActivateAffordance('MASS_ANCHOR', activeDiscovery) ? 'USE · ENGAGE MASS ANCHOR [HEAVY]' : 'MASS ANCHOR · NEED HEAVY';
-      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : nearWorldTick ? `USE · ADVANCE WORLD TICK ${ecology.tickIndex + 1}` : nearSignalRelay ? signalPrompt : nearMassAnchor ? massPrompt : '';
+      const poiPrompt = poi ? (isPoiScanned(poiObservations, poi.id) ? `${poiLabel(poi.kind)} // SCANNED` : 'USE · SCAN UNKNOWN STRUCTURE') : '';
+      status.prompt.text = nearbyNode ? `USE · GATHER ${nearbyNode.resource}` : nearCrate ? `USE · PUSH OBJECT${effects.pushMultiplier !== 1 ? ` ×${effects.pushMultiplier.toFixed(2)}` : ''}` : nearSynth ? (pair ? `USE · SYNTH ${pair[0]} + ${pair[1]}` : 'SYNTHESIS · NEED 2 RESOURCE TYPES') : nearWorldTick ? `USE · ADVANCE WORLD TICK ${ecology.tickIndex + 1}` : nearSignalRelay ? signalPrompt : nearMassAnchor ? massPrompt : poiPrompt;
 
       if (mobileInput.interactPressed || keyboardInteract) {
         if (nearbyNode) {
@@ -348,30 +416,51 @@ async function bootstrap(): Promise<void> {
           persistKnowledge();
         } else if (nearSignalRelay) applyAffordanceActivation('SIGNAL_RELAY');
         else if (nearMassAnchor) applyAffordanceActivation('MASS_ANCHOR');
+        else if (poi) {
+          const firstScan = scanPoi(poiObservations, poi);
+          status.worldText.text = `SCAN // ${poiLabel(poi.kind)} · ${poi.clue}`;
+          if (firstScan) { renderPoiLayer(poiLayer, regions, poiObservations); persistKnowledge(); }
+        }
       }
       mobileInput.interactPressed = false; keyboardInteract = false; crateView.x = CRATE.x;
 
       if (mobileInput.attackPressed || keyboardAttack) {
         const target = enemies.filter(enemy => enemy.alive && Math.sign(enemy.x - locomotion.x) === locomotion.facing).sort((a, b) => Math.abs(a.x - locomotion.x) - Math.abs(b.x - locomotion.x))[0];
-        if (target) { const wasAlive = target.alive; if (attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) { attackFlash = 0.12; if (wasAlive && !target.alive) { recordCreatureDefeat(pressure); grantEnemyLoot(target, inventory); persistKnowledge(); } } }
+        if (target) {
+          const wasAlive = target.alive;
+          if (attackEnemy(combat, target, Math.abs(target.x - locomotion.x), { damageBonus: effects.attackDamageBonus, rangeBonus: effects.attackRangeBonus })) {
+            attackFlash = 0.12;
+            if (wasAlive && !target.alive) { recordCreatureDefeat(pressure); grantEnemyLoot(target, inventory); persistKnowledge(); }
+          }
+        }
       }
       mobileInput.attackPressed = false; keyboardAttack = false;
 
       for (const enemy of enemies) {
         const view = enemyViews.get(enemy.id); if (!view) continue; view.visible = enemy.alive; if (!enemy.alive) continue;
-        const distance = Math.abs(enemy.x - locomotion.x); if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * ecologyFeedback.enemySpeedMultiplier * dt; view.x = enemy.x;
-        view.scale.set(1 + Math.min(ecology.hostility, 8) * 0.012);
+        const distance = Math.abs(enemy.x - locomotion.x);
+        if (distance < 180) enemy.x += Math.sign(locomotion.x - enemy.x) * 34 * ecologyFeedback.enemySpeedMultiplier * dt;
+        view.x = enemy.x; view.scale.set(1 + Math.min(ecology.hostility, 8) * 0.012);
         if (enemyContactHit(combat, enemy, distance, guarding)) hitFlash = 0.16;
-        const hpView = view.getChildByName('hp'); if (hpView instanceof Graphics) hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
+        const hpView = view.getChildByName('hp');
+        if (hpView instanceof Graphics) hpView.clear().rect(-20, -34, 40, 4).fill(0x33191c).rect(-20, -34, 40 * (enemy.hp / enemy.maxHp), 4).fill(0xff7a59);
       }
 
       resultOrb.alpha = discoveryFlash > 0 ? 1 : 0.55; resultOrb.scale.set(discoveryFlash > 0 ? 1.35 : 1);
       status.inventoryText.text = `MAT ${inventory.MATTER}   ENG ${inventory.ENERGY}   LIFE ${inventory.LIFE}   SIG ${inventory.SIGNAL}`;
       status.combatText.text = `HP ${'■'.repeat(combat.hp)}${'□'.repeat(combat.maxHp - combat.hp)}   ATK / GUARD / DODGE`;
       player.position.set(locomotion.x, locomotion.y); player.scale.x = locomotion.facing; player.scale.y = attackFlash > 0 ? 1.1 : 1; player.alpha = hitFlash > 0 ? 0.35 : guarding ? 0.72 : 1;
-      stepCamera(camera, locomotion.x, locomotion.vx, dt, { viewportWidth: LOGICAL_WIDTH, worldWidth: observedWorldWidth, deadZoneHalfWidth: 120, lookAheadDistance: 90, followSharpness: 8, lookAheadSharpness: 6 }); world.x = -Math.round(camera.x);
+      stepCamera(camera, locomotion.x, locomotion.vx, dt, { viewportWidth: LOGICAL_WIDTH, worldWidth: observedWorldWidth, deadZoneHalfWidth: 120, lookAheadDistance: 90, followSharpness: 8, lookAheadSharpness: 6 });
+      world.x = -Math.round(camera.x);
     });
-    const resize = () => { const scale = Math.min(window.innerWidth / LOGICAL_WIDTH, window.innerHeight / LOGICAL_HEIGHT); app.canvas.style.width = `${Math.floor(LOGICAL_WIDTH * scale)}px`; app.canvas.style.height = `${Math.floor(LOGICAL_HEIGHT * scale)}px`; }; window.addEventListener('resize', resize); resize(); console.info('[Bitland] application bootstrap complete');
-  } catch (error) { console.error('[Bitland] renderer bootstrap failed', error); host.dataset.bootstrapError = 'renderer'; host.innerHTML = '<section class="bootstrap-error"><strong>BITLAND BOOT FAILURE</strong><span>Unable to initialize the game renderer. Check the browser console for diagnostics.</span></section>'; }
+
+    const resize = () => { const scale = Math.min(window.innerWidth / LOGICAL_WIDTH, window.innerHeight / LOGICAL_HEIGHT); app.canvas.style.width = `${Math.floor(LOGICAL_WIDTH * scale)}px`; app.canvas.style.height = `${Math.floor(LOGICAL_HEIGHT * scale)}px`; };
+    window.addEventListener('resize', resize); resize(); console.info('[Bitland] application bootstrap complete');
+  } catch (error) {
+    console.error('[Bitland] renderer bootstrap failed', error);
+    host.dataset.bootstrapError = 'renderer';
+    host.innerHTML = '<section class="bootstrap-error"><strong>BITLAND BOOT FAILURE</strong><span>Unable to initialize the game renderer. Check the browser console for diagnostics.</span></section>';
+  }
 }
+
 void bootstrap();
