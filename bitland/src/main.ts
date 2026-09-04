@@ -28,6 +28,7 @@ const WORLD_REWRITE_X = 1810;
 const SIGNAL_RELAY_X = BASE_WORLD_WIDTH + 110;
 const MASS_ANCHOR_X = BASE_WORLD_WIDTH + REGION_WIDTH + 180;
 const WORLD_SEED = 'bitland-alpha';
+const RESET_CONFIRM_MS = 3000;
 
 type Platform = { x: number; y: number; width: number };
 const PLATFORMS: Platform[] = [
@@ -232,8 +233,8 @@ function makePlayer(): Container {
   return player;
 }
 
-type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackPressed: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean; codexPressed: boolean };
-type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE' | 'USE' | 'CODEX';
+type MobileInputState = { moveX: number; moveY: number; jumpPressed: boolean; attackPressed: boolean; guardHeld: boolean; dodgePressed: boolean; interactPressed: boolean; codexPressed: boolean; debugPressed: boolean; resetPressed: boolean };
+type ActionName = 'JUMP' | 'ATK' | 'GUARD' | 'DODGE' | 'USE' | 'CODEX' | 'DEBUG' | 'RESET';
 
 function makeMobileControls(input: MobileInputState): Container {
   const hud = new Container(); hud.zIndex = 100; hud.sortableChildren = true;
@@ -255,7 +256,8 @@ function makeMobileControls(input: MobileInputState): Container {
   const makeButton = (name: ActionName, x: number, y: number, radius: number, color: number, press: () => void, release?: () => void) => {
     const button = new Container(); button.position.set(x, y); button.eventMode = 'static'; button.zIndex = 20;
     const ring = new Graphics().circle(0, 0, radius).fill({ color: 0x071314, alpha: 0.52 }).circle(0, 0, radius).stroke({ color, width: 2, alpha: 0.72 }); button.addChild(ring);
-    const label = new Text({ text: name, style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : name === 'CODEX' ? 9 : 10, fontWeight: '700' } }); label.anchor.set(0.5); button.addChild(label);
+    const compact = name === 'CODEX' || name === 'DEBUG' || name === 'RESET';
+    const label = new Text({ text: name, style: { fill: color, fontFamily: 'monospace', fontSize: name === 'JUMP' ? 13 : compact ? 8 : 10, fontWeight: '700' } }); label.anchor.set(0.5); button.addChild(label);
     button.on('pointerdown', () => { button.scale.set(0.9); press(); }); const up = () => { button.scale.set(1); release?.(); }; button.on('pointerup', up); button.on('pointerupoutside', up); button.on('pointercancel', up); hud.addChild(button);
   };
   makeButton('JUMP', 856, 421, 40, 0xb8fff4, () => { input.jumpPressed = true; });
@@ -263,6 +265,8 @@ function makeMobileControls(input: MobileInputState): Container {
   makeButton('ATK', 776, 490, 29, 0xffb36b, () => { input.attackPressed = true; });
   makeButton('GUARD', 846, 500, 27, 0x6be8ff, () => { input.guardHeld = true; }, () => { input.guardHeld = false; });
   makeButton('DODGE', 914, 474, 29, 0xd0a6ff, () => { input.dodgePressed = true; });
+  makeButton('RESET', 786, 74, 24, 0xff8b90, () => { input.resetPressed = true; });
+  makeButton('DEBUG', 846, 74, 26, 0xa9c8ff, () => { input.debugPressed = true; });
   makeButton('CODEX', 906, 74, 30, 0x9adfd5, () => { input.codexPressed = true; });
   return hud;
 }
@@ -281,7 +285,7 @@ function makeStatusHud() {
   const discoveryText = new Text({ text: 'DISCOVERY // none', style: { fill: 0xb8fff4, fontFamily: 'monospace', fontSize: 10 } }); discoveryText.position.set(30, 202); debugHud.addChild(discoveryText);
   const codexCount = new Text({ text: 'CODEX // 0', style: { fill: 0x9adfd5, fontFamily: 'monospace', fontSize: 10 } }); codexCount.position.set(30, 222); debugHud.addChild(codexCount);
   const debugText = new Text({ text: '', style: { fill: 0xa9c8ff, fontFamily: 'monospace', fontSize: 9, lineHeight: 15 } }); debugText.position.set(30, 244); debugHud.addChild(debugText);
-  const debugHint = new Text({ text: 'F3 · CLOSE DEBUG', style: { fill: 0x799b98, fontFamily: 'monospace', fontSize: 8 } }); debugHint.position.set(30, 310); debugHud.addChild(debugHint);
+  const debugHint = new Text({ text: 'DEBUG BUTTON / F3 · CLOSE', style: { fill: 0x799b98, fontFamily: 'monospace', fontSize: 8 } }); debugHint.position.set(30, 310); debugHud.addChild(debugHint);
   return { hud, debugHud, inventoryText, combatText, discoveryText, activeText, codexCount, worldText, prompt, debugText };
 }
 
@@ -330,14 +334,15 @@ async function bootstrap(): Promise<void> {
     let activeDiscovery: Discovery | null = synthesis.lastDiscovery;
     player.position.set(locomotion.x, locomotion.y); world.addChild(player); app.stage.addChild(world);
 
-    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false };
+    const mobileInput: MobileInputState = { moveX: 0, moveY: 0, jumpPressed: false, attackPressed: false, guardHeld: false, dodgePressed: false, interactPressed: false, codexPressed: false, debugPressed: false, resetPressed: false };
     const mobileControls = makeMobileControls(mobileInput); app.stage.addChild(mobileControls);
     const status = makeStatusHud(); app.stage.addChild(status.debugHud); app.stage.addChild(status.hud);
     const codexModal = createCodexModal(); app.stage.addChild(codexModal.panel);
     const keys = new Set<string>();
-    let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false, codexPage = 0, debugOpen = false;
+    let keyboardJump = false, keyboardInteract = false, keyboardAttack = false, keyboardCodex = false, dodgeCooldown = 0, hitFlash = 0, attackFlash = 0, discoveryFlash = 0, codexOpen = false, codexPage = 0, debugOpen = false, resetConfirmUntil = 0;
 
     const clearQueuedGameplayInput = () => { mobileInput.jumpPressed = false; mobileInput.attackPressed = false; mobileInput.guardHeld = false; mobileInput.dodgePressed = false; mobileInput.interactPressed = false; keyboardJump = false; keyboardInteract = false; keyboardAttack = false; keys.delete('KeyK'); keys.delete('ShiftLeft'); };
+    const setDebugOpen = (open: boolean) => { debugOpen = open; status.debugHud.visible = open && !codexOpen; };
     const setCodexOpen = (open: boolean) => { codexOpen = open; codexModal.panel.visible = open; mobileControls.visible = !open; status.hud.visible = !open; status.debugHud.visible = !open && debugOpen; if (open) { clearQueuedGameplayInput(); codexPage = refreshCodexModal(codexModal, codex, codexPage); } };
     codexModal.closeButton.on('pointerdown', () => setCodexOpen(false));
     codexModal.prevButton.on('pointerdown', () => { codexPage = refreshCodexModal(codexModal, codex, codexPage - 1); });
@@ -348,7 +353,7 @@ async function bootstrap(): Promise<void> {
       if (e.code === 'KeyE' && !e.repeat) keyboardInteract = true;
       if (e.code === 'KeyJ' && !e.repeat) keyboardAttack = true;
       if ((e.code === 'KeyC' || e.code === 'Escape') && !e.repeat) keyboardCodex = true;
-      if (e.code === 'F3' && !e.repeat) { debugOpen = !debugOpen; status.debugHud.visible = debugOpen && !codexOpen; e.preventDefault(); }
+      if (e.code === 'F3' && !e.repeat) { setDebugOpen(!debugOpen); e.preventDefault(); }
       if (e.code === 'Space') e.preventDefault();
     });
     window.addEventListener('keyup', e => keys.delete(e.code));
@@ -370,6 +375,18 @@ async function bootstrap(): Promise<void> {
     status.codexCount.text = `CODEX // ${codex.entries.length} discovered`;
 
     app.ticker.add(ticker => {
+      if (mobileInput.debugPressed) { mobileInput.debugPressed = false; setDebugOpen(!debugOpen); }
+      if (mobileInput.resetPressed) {
+        mobileInput.resetPressed = false;
+        const now = Date.now();
+        if (now <= resetConfirmUntil) {
+          window.localStorage.removeItem(SAVE_KEY);
+          window.location.reload();
+          return;
+        }
+        resetConfirmUntil = now + RESET_CONFIRM_MS;
+        status.worldText.text = 'RESET // tap RESET again within 3 seconds to erase Bitland state';
+      }
       if (mobileInput.codexPressed || keyboardCodex) { mobileInput.codexPressed = false; keyboardCodex = false; setCodexOpen(!codexOpen); }
       if (codexOpen) return;
       const dt = Math.min(ticker.deltaMS / 1000, 0.05);
