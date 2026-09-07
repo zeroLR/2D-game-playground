@@ -28,8 +28,8 @@ const LEVEL: LevelDefinition = {
   pages: [
     { id: 'a', definitionId: 'corner', position: { row: 0, column: 0 }, rotation: 90, state: { discovered: true } },
     { id: 'b', definitionId: 'straight', position: { row: 0, column: 1 }, rotation: 90 },
-    { id: 'c', definitionId: 'corner', position: { row: 0, column: 2 }, rotation: 180 },
-    { id: 'd', definitionId: 'end', position: { row: 1, column: 0 }, rotation: 180 },
+    { id: 'c', definitionId: 'corner', position: { row: 0, column: 2 }, rotation: 270 },
+    { id: 'd', definitionId: 'end', position: { row: 1, column: 0 } },
     { id: 'e', definitionId: 'straight', position: { row: 1, column: 1 }, rotation: 90 },
     { id: 'f', definitionId: 'end', position: { row: 1, column: 2 } },
   ],
