@@ -9,7 +9,9 @@ describe('FixedStepLoop', () => {
 
     expect(loop.tick(35)).toBe(3);
     expect(update).toHaveBeenCalledTimes(3);
-    expect(update).toHaveBeenEachCalledWith(0.01);
+    expect(update).toHaveBeenNthCalledWith(1, 0.01);
+    expect(update).toHaveBeenNthCalledWith(2, 0.01);
+    expect(update).toHaveBeenNthCalledWith(3, 0.01);
     expect(render).toHaveBeenLastCalledWith(0.5);
   });
 
