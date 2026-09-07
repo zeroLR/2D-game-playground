@@ -1,6 +1,6 @@
 import { createRenderer } from './bootstrap/create-renderer';
 import { FixedStepLoop } from './game/FixedStepLoop';
-import { ScaffoldScene } from './presentation/ScaffoldScene';
+import { BallFeelScene } from './presentation/BallFeelScene';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
 
   try {
     const app = await createRenderer(host);
-    const scene = new ScaffoldScene(app.screen.width, app.screen.height);
+    const scene = new BallFeelScene(app.screen.width, app.screen.height);
     const loop = new FixedStepLoop(
       (dtSeconds) => scene.update(dtSeconds),
       (alpha) => scene.present(alpha),
@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P0 renderer scaffold');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P1 ball feel playtest');
     app.stage.addChild(scene);
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
@@ -57,7 +57,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P0 scaffold ready; renderer canvas mounted.');
+    console.info('[Rune Ball] P1 ball feel gate ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
