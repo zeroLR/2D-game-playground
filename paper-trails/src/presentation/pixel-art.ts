@@ -15,7 +15,7 @@ import type { Rotation } from '../domain/model';
 let travelerFrames: readonly Texture[] | null = null;
 
 function publicAssetUrl(relativePath: string): string {
-  return `${import.meta.env.BASE_URL}${relativePath}`;
+  return new URL(relativePath, document.baseURI).toString();
 }
 
 export function pageArtUrl(definitionId: string): string {
