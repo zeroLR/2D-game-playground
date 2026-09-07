@@ -4,13 +4,15 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P2 — Mobile Page Manipulation**
+**P3 — Traveler Traversal & Objective Loop**
 
-The P1 world model is now wired into an interactive portrait board. Tap a Page to select it, rotate the selected Page by 90°, drag one Page onto another to swap positions, and reset the authored board. Every manipulation rebuilds the same reciprocal-exit graph used by unit tests, so reachability feedback is derived from domain state rather than renderer-only assumptions.
+P1's reciprocal-exit graph and P2's mobile rotate/swap interaction now drive a complete single-level loop. Tap a Page once to select it; tap the same reachable destination again to walk the deterministic shortest path. Input is locked during traversal and the traveler advances Page-by-Page through the domain graph.
 
-The center cross Page is deliberately fixed in this smoke board so illegal rotate/swap feedback can be exercised before final content and art are introduced.
+The P3 smoke objective requires recovering the relic on `p9` and then returning to the sealed EXIT on `p3`. Passing the EXIT before the relic gives locked feedback rather than completing the level. Completion is persisted to a versioned localStorage save through an injected/testable storage boundary.
 
-Final 32 px pixel art, traveler traversal, objectives, and the 10-level MVP remain later roadmap slices.
+The authored start deliberately needs one clockwise rotation of the traveler Page before the route opens, keeping manipulation and traversal in the same validation slice. The center cross Page remains fixed so illegal manipulation feedback is still exercised.
+
+Final 32 px pixel art, authored Page identities, traveler sprite animation, and the broader 10-level MVP remain later roadmap slices.
 
 ## Scripts
 
