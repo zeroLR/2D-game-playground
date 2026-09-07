@@ -1,6 +1,5 @@
-import { Container } from 'pixi.js';
 import { createRenderer } from './bootstrap/create-renderer';
-import { createWorldModelScene } from './presentation/world-model-scene';
+import { InteractiveBoardScene } from './presentation/interactive-board-scene';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -30,29 +29,24 @@ async function bootstrap(): Promise<void> {
 
   try {
     const app = await createRenderer(host);
-    const sceneRoot = new Container();
+    const scene = new InteractiveBoardScene(app.screen.width, app.screen.height);
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Paper Trails P1 world-model renderer');
-    app.stage.addChild(sceneRoot);
+    app.canvas.setAttribute('aria-label', 'Paper Trails P2 interactive page board');
+    app.stage.addChild(scene);
 
-    const redraw = () => {
-      const staleChildren = sceneRoot.removeChildren();
-      for (const child of staleChildren) child.destroy({ children: true });
-      sceneRoot.addChild(createWorldModelScene(app.screen.width, app.screen.height));
-    };
-
-    redraw();
     const resizeObserver = new ResizeObserver(() => {
-      app.renderer.resize(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
-      redraw();
+      const width = Math.max(1, host.clientWidth);
+      const height = Math.max(1, host.clientHeight);
+      app.renderer.resize(width, height);
+      scene.setViewport(width, height);
     });
     resizeObserver.observe(host);
 
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
-    console.info('[Paper Trails] Application bootstrap complete.');
+    console.info('[Paper Trails] P2 interactive board ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
