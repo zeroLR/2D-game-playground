@@ -1,6 +1,6 @@
 import { Container } from 'pixi.js';
 import { createRenderer } from './bootstrap/create-renderer';
-import { createScaffoldScene } from './presentation/scaffold-scene';
+import { createWorldModelScene } from './presentation/world-model-scene';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -34,13 +34,13 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Paper Trails scaffold renderer');
+    app.canvas.setAttribute('aria-label', 'Paper Trails P1 world-model renderer');
     app.stage.addChild(sceneRoot);
 
     const redraw = () => {
       const staleChildren = sceneRoot.removeChildren();
       for (const child of staleChildren) child.destroy({ children: true });
-      sceneRoot.addChild(createScaffoldScene(app.screen.width, app.screen.height));
+      sceneRoot.addChild(createWorldModelScene(app.screen.width, app.screen.height));
     };
 
     redraw();
