@@ -114,6 +114,16 @@ export function swapPages(
   };
 }
 
+export function moveTravelerToPage(world: WorldState, pageId: string): WorldState {
+  requirePage(world, pageId);
+  if (world.travelerPageId === pageId) return world;
+  return {
+    ...world,
+    travelerPageId: pageId,
+    revision: world.revision + 1,
+  };
+}
+
 export function buildAdjacencyGraph(world: WorldState, definitions: DefinitionRegistry): AdjacencyGraph {
   validateWorld(world, definitions);
   const byPosition = new Map(world.pages.map((page) => [positionKey(page.position), page] as const));
