@@ -1,0 +1,29 @@
+name: paper-trails CI
+
+on:
+  pull_request:
+    paths:
+      - "paper-trails/**"
+      - ".github/workflows/paper-trails.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "paper-trails/**"
+      - ".github/workflows/paper-trails.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: paper-trails
+      install-command: npm ci
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}

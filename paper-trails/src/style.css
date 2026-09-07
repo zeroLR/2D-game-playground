@@ -1,0 +1,74 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 100%;
+  min-height: 100%;
+  background: #0c100f;
+  color: #d8c7a3;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: ui-serif, Georgia, 'Times New Roman', serif;
+}
+
+#app {
+  position: relative;
+  width: min(100vw, 430px);
+  height: 100dvh;
+  max-height: 920px;
+  overflow: hidden;
+  background: #121917;
+  box-shadow: 0 0 0 1px rgb(168 135 76 / 18%), 0 24px 80px rgb(0 0 0 / 45%);
+  touch-action: none;
+}
+
+.game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.bootstrap-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 28px;
+  text-align: center;
+  background: #121917;
+  color: #d8c7a3;
+}
+
+.bootstrap-error strong {
+  color: #a8874c;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bootstrap-error span {
+  color: #777365;
+  font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (min-width: 700px) {
+  body {
+    padding: 18px;
+  }
+
+  #app {
+    height: calc(100dvh - 36px);
+    border-radius: 20px;
+  }
+}
