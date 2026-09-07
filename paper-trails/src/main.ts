@@ -1,5 +1,6 @@
 import { createRenderer } from './bootstrap/create-renderer';
-import { InteractiveBoardScene } from './presentation/interactive-board-scene';
+import { PixelBoardScene } from './presentation/pixel-board-scene';
+import { preloadPixelArt } from './presentation/pixel-art';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -8,7 +9,7 @@ const host: HTMLElement = hostElement;
 
 function showBootstrapFailure(error: unknown): void {
   console.error('[Paper Trails] Application bootstrap failed.', error);
-  host.dataset.bootstrapError = 'renderer';
+  host.dataset.bootstrapError = 'renderer-or-assets';
   host.dataset.bootstrapState = 'failed';
   host.replaceChildren();
 
@@ -19,7 +20,7 @@ function showBootstrapFailure(error: unknown): void {
   const title = document.createElement('strong');
   title.textContent = 'Unable to start Paper Trails';
   const detail = document.createElement('span');
-  detail.textContent = 'The renderer could not be initialized. Reload the page or try another browser.';
+  detail.textContent = 'The renderer or pixel-art assets could not be initialized. Reload the page or try another browser.';
   panel.append(title, detail);
   host.append(panel);
 }
@@ -29,11 +30,12 @@ async function bootstrap(): Promise<void> {
 
   try {
     const app = await createRenderer(host);
-    const scene = new InteractiveBoardScene(app.screen.width, app.screen.height);
+    await preloadPixelArt();
+    const scene = new PixelBoardScene(app.screen.width, app.screen.height);
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Paper Trails P3 traveler traversal and objective board');
+    app.canvas.setAttribute('aria-label', 'Paper Trails P4 32 pixel-art page board');
     app.stage.addChild(scene);
 
     const resizeObserver = new ResizeObserver(() => {
@@ -46,7 +48,7 @@ async function bootstrap(): Promise<void> {
 
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
-    console.info('[Paper Trails] P3 traversal and objective loop ready.');
+    console.info('[Paper Trails] P4 pixel-art board ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }

@@ -4,15 +4,24 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P3 — Traveler Traversal & Objective Loop**
+**P4 — 32 px Pixel Art & Page Identity**
 
-P1's reciprocal-exit graph and P2's mobile rotate/swap interaction now drive a complete single-level loop. Tap a Page once to select it; tap the same reachable destination again to walk the deterministic shortest path. Input is locked during traversal and the traveler advances Page-by-Page through the domain graph.
+The P1–P3 graph, touch manipulation, traversal, objective, and local-progress semantics are preserved, but the smoke-board presentation has been replaced by authored low-saturation Pixel Art.
 
-The P3 smoke objective requires recovering the relic on `p9` and then returning to the sealed EXIT on `p3`. Passing the EXIT before the relic gives locked feedback rather than completing the level. Completion is persisted to a versioned localStorage save through an injected/testable storage boundary.
+P4 ships six Page families:
 
-The authored start deliberately needs one clockwise rotation of the traveler Page before the route opens, keeping manipulation and traversal in the same validation slice. The center cross Page remains fixed so illegal manipulation feedback is still exercised.
+- Forest Path
+- Ruined Gate
+- Stone Bridge
+- Crossroads
+- Shrine Seal
+- Hidden Grove
 
-Final 32 px pixel art, authored Page identities, traveler sprite animation, and the broader 10-level MVP remain later roadmap slices.
+Each Page image is authored as a 96×96 RGBA PNG on a 3×3 logical grid of 32 px tiles. Page art rotates with the Page state, while graph connectivity continues to come exclusively from the domain model.
+
+The traveler now uses a 32×48 frame size and a 17-frame RGBA sprite sheet covering idle, walk south/east/north, mirrored west walking, and arrival frames. Runtime rendering keeps the palette intentionally restrained: ink, moss, stone, parchment, antique gold, and a small muted-red accent for seals/invalid state.
+
+The existing P3 smoke chapter still validates the full loop: reshape the book, traverse to the Hidden Grove relic, then return to the Ruined Gate to complete the chapter.
 
 ## Scripts
 
