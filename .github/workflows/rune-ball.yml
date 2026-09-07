@@ -1,0 +1,29 @@
+name: rune-ball CI
+
+on:
+  pull_request:
+    paths:
+      - "rune-ball/**"
+      - ".github/workflows/rune-ball.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "rune-ball/**"
+      - ".github/workflows/rune-ball.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: rune-ball
+      install-command: npm ci
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}
