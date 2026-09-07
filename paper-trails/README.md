@@ -4,20 +4,13 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P1 — World Model & Connectivity**
+**P2 — Mobile Page Manipulation**
 
-P1 implements the puzzle as deterministic pure TypeScript domain logic before touch gestures or final pixel art. The current renderer is intentionally a monochrome graph smoke view driven by the same world state used in tests.
+The P1 world model is now wired into an interactive portrait board. Tap a Page to select it, rotate the selected Page by 90°, drag one Page onto another to swap positions, and reset the authored board. Every manipulation rebuilds the same reciprocal-exit graph used by unit tests, so reachability feedback is derived from domain state rather than renderer-only assumptions.
 
-Implemented domain primitives:
+The center cross Page is deliberately fixed in this smoke board so illegal rotate/swap feedback can be exercised before final content and art are introduced.
 
-- `PageDefinition` and unique `PageState` instances
-- cardinal N/E/S/W exits with 90° rotation transforms
-- immutable rotate/swap commands
-- adjacency graph rebuild from reciprocal exits
-- BFS reachability and shortest-path traversal
-- deterministic authored-level reset with validation
-
-P2 will add mobile rotate/swap interaction on top of this model; P3 will use the shortest-path result for traveler movement.
+Final 32 px pixel art, traveler traversal, objectives, and the 10-level MVP remain later roadmap slices.
 
 ## Scripts
 
