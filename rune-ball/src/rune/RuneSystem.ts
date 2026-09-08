@@ -5,10 +5,12 @@ export interface RuneSnapshot {
   charge: number;
   maxCharge: number;
   cost: number;
+  baseCost: number;
   vortexCenter: Point2D | null;
   vortexStrength: number;
   splitStrength: number;
   chainReady: boolean;
+  overdriveActive: boolean;
 }
 
 export type RuneActivationResult =
@@ -29,16 +31,19 @@ export class RuneSystem {
   private vortexSecondsRemaining = 0;
   private splitSecondsRemaining = 0;
   private chainReady = false;
+  private overdriveActive = false;
 
   get snapshot(): RuneSnapshot {
     return {
       charge: this.charge,
       maxCharge: MAX_CHARGE,
-      cost: RUNE_COST,
+      cost: this.overdriveActive ? 0 : RUNE_COST,
+      baseCost: RUNE_COST,
       vortexCenter: this.vortexCenter ? { ...this.vortexCenter } : null,
       vortexStrength: this.clamp01(this.vortexSecondsRemaining / VORTEX_DURATION_SECONDS),
       splitStrength: this.clamp01(this.splitSecondsRemaining / SPLIT_DURATION_SECONDS),
       chainReady: this.chainReady,
+      overdriveActive: this.overdriveActive,
     };
   }
 
@@ -49,11 +54,16 @@ export class RuneSystem {
     this.splitSecondsRemaining = Math.max(0, this.splitSecondsRemaining - dt);
   }
 
+  setOverdriveActive(active: boolean): void {
+    this.overdriveActive = active;
+  }
+
   activate(rune: RuneKind, center: Point2D): RuneActivationResult {
-    if (this.charge < RUNE_COST) return { success: false, rune, reason: 'charge' };
+    const cost = this.overdriveActive ? 0 : RUNE_COST;
+    if (this.charge < cost) return { success: false, rune, reason: 'charge' };
     if (rune === 'chain' && this.chainReady) return { success: false, rune, reason: 'busy' };
 
-    this.charge -= RUNE_COST;
+    this.charge -= cost;
     switch (rune) {
       case 'vortex':
         this.vortexCenter = { ...center };
