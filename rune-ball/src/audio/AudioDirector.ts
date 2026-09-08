@@ -275,17 +275,14 @@ export class AudioDirector {
         return false;
       });
 
-    const primeAttempts = [...this.pools.values()].map((pool) => pool.prime());
+    const primeAttempt = Promise.all([...this.pools.values()].map((pool) => pool.prime()));
 
-    return Promise.all([bgmAttempt, ...primeAttempts]).then(([bgmStarted, ...primeResults]) => {
-      const primedVoices = primeResults
-        .flatMap((result) => result)
-        .filter(Boolean)
-        .length;
+    return Promise.all([bgmAttempt, primeAttempt] as const).then(([bgmStarted, primeResults]) => {
+      const primedVoices = primeResults.flat().filter(Boolean).length;
 
       if (bgmStarted) {
         this.runtimeState = 'playing';
-        this.bgm!.volume = this.overdrive ? 0.50 : 0.36 + this.flowIntensity * 0.08;
+        bgm.volume = this.overdrive ? 0.50 : 0.36 + this.flowIntensity * 0.08;
         console.info('[Rune Ball] Asset audio running.', this.debugState);
         return true;
       }
