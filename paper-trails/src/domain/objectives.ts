@@ -22,7 +22,11 @@ export function pageObjective(page: PageState): ObjectiveKind | null {
   return value === 'treasure' || value === 'goal' ? value : null;
 }
 
-export function resolveObjectiveArrival(progress: ObjectiveProgress, page: PageState): ArrivalResolution {
+export function resolveObjectiveArrival(
+  progress: ObjectiveProgress,
+  page: PageState,
+  treasureRequired = true,
+): ArrivalResolution {
   if (progress.completed) return { progress, event: 'none' };
   const objective = pageObjective(page);
   if (objective === 'treasure') {
@@ -33,7 +37,7 @@ export function resolveObjectiveArrival(progress: ObjectiveProgress, page: PageS
     };
   }
   if (objective === 'goal') {
-    if (!progress.treasureCollected) return { progress, event: 'goal-locked' };
+    if (treasureRequired && !progress.treasureCollected) return { progress, event: 'goal-locked' };
     return {
       progress: { ...progress, completed: true },
       event: 'completed',
@@ -50,8 +54,9 @@ export function resolveObjectiveArrival(progress: ObjectiveProgress, page: PageS
 export function resolveObjectiveTraversal(
   progress: ObjectiveProgress,
   traversedPages: readonly PageState[],
+  treasureRequired = true,
 ): ArrivalResolution {
   const destination = traversedPages[traversedPages.length - 1];
   if (!destination) return { progress, event: 'none' };
-  return resolveObjectiveArrival(progress, destination);
+  return resolveObjectiveArrival(progress, destination, treasureRequired);
 }
