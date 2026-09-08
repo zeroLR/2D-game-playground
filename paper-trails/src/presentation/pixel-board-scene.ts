@@ -4,7 +4,6 @@ import { DEMO_DEFINITION_REGISTRY, DEMO_LEVEL } from '../domain/demo-level';
 import type { GridPosition, PageState, WorldState } from '../domain/model';
 import {
   createObjectiveProgress,
-  pageObjective,
   resolveObjectiveTraversal,
   type ObjectiveEvent,
   type ObjectiveKind,
@@ -30,13 +29,12 @@ import {
 import { cellRect, computeBoardLayout, gridPositionAtPoint, type BoardLayout } from './board-layout';
 import {
   advanceTutorial,
-  EXIT_GLYPH,
   newlyReachable,
-  objectiveCopy,
-  RELIC_GLYPH,
   type TutorialStage,
 } from './mechanic-legibility';
 import { createPageArtSprite, createTravelerSprite } from './pixel-art';
+import { createGateWorldObject, createRelicWorldObject } from './world-object-pixel';
+import { gateVisualState, relicVisible } from './world-object-state';
 
 const COLORS = {
   ink: 0x121917,
@@ -46,7 +44,6 @@ const COLORS = {
   antiqueGold: 0xa8874c,
   invalid: 0x8b544a,
   reachable: 0xc5b991,
-  treasure: 0xb89b5c,
   veil: 0x111614,
 };
 
@@ -56,6 +53,8 @@ const ROUTE_PULSE_FRAME_MS = 115;
 const ROUTE_PULSE_FRAMES = 4;
 const OBJECTIVE_PULSE_FRAMES = ROUTE_PULSE_FRAMES * 2;
 const ARRIVAL_FRAME_MS = 140;
+const WORLD_OBJECT_FRAME_MS = 180;
+const GATE_OPENING_FRAMES = 5;
 
 type FeedbackTone = 'neutral' | 'success' | 'invalid';
 
@@ -101,6 +100,9 @@ export class PixelBoardScene extends Container {
   private routePulsePhase = 0;
   private routePulseLimit = ROUTE_PULSE_FRAMES;
   private routePulseTimer: number | null = null;
+  private worldObjectFrameTick = 0;
+  private worldObjectTimer: number | null = null;
+  private gateOpeningFrame: number | null = null;
 
   constructor(width: number, height: number) {
     super();
@@ -117,6 +119,7 @@ export class PixelBoardScene extends Container {
     this.on('pointerup', this.handlePointerUp);
     this.on('pointerupoutside', this.handlePointerUp);
     this.renderScene();
+    this.scheduleWorldObjectFrame();
   }
 
   setViewport(width: number, height: number): void {
@@ -172,9 +175,8 @@ export class PixelBoardScene extends Container {
     title.position.set(this.layout.margin, this.layout.margin);
     this.addChild(title);
 
-    const subtitleY = this.layout.margin + Math.max(42, this.viewportWidth * 0.11);
     const subtitle = new Text({
-      text: 'PAPER TRAILS  ·  P4.1.1 OBJECTIVE SEMANTICS',
+      text: 'PAPER TRAILS  ·  P4.1.1 WORLD OBJECTS',
       style: {
         fill: COLORS.antiqueGold,
         fontFamily: 'monospace',
@@ -182,39 +184,8 @@ export class PixelBoardScene extends Container {
         letterSpacing: 0.9,
       },
     });
-    subtitle.position.set(this.layout.margin, subtitleY);
+    subtitle.position.set(this.layout.margin, this.layout.margin + Math.max(42, this.viewportWidth * 0.11));
     this.addChild(subtitle);
-
-    this.drawObjectiveStrip(Math.min(this.layout.boardY - 34, subtitleY + 32));
-  }
-
-  private drawObjectiveStrip(y: number): void {
-    const copy = objectiveCopy(this.objectiveProgress.treasureCollected, this.objectiveProgress.completed);
-    const primary = new Text({
-      text: copy.primary,
-      style: {
-        fill: COLORS.antiqueGold,
-        fontFamily: 'monospace',
-        fontSize: Math.max(9, Math.round(this.viewportWidth * 0.023)),
-        fontWeight: '700',
-        letterSpacing: 0.7,
-      },
-    });
-    primary.position.set(this.layout.margin, y);
-    this.addChild(primary);
-
-    const secondary = new Text({
-      text: copy.secondary,
-      style: {
-        fill: copy.secondaryActive ? COLORS.parchment : COLORS.stone,
-        fontFamily: 'monospace',
-        fontSize: Math.max(8, Math.round(this.viewportWidth * 0.021)),
-        letterSpacing: 0.5,
-      },
-    });
-    secondary.position.set(this.layout.margin, y + 18);
-    secondary.alpha = copy.secondaryActive ? 0.95 : 0.56;
-    this.addChild(secondary);
   }
 
   private drawBookFrame(): void {
@@ -272,6 +243,8 @@ export class PixelBoardScene extends Container {
       );
     }
 
+    this.drawWorldObjective(view, page, rect.width);
+
     if (selected) {
       const label = new Text({
         text: pageFamilyLabel(page.definitionId),
@@ -312,50 +285,21 @@ export class PixelBoardScene extends Container {
       view.addChild(rotateCue);
     }
 
-    const objective = pageObjective(page);
-    if (objective) this.drawObjectiveMarker(view, objective, rect.width);
     view.on('pointerdown', (event: FederatedPointerEvent) => this.beginPagePointer(page.id, event));
     return view;
   }
 
-  private drawObjectiveMarker(view: Container, objective: ObjectiveKind, pageSize: number): void {
-    const collected = objective === 'treasure' && this.objectiveProgress.treasureCollected;
-    const exitOpen = objective === 'goal' && this.objectiveProgress.treasureCollected;
-    const text = objective === 'treasure'
-      ? collected ? `✓ ${RELIC_GLYPH} RELIC` : `${RELIC_GLYPH} RELIC`
-      : exitOpen ? `${EXIT_GLYPH} EXIT` : `${EXIT_GLYPH} SEALED`;
-    const color = objective === 'treasure'
-      ? COLORS.treasure
-      : exitOpen ? COLORS.antiqueGold : COLORS.invalid;
+  private drawWorldObjective(view: Container, page: PageState, pageSize: number): void {
+    const objective = page.state.objective;
+    if (objective === 'treasure' && relicVisible(this.objectiveProgress.treasureCollected)) {
+      view.addChild(createRelicWorldObject(pageSize, this.worldObjectFrameTick));
+      return;
+    }
 
-    const label = new Text({
-      text,
-      style: {
-        fill: color,
-        fontFamily: 'monospace',
-        fontSize: Math.max(6, pageSize * 0.062),
-        fontWeight: '700',
-        letterSpacing: 0.3,
-      },
-    });
-    label.anchor.set(1, 0);
-    label.position.set(pageSize - 6, 7);
-    label.alpha = collected ? 0.58 : 1;
-
-    const padX = 4;
-    const padY = 2;
-    const background = new Graphics()
-      .roundRect(
-        pageSize - 6 - label.width - padX * 2,
-        5,
-        label.width + padX * 2,
-        label.height + padY * 2,
-        3,
-      )
-      .fill({ color: COLORS.ink, alpha: 0.78 });
-    background.zIndex = 19;
-    label.zIndex = 20;
-    view.addChild(background, label);
+    if (objective === 'goal') {
+      const gateState = gateVisualState(this.objectiveProgress.treasureCollected, this.gateOpeningFrame);
+      view.addChild(createGateWorldObject(pageSize, gateState, this.worldObjectFrameTick, page.rotation));
+    }
   }
 
   private drawRoutePulse(): void {
@@ -441,15 +385,8 @@ export class PixelBoardScene extends Container {
 
     const selected = this.selectedPageId ? this.world.pages.find((page) => page.id === this.selectedPageId) : undefined;
     const selectedText = selected ? pageFamilyLabel(selected.definitionId) : 'No Page selected';
-    const phase = this.objectiveProgress.completed
-      ? 'COMPLETE'
-      : this.moving
-        ? 'WALKING'
-        : this.objectiveProgress.treasureCollected
-          ? 'RETURN TO EXIT'
-          : 'FIND RELIC';
     const status = new Text({
-      text: `${selectedText} · ${phase}`,
+      text: selectedText,
       style: {
         fill: COLORS.stone,
         fontFamily: 'monospace',
@@ -734,17 +671,18 @@ export class PixelBoardScene extends Container {
 
     switch (resolution.event) {
       case 'treasure-collected':
-        this.feedback = { tone: 'success', text: `${RELIC_GLYPH} RELIC recovered · ${EXIT_GLYPH} EXIT is now open` };
+        this.gateOpeningFrame = 0;
+        this.feedback = { tone: 'success', text: 'The relic answers a distant seal…' };
         this.startObjectivePagePulse('goal');
         return resolution.event;
       case 'goal-locked':
-        this.feedback = { tone: 'invalid', text: `${EXIT_GLYPH} EXIT sealed · select ${RELIC_GLYPH} RELIC and GO there first` };
+        this.feedback = { tone: 'invalid', text: 'The gate is still sealed.' };
         return resolution.event;
       case 'completed':
         this.savedProgress = markLevelCompleted(this.savedProgress, DEMO_LEVEL.id);
         saveProgress(this.storage, this.savedProgress);
         this.tutorialStage = 'complete';
-        this.feedback = { tone: 'success', text: `${EXIT_GLYPH} EXIT reached · chapter complete` };
+        this.feedback = { tone: 'success', text: 'The open gate carries the traveler onward.' };
         return resolution.event;
       case 'none':
         return resolution.event;
@@ -793,7 +731,7 @@ export class PixelBoardScene extends Container {
   }
 
   private startObjectivePagePulse(kind: ObjectiveKind): void {
-    const page = this.world.pages.find((candidate) => pageObjective(candidate) === kind);
+    const page = this.world.pages.find((candidate) => candidate.state.objective === kind);
     if (!page) return;
     this.cancelRoutePulseTimer();
     this.routePulsePath = [page.id];
@@ -815,6 +753,18 @@ export class PixelBoardScene extends Container {
     this.routePulseTimer = window.setTimeout(() => this.advanceRoutePulse(), ROUTE_PULSE_FRAME_MS);
   }
 
+  private scheduleWorldObjectFrame(): void {
+    this.worldObjectTimer = window.setTimeout(() => {
+      this.worldObjectFrameTick += 1;
+      if (this.gateOpeningFrame !== null) {
+        const nextFrame = this.gateOpeningFrame + 1;
+        this.gateOpeningFrame = nextFrame >= GATE_OPENING_FRAMES ? null : nextFrame;
+      }
+      if (!this.moving && !this.drag?.active) this.renderScene();
+      this.scheduleWorldObjectFrame();
+    }, WORLD_OBJECT_FRAME_MS);
+  }
+
   private resetPuzzle(): void {
     if (this.moving) return;
     this.cancelTraversalTimer();
@@ -829,6 +779,8 @@ export class PixelBoardScene extends Container {
     this.routePulsePath = [];
     this.routePulsePhase = 0;
     this.routePulseLimit = ROUTE_PULSE_FRAMES;
+    this.worldObjectFrameTick = 0;
+    this.gateOpeningFrame = null;
     this.tutorialStage = this.savedProgress.completedLevelIds.includes(DEMO_LEVEL.id)
       ? 'complete'
       : advanceTutorial(this.tutorialStage, 'reset');
@@ -859,7 +811,7 @@ export class PixelBoardScene extends Container {
     title.position.set(this.viewportWidth / 2, y + 32);
     overlay.addChild(title);
     const detail = new Text({
-      text: `${RELIC_GLYPH} Relic recovered · ${EXIT_GLYPH} Exit reached · local save updated`,
+      text: 'The restored gate opens beyond the final Page.',
       style: { fill: COLORS.stone, fontFamily: 'monospace', fontSize: 9, align: 'center' },
     });
     detail.anchor.set(0.5);
