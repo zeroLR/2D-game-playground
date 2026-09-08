@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P5.1 audibility and impact calibration playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P5.2 asset audio playtest');
     app.stage.addChild(scene);
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
@@ -57,7 +57,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P5.1 audibility + impact calibration ready. Audio reports its unlock state after first pointer interaction.');
+    console.info('[Rune Ball] P5.2 asset audio ready. BGM starts on the first arena pointer interaction.');
   } catch (error) {
     showBootstrapFailure(error);
   }
