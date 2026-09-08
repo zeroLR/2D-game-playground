@@ -27,6 +27,7 @@ const REDIRECT_GAIN = 28;
 const MAX_SPEED = 440;
 const REDIRECT_WEIGHT = 0.78;
 const BOUNCE_SPEED_RETENTION = 0.985;
+const TARGET_DEFLECTION_WEIGHT = 0.42;
 
 export class BallModel {
   readonly radius = 18;
@@ -75,6 +76,23 @@ export class BallModel {
     this.velocity = {
       x: blended.x * nextSpeed,
       y: blended.y * nextSpeed,
+    };
+  }
+
+  applyTargetDeflection(targetPosition: Point2D): void {
+    const speed = Math.hypot(this.velocity.x, this.velocity.y);
+    const current = this.normalized(this.velocity);
+    const away = this.normalized({
+      x: this.position.x - targetPosition.x,
+      y: this.position.y - targetPosition.y,
+    });
+    const blended = this.normalized({
+      x: current.x * (1 - TARGET_DEFLECTION_WEIGHT) + away.x * TARGET_DEFLECTION_WEIGHT,
+      y: current.y * (1 - TARGET_DEFLECTION_WEIGHT) + away.y * TARGET_DEFLECTION_WEIGHT,
+    });
+    this.velocity = {
+      x: blended.x * speed,
+      y: blended.y * speed,
     };
   }
 
