@@ -14,7 +14,7 @@ interface ImpactParticle {
 
 export class ImpactPool extends Container {
   private readonly particles: ImpactParticle[] = [];
-  private cursor = 0;
+  private particleCursor = 0;
   private emissionSerial = 0;
 
   constructor(capacity = 72) {
@@ -89,16 +89,16 @@ export class ImpactPool extends Container {
 
   private acquire(): ImpactParticle {
     for (let offset = 0; offset < this.particles.length; offset += 1) {
-      const index = (this.cursor + offset) % this.particles.length;
+      const index = (this.particleCursor + offset) % this.particles.length;
       const particle = this.particles[index];
       if (!particle.active) {
-        this.cursor = (index + 1) % this.particles.length;
+        this.particleCursor = (index + 1) % this.particles.length;
         return particle;
       }
     }
 
-    const particle = this.particles[this.cursor];
-    this.cursor = (this.cursor + 1) % this.particles.length;
+    const particle = this.particles[this.particleCursor];
+    this.particleCursor = (this.particleCursor + 1) % this.particles.length;
     return particle;
   }
 }
