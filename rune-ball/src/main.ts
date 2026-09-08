@@ -1,6 +1,6 @@
 import { createRenderer } from './bootstrap/create-renderer';
 import { FixedStepLoop } from './game/FixedStepLoop';
-import { BallFeelScene } from './presentation/BallFeelScene';
+import { DestructionScene } from './presentation/DestructionScene';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
 
   try {
     const app = await createRenderer(host);
-    const scene = new BallFeelScene(app.screen.width, app.screen.height);
+    const scene = new DestructionScene(app.screen.width, app.screen.height);
     const loop = new FixedStepLoop(
       (dtSeconds) => scene.update(dtSeconds),
       (alpha) => scene.present(alpha),
@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P1 ball feel playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P2 destruction and combo playtest');
     app.stage.addChild(scene);
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
@@ -57,7 +57,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P1 ball feel gate ready.');
+    console.info('[Rune Ball] P2 destruction + combo gate ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
