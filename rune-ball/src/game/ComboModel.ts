@@ -34,8 +34,13 @@ export class ComboModel {
     };
   }
 
-  update(dtSeconds: number): boolean {
+  update(dtSeconds: number, protectedState = false): boolean {
     if (this.combo === 0) return false;
+    if (protectedState) {
+      this.secondsRemaining = this.comboWindowSeconds;
+      return false;
+    }
+
     const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
     this.secondsRemaining = Math.max(0, this.secondsRemaining - dt);
     if (this.secondsRemaining > 0) return false;

@@ -32,6 +32,17 @@ describe('ComboModel', () => {
     expect(combo.snapshot.combo).toBe(1);
   });
 
+  it('protects an active combo while Overdrive is active', () => {
+    const combo = new ComboModel(2.2);
+    combo.registerBreak(100);
+    expect(combo.update(10, true)).toBe(false);
+    expect(combo.snapshot.combo).toBe(1);
+    expect(combo.snapshot.secondsRemaining).toBeCloseTo(2.2);
+
+    expect(combo.update(2.21, false)).toBe(true);
+    expect(combo.snapshot.combo).toBe(0);
+  });
+
   it('steps score multiplier at readable combo milestones', () => {
     const combo = new ComboModel();
     const rewards = Array.from({ length: 5 }, () => combo.registerBreak(100));

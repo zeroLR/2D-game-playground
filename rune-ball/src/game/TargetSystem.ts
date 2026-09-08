@@ -45,7 +45,7 @@ const CHASE_SPAWN_LOOKAHEAD = 4;
 
 export class TargetSystem {
   private bounds: ArenaBounds;
-  private readonly desiredCount: number;
+  private desiredCount: number;
   private readonly targets = new Map<number, TargetState>();
   private nextId = 1;
   private spawnCount = 0;
@@ -63,6 +63,11 @@ export class TargetSystem {
       ...target,
       position: { ...target.position },
     }));
+  }
+
+  setDesiredCount(desiredCount: number): void {
+    this.desiredCount = Math.max(1, Math.floor(Number.isFinite(desiredCount) ? desiredCount : DEFAULT_TARGET_COUNT));
+    if (this.targets.size < this.desiredCount) this.respawnTimer = 0;
   }
 
   setBounds(bounds: ArenaBounds): void {
@@ -183,7 +188,9 @@ export class TargetSystem {
 
     if (destroyed) {
       this.targets.delete(targetId);
-      this.respawnTimer = Math.max(this.respawnTimer, RESPAWN_DELAY_SECONDS);
+      if (this.targets.size < this.desiredCount) {
+        this.respawnTimer = Math.max(this.respawnTimer, RESPAWN_DELAY_SECONDS);
+      }
     }
 
     return { target: resultTarget, destroyed, armorBroken };

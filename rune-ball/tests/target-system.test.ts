@@ -74,6 +74,20 @@ describe('TargetSystem', () => {
     expect(Math.hypot(spawned.position.x - origin.x, spawned.position.y - origin.y)).toBeGreaterThanOrEqual(88);
   });
 
+  it('ramps toward a higher desired density without deleting targets when density drops again', () => {
+    const system = new TargetSystem(bounds, 8);
+    system.setDesiredCount(11);
+
+    expect(system.update(0)).toHaveLength(1);
+    expect(system.update(0.24)).toHaveLength(1);
+    expect(system.update(0.24)).toHaveLength(1);
+    expect(system.snapshot).toHaveLength(11);
+
+    system.setDesiredCount(8);
+    expect(system.update(1)).toHaveLength(0);
+    expect(system.snapshot).toHaveLength(11);
+  });
+
   it('pulls targets toward a Vortex center while keeping them inside the arena', () => {
     const system = new TargetSystem(bounds, 8);
     const center = { x: 150, y: 250 };
