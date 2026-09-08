@@ -18,13 +18,22 @@ const COLORS = {
   armored: 0xb582ff,
 };
 
-const TRAIL_POINTS = 16;
-const WALL_FLASH_SECONDS = 0.14;
+const TRAIL_POINTS = 28;
+const NORMAL_TRAIL_POINTS = 14;
+const WALL_FLASH_SECONDS = 0.16;
+const REBOUND_BEAT_SECONDS = 0.18;
 const TARGET_HIT_FLASH_SECONDS = 0.11;
+const TARGET_SPAWN_SECONDS = 0.22;
 const BREAK_RING_SECONDS = 0.20;
 
 interface BreakRing {
   position: Point2D;
+  life: number;
+}
+
+interface ReboundBeat {
+  position: Point2D;
+  side: WallSide;
   life: number;
 }
 
@@ -33,6 +42,7 @@ export class DestructionScene extends Container {
   private readonly arena = new Graphics();
   private readonly targets = new Graphics();
   private readonly wallFlash = new Graphics();
+  private readonly reboundFx = new Graphics();
   private readonly breakRings = new Graphics();
   private readonly trail = new Graphics();
   private readonly impactPool = new ImpactPool();
@@ -45,7 +55,7 @@ export class DestructionScene extends Container {
   private readonly swipeTrace = new Graphics();
   private readonly inputSurface = new Graphics();
   private readonly status = new Text({
-    text: 'P2.1  //  REBOUND CHASE',
+    text: 'P2.2  //  VELOCITY + REBOUND',
     style: {
       fill: COLORS.text,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -89,7 +99,9 @@ export class DestructionScene extends Container {
   private readonly trailPoints: Point2D[] = [];
   private readonly wallFlashes: Record<WallSide, number> = { left: 0, right: 0, top: 0, bottom: 0 };
   private readonly targetHitFlashes = new Map<number, number>();
+  private readonly targetSpawnLives = new Map<number, number>();
   private readonly activeBreakRings: BreakRing[] = [];
+  private readonly activeReboundBeats: ReboundBeat[] = [];
   private activePointerId: number | null = null;
   private swipeStart: Point2D | null = null;
   private swipeCurrent: Point2D | null = null;
@@ -119,6 +131,7 @@ export class DestructionScene extends Container {
       this.arena,
       this.targets,
       this.wallFlash,
+      this.reboundFx,
       this.breakRings,
       this.trail,
       this.impactPool,
@@ -150,8 +163,17 @@ export class DestructionScene extends Container {
       else this.targetHitFlashes.set(targetId, remaining);
     }
 
+    for (const [targetId, life] of this.targetSpawnLives) {
+      const remaining = Math.max(0, life - dtSeconds);
+      if (remaining <= 0) this.targetSpawnLives.delete(targetId);
+      else this.targetSpawnLives.set(targetId, remaining);
+    }
+
     for (const ring of this.activeBreakRings) ring.life -= dtSeconds;
     while (this.activeBreakRings.length > 0 && this.activeBreakRings[0].life <= 0) this.activeBreakRings.shift();
+
+    for (const beat of this.activeReboundBeats) beat.life -= dtSeconds;
+    while (this.activeReboundBeats.length > 0 && this.activeReboundBeats[0].life <= 0) this.activeReboundBeats.shift();
 
     this.impactPool.update(dtSeconds);
     const position = this.session.snapshot.ball.position;
@@ -162,14 +184,22 @@ export class DestructionScene extends Container {
   present(alpha: number): void {
     const snapshot = this.session.snapshot;
     const position = this.session.interpolatedBallPosition(alpha);
-    const speedRatio = Math.min(1, Math.max(0, (snapshot.ball.speed - 240) / 260));
+    const speedRatio = Math.min(1, Math.max(0, (snapshot.ball.speed - 330) / 140));
     const reboundStrength = snapshot.ball.reboundStrength;
+    const reboundEnvelope = this.reboundEnvelope();
+    const velocityAngle = Math.atan2(snapshot.ball.velocity.y, snapshot.ball.velocity.x);
 
     this.ball.position.set(position.x, position.y);
+    this.ball.rotation = velocityAngle;
+    this.ball.scale.set(
+      1 - reboundEnvelope.compression * 0.18 + reboundEnvelope.launch * 0.36 + reboundStrength * 0.14,
+      1 + reboundEnvelope.compression * 0.16 - reboundEnvelope.launch * 0.14 - reboundStrength * 0.04,
+    );
     this.ballCore.position.copyFrom(this.ball.position);
+    this.ballCore.scale.set(1 + reboundEnvelope.launch * 0.08);
     this.ballGlow.position.copyFrom(this.ball.position);
-    this.ballGlow.alpha = 0.13 + speedRatio * 0.12 + reboundStrength * 0.10;
-    this.ballGlow.scale.set(0.9 + speedRatio * 0.24 + reboundStrength * 0.12);
+    this.ballGlow.alpha = 0.13 + speedRatio * 0.10 + reboundStrength * 0.22 + reboundEnvelope.launch * 0.10;
+    this.ballGlow.scale.set(0.9 + speedRatio * 0.20 + reboundStrength * 0.30 + reboundEnvelope.launch * 0.12);
 
     this.scoreText.text = `SCORE ${snapshot.combo.score.toString().padStart(6, '0')}`;
     this.comboText.text = snapshot.combo.combo > 0 ? `COMBO ${snapshot.combo.combo}` : 'COMBO --';
@@ -181,6 +211,7 @@ export class DestructionScene extends Container {
     this.drawTargets(snapshot.targets);
     this.drawTrail(position, speedRatio, reboundStrength);
     this.drawWallFlash();
+    this.drawReboundBeats();
     this.drawBreakRings();
     this.drawSwipeTrace();
   }
@@ -247,18 +278,24 @@ export class DestructionScene extends Container {
 
   private handleGameplayEvent(event: DestructionEvent): void {
     switch (event.type) {
-      case 'wall-hit':
+      case 'wall-hit': {
         this.wallFlashes[event.side] = WALL_FLASH_SECONDS;
+        const position = this.session.snapshot.ball.position;
+        this.activeReboundBeats.push({ position: { ...position }, side: event.side, life: REBOUND_BEAT_SECONDS });
         break;
+      }
       case 'target-hit':
         this.targetHitFlashes.set(event.targetId, TARGET_HIT_FLASH_SECONDS);
         this.impactPool.spawn(event.position, 'hit');
         break;
       case 'target-break':
+        this.targetSpawnLives.delete(event.targetId);
         this.impactPool.spawn(event.position, 'break');
         this.activeBreakRings.push({ position: { ...event.position }, life: BREAK_RING_SECONDS });
         break;
       case 'target-spawn':
+        this.targetSpawnLives.set(event.targetId, TARGET_SPAWN_SECONDS);
+        break;
       case 'combo-reset':
         break;
     }
@@ -269,9 +306,32 @@ export class DestructionScene extends Container {
     for (const target of targets) {
       const hitFlash = this.targetHitFlashes.get(target.id) ?? 0;
       const flashRatio = Math.min(1, hitFlash / TARGET_HIT_FLASH_SECONDS);
-      const radius = target.radius;
+      const spawnLife = this.targetSpawnLives.get(target.id) ?? 0;
+      const spawnProgress = spawnLife > 0 ? 1 - spawnLife / TARGET_SPAWN_SECONDS : 1;
+      const spawnEase = 1 - Math.pow(1 - spawnProgress, 3);
+      const spawnScale = spawnLife > 0
+        ? 0.45 + spawnEase * 0.55 + Math.sin(spawnProgress * Math.PI) * 0.08
+        : 1;
+      const materializeAlpha = spawnLife > 0 ? 0.18 + spawnEase * 0.82 : 1;
+      const radius = target.radius * spawnScale;
       const fill = target.kind === 'armored' ? COLORS.armored : COLORS.crystal;
-      const alpha = 0.56 + flashRatio * 0.34;
+      const alpha = (0.56 + flashRatio * 0.34) * materializeAlpha;
+
+      if (spawnLife > 0) {
+        const glyphRadius = target.radius + (1 - spawnEase) * 22;
+        this.targets
+          .circle(target.position.x, target.position.y, glyphRadius)
+          .stroke({ color: COLORS.violet, width: 2, alpha: (1 - spawnProgress) * 0.48 });
+        for (let index = 0; index < 4; index += 1) {
+          const angle = index * Math.PI * 0.5;
+          const inner = glyphRadius + 4;
+          const outer = glyphRadius + 10;
+          this.targets
+            .moveTo(target.position.x + Math.cos(angle) * inner, target.position.y + Math.sin(angle) * inner)
+            .lineTo(target.position.x + Math.cos(angle) * outer, target.position.y + Math.sin(angle) * outer);
+        }
+        this.targets.stroke({ color: COLORS.cyan, width: 1.5, alpha: (1 - spawnProgress) * 0.38 });
+      }
 
       this.targets
         .moveTo(target.position.x, target.position.y - radius)
@@ -283,20 +343,20 @@ export class DestructionScene extends Container {
         .stroke({ color: flashRatio > 0 ? 0xffffff : fill, width: flashRatio > 0 ? 3 : 2, alpha });
 
       this.targets
-        .circle(target.position.x, target.position.y, 4.5)
-        .fill({ color: 0xffffff, alpha: 0.78 + flashRatio * 0.2 });
+        .circle(target.position.x, target.position.y, 4.5 * spawnScale)
+        .fill({ color: 0xffffff, alpha: (0.78 + flashRatio * 0.2) * materializeAlpha });
 
       if (target.kind === 'armored') {
-        const armorAlpha = target.hp === target.maxHp ? 0.72 : 0.34;
+        const armorAlpha = (target.hp === target.maxHp ? 0.72 : 0.34) * materializeAlpha;
         this.targets
-          .circle(target.position.x, target.position.y, radius + 7)
+          .circle(target.position.x, target.position.y, radius + 7 * spawnScale)
           .stroke({ color: COLORS.cyan, width: target.hp === target.maxHp ? 2.5 : 1.5, alpha: armorAlpha });
         if (target.hp < target.maxHp) {
           this.targets
             .moveTo(target.position.x - radius - 4, target.position.y - 6)
             .lineTo(target.position.x - 4, target.position.y + 2)
             .lineTo(target.position.x + 8, target.position.y - 8)
-            .stroke({ color: COLORS.magenta, width: 2, alpha: 0.76 });
+            .stroke({ color: COLORS.magenta, width: 2, alpha: 0.76 * materializeAlpha });
         }
       }
     }
@@ -304,13 +364,31 @@ export class DestructionScene extends Container {
 
   private drawTrail(position: Point2D, speedRatio: number, reboundStrength: number): void {
     this.trail.clear();
-    const points = [...this.trailPoints, position];
+    const allPoints = [...this.trailPoints, position];
+    const visibleCount = reboundStrength > 0.05 ? TRAIL_POINTS : NORMAL_TRAIL_POINTS;
+    const points = allPoints.slice(-visibleCount);
+
+    if (reboundStrength > 0.05 && points.length > 1) {
+      this.trail.moveTo(points[0].x, points[0].y);
+      for (let index = 1; index < points.length; index += 1) {
+        this.trail.lineTo(points[index].x, points[index].y);
+      }
+      this.trail.stroke({ color: 0xf0fbff, width: 5.5, alpha: reboundStrength * 0.22 });
+
+      this.trail.moveTo(points[0].x, points[0].y);
+      for (let index = 1; index < points.length; index += 1) {
+        this.trail.lineTo(points[index].x, points[index].y);
+      }
+      this.trail.stroke({ color: COLORS.cyan, width: 2.5, alpha: 0.24 + reboundStrength * 0.28 });
+    }
+
     points.forEach((point, index) => {
       const life = (index + 1) / points.length;
-      const radius = 2 + life * (2.5 + speedRatio * 1.5 + reboundStrength * 1.2);
+      const radius = 2 + life * (2.5 + speedRatio * 1.3 + reboundStrength * 2.5);
+      const newest = life > 0.72;
       this.trail.circle(point.x, point.y, radius).fill({
-        color: index % 3 === 0 ? COLORS.magenta : COLORS.cyan,
-        alpha: life * (0.10 + speedRatio * 0.18 + reboundStrength * 0.12),
+        color: reboundStrength > 0.05 && newest ? 0xf0fbff : index % 3 === 0 ? COLORS.magenta : COLORS.cyan,
+        alpha: life * (0.10 + speedRatio * 0.14 + reboundStrength * 0.26),
       });
     });
   }
@@ -326,16 +404,47 @@ export class DestructionScene extends Container {
     }
   }
 
+  private drawReboundBeats(): void {
+    this.reboundFx.clear();
+    for (const beat of this.activeReboundBeats) {
+      const progress = 1 - Math.max(0, beat.life) / REBOUND_BEAT_SECONDS;
+      const alpha = 1 - progress;
+      const direction = this.inwardDirection(beat.side);
+      const perpendicular = { x: -direction.y, y: direction.x };
+      const ringRadius = 10 + progress * 32;
+
+      this.reboundFx
+        .circle(beat.position.x, beat.position.y, ringRadius)
+        .stroke({ color: 0xf0fbff, width: 3 - progress * 1.5, alpha: alpha * 0.72 });
+
+      for (const offset of [-9, 0, 9]) {
+        const start = {
+          x: beat.position.x + perpendicular.x * offset,
+          y: beat.position.y + perpendicular.y * offset,
+        };
+        const distance = (offset === 0 ? 52 : 38) * (0.55 + progress * 0.45);
+        this.reboundFx
+          .moveTo(start.x, start.y)
+          .lineTo(start.x + direction.x * distance, start.y + direction.y * distance)
+          .stroke({
+            color: offset === 0 ? 0xf0fbff : COLORS.cyan,
+            width: offset === 0 ? 4 : 2,
+            alpha: alpha * (offset === 0 ? 0.76 : 0.48),
+          });
+      }
+    }
+  }
+
   private drawWallFlash(): void {
     const { left, right, top, bottom } = this.arenaBounds;
     const peak = Math.max(...Object.values(this.wallFlashes));
     this.wallFlash.clear();
     if (peak <= 0) return;
 
-    const alpha = Math.min(0.95, peak / WALL_FLASH_SECONDS);
+    const alpha = Math.min(0.98, peak / WALL_FLASH_SECONDS);
     this.wallFlash
       .roundRect(left, top, right - left, bottom - top, 26)
-      .stroke({ color: COLORS.cyan, width: 4, alpha: alpha * 0.56 });
+      .stroke({ color: COLORS.cyan, width: 4, alpha: alpha * 0.62 });
 
     const drawSide = (side: WallSide): void => {
       const life = this.wallFlashes[side];
@@ -355,7 +464,7 @@ export class DestructionScene extends Container {
           this.wallFlash.moveTo(left + 28, bottom).lineTo(right - 28, bottom);
           break;
       }
-      this.wallFlash.stroke({ color: COLORS.magenta, width: 6, alpha: sideAlpha * 0.72 });
+      this.wallFlash.stroke({ color: 0xf0fbff, width: 7, alpha: sideAlpha * 0.82 });
     };
 
     drawSide('left');
@@ -377,6 +486,31 @@ export class DestructionScene extends Container {
       color: intent ? COLORS.magenta : COLORS.muted,
       alpha: intent ? 0.75 : 0.4,
     });
+  }
+
+  private reboundEnvelope(): { compression: number; launch: number } {
+    let compression = 0;
+    let launch = 0;
+    for (const beat of this.activeReboundBeats) {
+      const progress = 1 - Math.max(0, beat.life) / REBOUND_BEAT_SECONDS;
+      if (progress < 0.28) {
+        const local = progress / 0.28;
+        compression = Math.max(compression, 1 - local);
+        launch = Math.max(launch, local);
+      } else {
+        launch = Math.max(launch, 1 - (progress - 0.28) / 0.72);
+      }
+    }
+    return { compression, launch };
+  }
+
+  private inwardDirection(side: WallSide): Point2D {
+    switch (side) {
+      case 'left': return { x: 1, y: 0 };
+      case 'right': return { x: -1, y: 0 };
+      case 'top': return { x: 0, y: 1 };
+      case 'bottom': return { x: 0, y: -1 };
+    }
   }
 
   private calculateArenaBounds(width: number, height: number): ArenaBounds {

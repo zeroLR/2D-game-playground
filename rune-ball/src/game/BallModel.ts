@@ -22,15 +22,13 @@ export interface BallUpdateResult {
   wallHits: WallSide[];
 }
 
-const START_SPEED = 260;
-const REDIRECT_MIN_SPEED = 320;
-const REDIRECT_GAIN = 28;
-const NORMAL_MAX_SPEED = 440;
-const REBOUND_MAX_SPEED = 500;
+const CRUISE_SPEED = 360;
+const NORMAL_MAX_SPEED = 400;
+const REBOUND_MAX_SPEED = 470;
 const REDIRECT_WEIGHT = 0.78;
-const BOUNCE_SPEED_RETENTION = 0.985;
+const BOUNCE_SPEED_RETENTION = 1;
 const TARGET_DEFLECTION_WEIGHT = 0.42;
-const REBOUND_BOOST_MULTIPLIER = 1.12;
+const REBOUND_BOOST_MULTIPLIER = 1.24;
 const REBOUND_DURATION_SECONDS = 0.72;
 const REBOUND_ASSIST_MAX_TURN_RADIANS = Math.PI / 10;
 
@@ -51,7 +49,7 @@ export class BallModel {
     this.position = { ...center };
     this.previousPosition = { ...center };
     const diagonal = this.normalized({ x: 0.82, y: -0.57 });
-    this.velocity = { x: diagonal.x * START_SPEED, y: diagonal.y * START_SPEED };
+    this.velocity = { x: diagonal.x * CRUISE_SPEED, y: diagonal.y * CRUISE_SPEED };
   }
 
   get snapshot(): BallSnapshot {
@@ -81,11 +79,7 @@ export class BallModel {
     });
     const currentSpeed = Math.hypot(this.velocity.x, this.velocity.y);
     const baseSpeed = Math.max(0, currentSpeed - this.reboundBonusSpeed);
-    const nextBaseSpeed = this.clamp(
-      Math.max(REDIRECT_MIN_SPEED, baseSpeed + REDIRECT_GAIN),
-      REDIRECT_MIN_SPEED,
-      NORMAL_MAX_SPEED,
-    );
+    const nextBaseSpeed = this.clamp(Math.max(CRUISE_SPEED, baseSpeed), CRUISE_SPEED, NORMAL_MAX_SPEED);
     const nextSpeed = Math.min(REBOUND_MAX_SPEED, nextBaseSpeed + this.reboundBonusSpeed);
 
     this.velocity = {
@@ -179,7 +173,7 @@ export class BallModel {
       const baseSpeed = Math.max(0, totalSpeed - this.reboundBonusSpeed);
       const retained = this.clamp(
         baseSpeed * BOUNCE_SPEED_RETENTION,
-        REDIRECT_MIN_SPEED * 0.88,
+        CRUISE_SPEED,
         NORMAL_MAX_SPEED,
       );
       const direction = this.normalized(this.velocity);
@@ -202,8 +196,8 @@ export class BallModel {
   private activateReboundBoost(): void {
     const baseSpeed = Math.hypot(this.velocity.x, this.velocity.y);
     const boosted = this.clamp(
-      Math.max(REDIRECT_MIN_SPEED, baseSpeed * REBOUND_BOOST_MULTIPLIER),
-      REDIRECT_MIN_SPEED,
+      baseSpeed * REBOUND_BOOST_MULTIPLIER,
+      CRUISE_SPEED,
       REBOUND_MAX_SPEED,
     );
     const direction = this.normalized(this.velocity);

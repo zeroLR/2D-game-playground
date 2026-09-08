@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P2.1 rebound utility playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P2.2 velocity identity and rebound readability playtest');
     app.stage.addChild(scene);
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
@@ -57,7 +57,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P2.1 rebound utility + chase flow gate ready.');
+    console.info('[Rune Ball] P2.2 velocity identity + rebound readability gate ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
