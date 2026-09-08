@@ -7,6 +7,14 @@ interface MixState {
 }
 
 type AudioBus = 'music' | 'sfx';
+type AudioContextConstructor = new () => AudioContext;
+
+export interface AudioDebugState {
+  supported: boolean;
+  enabled: boolean;
+  initialized: boolean;
+  state: AudioContextState | 'uninitialized' | 'unavailable';
+}
 
 export class AudioDirector {
   private context: AudioContext | null = null;
@@ -15,28 +23,58 @@ export class AudioDirector {
   private sfxGain: GainNode | null = null;
   private musicFilter: BiquadFilterNode | null = null;
   private bassGain: GainNode | null = null;
+  private harmonyGain: GainNode | null = null;
   private airGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private nextPulseAt = 0;
   private enabled = true;
   private lastOverdrive = false;
+  private unlockReported = false;
+  private unlockCuePlayed = false;
 
-  async unlock(): Promise<void> {
-    if (!this.enabled || typeof window === 'undefined' || !window.AudioContext) return;
+  get debugState(): AudioDebugState {
+    const supported = this.getAudioContextConstructor() !== null;
+    return {
+      supported,
+      enabled: this.enabled,
+      initialized: this.context !== null,
+      state: this.context?.state ?? (supported ? 'uninitialized' : 'unavailable'),
+    };
+  }
+
+  async unlock(): Promise<boolean> {
+    if (!this.enabled) return false;
     if (!this.context) this.initialize();
-    if (!this.context) return;
+    const context = this.context;
+    if (!context) return false;
 
     try {
-      if (this.context.state === 'suspended') await this.context.resume();
+      // Safari/iOS has historically been stricter about Web Audio activation.
+      // Prime a one-sample source synchronously inside the user gesture before resume().
+      this.primeContext(context);
+      if (context.state === 'suspended') await context.resume();
+
+      const running = context.state === 'running';
+      if (running && !this.unlockCuePlayed) {
+        this.unlockCuePlayed = true;
+        this.playTone(330, 440, 0.10, 0.035, 'sine');
+      }
+      if (!this.unlockReported) {
+        this.unlockReported = true;
+        console.info('[Rune Ball] Audio unlock state.', this.debugState);
+      }
+      if (!running) console.warn('[Rune Ball] AudioContext did not enter running state.', this.debugState);
+      return running;
     } catch (error) {
-      console.warn('[Rune Ball] Audio unlock failed; continuing silently.', error);
+      console.warn('[Rune Ball] Audio unlock failed; continuing silently.', error, this.debugState);
+      return false;
     }
   }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (this.masterGain && this.context) {
-      this.masterGain.gain.setTargetAtTime(enabled ? 0.72 : 0.0001, this.context.currentTime, 0.04);
+      this.masterGain.gain.setTargetAtTime(enabled ? 0.90 : 0.0001, this.context.currentTime, 0.04);
     }
   }
 
@@ -49,12 +87,13 @@ export class AudioDirector {
     const now = context.currentTime;
 
     this.musicFilter?.frequency.setTargetAtTime(
-      420 + flow * 820 + (overdrive ? 1150 : 0),
+      520 + flow * 980 + (overdrive ? 1350 : 0),
       now,
       0.12,
     );
-    this.bassGain?.gain.setTargetAtTime(0.038 + flow * 0.018 + (overdrive ? 0.035 : 0), now, 0.12);
-    this.airGain?.gain.setTargetAtTime(0.008 + flow * 0.016 + (overdrive ? 0.025 : 0), now, 0.12);
+    this.bassGain?.gain.setTargetAtTime(0.060 + flow * 0.024 + (overdrive ? 0.038 : 0), now, 0.12);
+    this.harmonyGain?.gain.setTargetAtTime(0.020 + flow * 0.022 + (overdrive ? 0.030 : 0), now, 0.12);
+    this.airGain?.gain.setTargetAtTime(0.010 + flow * 0.015 + (overdrive ? 0.020 : 0), now, 0.12);
 
     if (overdrive !== this.lastOverdrive) {
       this.nextPulseAt = now;
@@ -62,99 +101,108 @@ export class AudioDirector {
     }
 
     if (now >= this.nextPulseAt) {
-      const pulseFrequency = overdrive ? 82.4 : 55 + flow * 18;
-      this.playTone(pulseFrequency, pulseFrequency * (overdrive ? 1.015 : 1), overdrive ? 0.11 : 0.075, overdrive ? 0.027 : 0.014, 'sine', 0, 'music');
-      this.nextPulseAt = now + (overdrive ? 0.25 : 0.52 - flow * 0.12);
+      const root = overdrive ? 82.4 : 62 + flow * 18;
+      this.playTone(root * 2, root * 2.02, overdrive ? 0.16 : 0.11, overdrive ? 0.052 : 0.026, 'triangle', 0, 'music');
+      if (overdrive) this.playTone(root * 3, root * 3.03, 0.13, 0.028, 'sine', 0.04, 'music');
+      this.nextPulseAt = now + (overdrive ? 0.28 : 0.58 - flow * 0.14);
     }
   }
 
   playRebound(): void {
-    this.playTone(145, 280, 0.085, 0.055, 'triangle');
+    this.playTone(145, 300, 0.09, 0.075, 'triangle');
   }
 
   playImpact(source: ImpactSource, armorBroken: boolean): void {
     const chain = source === 'chain';
-    this.playNoise(0.04, chain ? 0.038 : 0.026, chain ? 1800 : 1250, 'highpass');
+    this.playNoise(0.045, chain ? 0.055 : 0.038, chain ? 1800 : 1250, 'highpass');
     this.playTone(
       armorBroken ? 118 : chain ? 210 : 165,
       armorBroken ? 72 : chain ? 145 : 105,
-      armorBroken ? 0.09 : 0.065,
-      armorBroken ? 0.07 : chain ? 0.058 : 0.042,
+      armorBroken ? 0.10 : 0.07,
+      armorBroken ? 0.095 : chain ? 0.078 : 0.060,
       armorBroken ? 'square' : 'triangle',
     );
   }
 
   playBreak(combo: number, source: ImpactSource, armored: boolean): void {
-    this.playNoise(armored ? 0.16 : 0.12, armored ? 0.105 : 0.082, armored ? 900 : 1250, 'highpass');
-    this.playTone(armored ? 180 : 240, armored ? 72 : 115, armored ? 0.18 : 0.13, armored ? 0.105 : 0.078, 'triangle');
-    if (source === 'chain') this.playTone(360, 690, 0.11, 0.052, 'sine', 0.018);
+    this.playNoise(armored ? 0.17 : 0.13, armored ? 0.13 : 0.105, armored ? 900 : 1250, 'highpass');
+    this.playTone(armored ? 180 : 240, armored ? 72 : 115, armored ? 0.19 : 0.14, armored ? 0.14 : 0.105, 'triangle');
+    if (source === 'chain') this.playTone(360, 690, 0.12, 0.070, 'sine', 0.018);
     if (combo > 0 && combo % 4 === 0) this.playComboMilestone(combo);
   }
 
   playRune(rune: RuneKind): void {
     switch (rune) {
       case 'vortex':
-        this.playTone(520, 145, 0.23, 0.075, 'sine');
-        this.playNoise(0.08, 0.028, 520, 'lowpass');
+        this.playTone(540, 135, 0.24, 0.105, 'sine');
+        this.playNoise(0.09, 0.045, 520, 'lowpass');
         break;
       case 'split':
-        this.playTone(270, 590, 0.18, 0.06, 'triangle');
-        this.playTone(350, 760, 0.18, 0.045, 'sine', 0.028);
+        this.playTone(270, 620, 0.19, 0.090, 'triangle');
+        this.playTone(350, 790, 0.19, 0.065, 'sine', 0.028);
         break;
       case 'chain':
-        this.playTone(245, 510, 0.10, 0.06, 'square');
-        this.playTone(340, 720, 0.10, 0.045, 'triangle', 0.065);
+        this.playTone(245, 530, 0.11, 0.090, 'square');
+        this.playTone(340, 760, 0.11, 0.065, 'triangle', 0.065);
         break;
     }
   }
 
   playRuneFailure(): void {
-    this.playTone(120, 92, 0.075, 0.028, 'square');
+    this.playTone(120, 92, 0.08, 0.042, 'square');
   }
 
   playChain(targetCount: number): void {
     const strength = Math.min(1, Math.max(0, targetCount) / 3);
-    this.playNoise(0.075, 0.045 + strength * 0.025, 1800, 'highpass');
-    this.playTone(320, 840 + strength * 180, 0.18, 0.07 + strength * 0.02, 'sawtooth');
+    this.playNoise(0.085, 0.070 + strength * 0.030, 1800, 'highpass');
+    this.playTone(320, 840 + strength * 180, 0.19, 0.10 + strength * 0.025, 'sawtooth');
   }
 
   playOverdriveEnter(): void {
-    this.playTone(145, 42, 0.58, 0.22, 'sine');
-    this.playNoise(0.20, 0.12, 760, 'lowpass');
-    this.playTone(220, 220, 0.46, 0.06, 'sine', 0.15);
-    this.playTone(330, 330, 0.42, 0.045, 'triangle', 0.18);
-    this.playTone(440, 440, 0.38, 0.035, 'sine', 0.21);
+    this.playTone(150, 42, 0.62, 0.26, 'sine');
+    this.playNoise(0.22, 0.16, 760, 'lowpass');
+    this.playTone(220, 220, 0.48, 0.080, 'sine', 0.15);
+    this.playTone(330, 330, 0.44, 0.065, 'triangle', 0.18);
+    this.playTone(440, 440, 0.40, 0.050, 'sine', 0.21);
   }
 
   playOverdriveExit(): void {
-    this.playTone(430, 165, 0.34, 0.09, 'triangle');
-    this.playTone(110, 68, 0.40, 0.10, 'sine', 0.03);
+    this.playTone(430, 165, 0.36, 0.12, 'triangle');
+    this.playTone(110, 68, 0.42, 0.13, 'sine', 0.03);
   }
 
   playResultSting(): void {
-    this.playTone(220, 330, 0.18, 0.055, 'triangle');
-    this.playTone(330, 495, 0.24, 0.055, 'triangle', 0.11);
-    this.playTone(495, 660, 0.34, 0.05, 'sine', 0.23);
+    this.playTone(220, 330, 0.18, 0.075, 'triangle');
+    this.playTone(330, 495, 0.24, 0.075, 'triangle', 0.11);
+    this.playTone(495, 660, 0.34, 0.065, 'sine', 0.23);
   }
 
   private initialize(): void {
     try {
-      const context = new AudioContext();
+      const AudioContextCtor = this.getAudioContextConstructor();
+      if (!AudioContextCtor) {
+        console.warn('[Rune Ball] Web Audio unavailable; continuing silently.');
+        return;
+      }
+
+      const context = new AudioContextCtor();
       const masterGain = context.createGain();
       const musicGain = context.createGain();
       const sfxGain = context.createGain();
       const musicFilter = context.createBiquadFilter();
       const bassGain = context.createGain();
+      const harmonyGain = context.createGain();
       const airGain = context.createGain();
 
-      masterGain.gain.value = 0.72;
-      musicGain.gain.value = 0.42;
-      sfxGain.gain.value = 0.72;
+      masterGain.gain.value = 0.90;
+      musicGain.gain.value = 0.62;
+      sfxGain.gain.value = 0.90;
       musicFilter.type = 'lowpass';
-      musicFilter.frequency.value = 420;
+      musicFilter.frequency.value = 520;
       musicFilter.Q.value = 0.8;
-      bassGain.gain.value = 0.038;
-      airGain.gain.value = 0.008;
+      bassGain.gain.value = 0.060;
+      harmonyGain.gain.value = 0.020;
+      airGain.gain.value = 0.010;
 
       musicGain.connect(masterGain);
       sfxGain.connect(masterGain);
@@ -166,14 +214,21 @@ export class AudioDirector {
       bass.connect(bassGain);
       bassGain.connect(musicFilter);
 
+      const harmony = context.createOscillator();
+      harmony.type = 'triangle';
+      harmony.frequency.value = 82.5;
+      harmony.connect(harmonyGain);
+      harmonyGain.connect(musicFilter);
+
       const air = context.createOscillator();
-      air.type = 'triangle';
-      air.frequency.value = 110;
+      air.type = 'sine';
+      air.frequency.value = 165;
       air.connect(airGain);
       airGain.connect(musicFilter);
       musicFilter.connect(musicGain);
 
       bass.start();
+      harmony.start();
       air.start();
 
       this.context = context;
@@ -182,6 +237,7 @@ export class AudioDirector {
       this.sfxGain = sfxGain;
       this.musicFilter = musicFilter;
       this.bassGain = bassGain;
+      this.harmonyGain = harmonyGain;
       this.airGain = airGain;
       this.noiseBuffer = this.createNoiseBuffer(context);
       this.nextPulseAt = context.currentTime;
@@ -191,10 +247,28 @@ export class AudioDirector {
     }
   }
 
+  private getAudioContextConstructor(): AudioContextConstructor | null {
+    if (typeof window === 'undefined') return null;
+    const audioWindow = window as typeof window & { webkitAudioContext?: AudioContextConstructor };
+    return audioWindow.AudioContext ?? audioWindow.webkitAudioContext ?? null;
+  }
+
+  private primeContext(context: AudioContext): void {
+    try {
+      const buffer = context.createBuffer(1, 1, 22050);
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.start(0);
+    } catch (error) {
+      console.debug('[Rune Ball] Audio prime skipped.', error);
+    }
+  }
+
   private playComboMilestone(combo: number): void {
     const base = 470 + Math.min(12, combo) * 10;
-    this.playTone(base, base * 1.04, 0.12, 0.045, 'sine');
-    this.playTone(base * 1.5, base * 1.52, 0.16, 0.032, 'triangle', 0.045);
+    this.playTone(base, base * 1.04, 0.13, 0.065, 'sine');
+    this.playTone(base * 1.5, base * 1.52, 0.17, 0.048, 'triangle', 0.045);
   }
 
   private playTone(
