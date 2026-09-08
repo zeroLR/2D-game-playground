@@ -68,6 +68,7 @@ Do **not** add these before the core loop is validated:
 - [MVP-SPEC.md](./MVP-SPEC.md) — gameplay, controls, architecture, performance, acceptance criteria.
 - [ART-DIRECTION.md](./ART-DIRECTION.md) — visual hierarchy, VFX language, UI and motion constraints.
 - [ROADMAP.md](./ROADMAP.md) — implementation slices and playtest gates.
+- [P5-VFX-AUDIO.md](./P5-VFX-AUDIO.md) — audiovisual hierarchy, camera / motion rules, performance budgets, and the P5 phone gate.
 - [POST-MVP-PROGRESSION.md](./POST-MVP-PROGRESSION.md) — deferred progression candidates including Overdrive Archetypes and Rune Cards + Ascension Release.
 
 ## Decision rule
