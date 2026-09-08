@@ -1,0 +1,70 @@
+name: Rune Ball audio vendor
+
+on:
+  push:
+    branches:
+      - feat/rune-ball-p5-2-asset-audio
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    if: ${{ !contains(github.event.head_commit.message, '[audio-vendored]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/rune-ball-p5-2-asset-audio
+          fetch-depth: 0
+
+      - name: Download CC0 audio assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="rune-ball/public/audio"
+          mkdir -p "$out"
+
+          download() {
+            local url="$1"
+            local path="$2"
+            curl -L --fail --retry 3 --retry-delay 1 --connect-timeout 15 "$url" -o "$path"
+            test -s "$path"
+          }
+
+          # BGM: vitalezzz — Claimed by the Void (CC0), mirrored from a public GitHub repo.
+          download "https://raw.githubusercontent.com/Saber-Amir-Kh/Get-Bob-to-the-job/43b93dd86601e9ed75f6d98310468bcf575bd01e/music%20themes/claimed_by_the_void_mix.ogg" "$out/bgm-claimed-by-void.ogg"
+          download "https://raw.githubusercontent.com/Saber-Amir-Kh/Get-Bob-to-the-job/43b93dd86601e9ed75f6d98310468bcf575bd01e/music%20themes/claimed_by_the_void.mp3" "$out/bgm-claimed-by-void.mp3"
+
+          # SFX: Kenney CC0 packs, acquired from a public mirror with explicit provenance.
+          base="https://raw.githubusercontent.com/manuel-palacio/brickstorm/main/public/audio"
+          for stem in brick-hit brick-armored brick-break wall-hit heartbeat laser powerup-get level-complete; do
+            download "$base/$stem.ogg" "$out/$stem.ogg"
+            download "$base/$stem.mp3" "$out/$stem.mp3"
+          done
+
+          # Ogg/Vorbis files must carry the OggS signature.
+          for file in "$out"/*.ogg; do
+            sig="$(head -c 4 "$file")"
+            if [ "$sig" != "OggS" ]; then
+              echo "Invalid OGG signature: $file ($sig)" >&2
+              exit 1
+            fi
+          done
+
+          echo "Vendored audio:"
+          ls -lh "$out"
+
+      - name: Commit vendored assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rune-ball/public/audio
+          if git diff --cached --quiet; then
+            echo "Audio assets already present."
+            exit 0
+          fi
+          git commit -m "chore(rune-ball): vendor CC0 audio assets [audio-vendored]"
+          git push origin HEAD:feat/rune-ball-p5-2-asset-audio
