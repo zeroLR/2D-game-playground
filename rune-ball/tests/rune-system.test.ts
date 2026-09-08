@@ -49,4 +49,23 @@ describe('RuneSystem', () => {
     for (let index = 0; index < 10; index += 1) runes.registerImpact(true);
     expect(runes.snapshot.charge).toBe(100);
   });
+
+  it('makes Rune activations free during Overdrive without refilling charge', () => {
+    const runes = new RuneSystem();
+    runes.activate('vortex', { x: 0, y: 0 });
+    runes.activate('split', { x: 0, y: 0 });
+    runes.activate('chain', { x: 0, y: 0 });
+    runes.consumeChain();
+    expect(runes.snapshot.charge).toBe(10);
+
+    runes.setOverdriveActive(true);
+    expect(runes.snapshot.cost).toBe(0);
+    expect(runes.activate('vortex', { x: 30, y: 30 }).success).toBe(true);
+    expect(runes.activate('split', { x: 50, y: 50 }).success).toBe(true);
+    expect(runes.activate('chain', { x: 70, y: 70 }).success).toBe(true);
+    expect(runes.snapshot.charge).toBe(10);
+
+    runes.setOverdriveActive(false);
+    expect(runes.snapshot.cost).toBe(30);
+  });
 });
