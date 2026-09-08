@@ -1,6 +1,9 @@
 export type TutorialStage = 'rotate' | 'choose-route' | 'go' | 'complete';
 export type TutorialEvent = 'opened-route' | 'selected-reachable' | 'travel-started' | 'reset';
 
+export const RELIC_GLYPH = '◆';
+export const EXIT_GLYPH = '▣';
+
 export interface ObjectiveCopy {
   readonly primary: string;
   readonly secondary: string;
@@ -20,20 +23,20 @@ export function objectiveCopy(treasureCollected: boolean, completed: boolean): O
   if (completed) {
     return {
       primary: '✓ CHAPTER COMPLETE',
-      secondary: '✓ RELIC RETURNED TO THE GATE',
+      secondary: `✓ ${EXIT_GLYPH} EXIT REACHED`,
       secondaryActive: true,
     };
   }
   if (treasureCollected) {
     return {
-      primary: '✓ RELIC RECOVERED',
-      secondary: '◆ RETURN TO THE GATE',
+      primary: `✓ ${RELIC_GLYPH} RELIC RECOVERED`,
+      secondary: `${EXIT_GLYPH} RETURN TO EXIT`,
       secondaryActive: true,
     };
   }
   return {
-    primary: '◆ FIND THE RELIC',
-    secondary: '○ RETURN TO THE GATE',
+    primary: `${RELIC_GLYPH} FIND THE RELIC`,
+    secondary: `${EXIT_GLYPH} EXIT SEALED`,
     secondaryActive: false,
   };
 }

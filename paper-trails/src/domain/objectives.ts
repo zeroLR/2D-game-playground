@@ -41,3 +41,17 @@ export function resolveObjectiveArrival(progress: ObjectiveProgress, page: PageS
   }
   return { progress, event: 'none' };
 }
+
+/**
+ * Resolve objective semantics for an explicit travel command.
+ * Intermediate Pages are traversal-only: only the final destination can
+ * collect a relic, report a sealed exit, or complete the chapter.
+ */
+export function resolveObjectiveTraversal(
+  progress: ObjectiveProgress,
+  traversedPages: readonly PageState[],
+): ArrivalResolution {
+  const destination = traversedPages[traversedPages.length - 1];
+  if (!destination) return { progress, event: 'none' };
+  return resolveObjectiveArrival(progress, destination);
+}

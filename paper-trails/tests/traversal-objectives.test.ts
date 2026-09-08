@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_DEFINITION_REGISTRY, DEMO_LEVEL } from '../src/domain/demo-level';
-import { createObjectiveProgress, resolveObjectiveArrival } from '../src/domain/objectives';
+import {
+  createObjectiveProgress,
+  resolveObjectiveArrival,
+  resolveObjectiveTraversal,
+} from '../src/domain/objectives';
 import {
   buildAdjacencyGraph,
   moveTravelerToPage,
@@ -31,9 +35,9 @@ describe('P3 traveler traversal', () => {
   });
 });
 
-describe('P3 objective loop', () => {
-  it('keeps the exit locked before treasure, then completes after returning with treasure', () => {
-    let world = resetLevel(DEMO_LEVEL, DEMO_DEFINITION_REGISTRY);
+describe('P4.1.1 objective semantics', () => {
+  it('keeps the exit locked before treasure, then completes after explicitly returning to it', () => {
+    const world = resetLevel(DEMO_LEVEL, DEMO_DEFINITION_REGISTRY);
     let progress = createObjectiveProgress();
     const goal = world.pages.find((page) => page.id === 'p3');
     const treasure = world.pages.find((page) => page.id === 'p9');
@@ -52,5 +56,32 @@ describe('P3 objective loop', () => {
     const completed = resolveObjectiveArrival(progress, goal!);
     expect(completed.event).toBe('completed');
     expect(completed.progress.completed).toBe(true);
+  });
+
+  it('ignores an exit crossed on the way to the relic because only the selected destination resolves', () => {
+    let world = resetLevel(DEMO_LEVEL, DEMO_DEFINITION_REGISTRY);
+    world = rotatePage(world, DEMO_DEFINITION_REGISTRY, 'p7');
+    const graph = buildAdjacencyGraph(world, DEMO_DEFINITION_REGISTRY);
+    const path = shortestPath(graph, world.travelerPageId, 'p9');
+    expect(path).toEqual(['p7', 'p4', 'p1', 'p2', 'p3', 'p6', 'p9']);
+
+    const pages = path!.map((pageId) => world.pages.find((page) => page.id === pageId)!);
+    const resolution = resolveObjectiveTraversal(createObjectiveProgress(), pages);
+    expect(resolution.event).toBe('treasure-collected');
+    expect(resolution.progress.treasureCollected).toBe(true);
+    expect(resolution.progress.completed).toBe(false);
+  });
+
+  it('does not complete when an open exit is only an intermediate Page', () => {
+    const world = resetLevel(DEMO_LEVEL, DEMO_DEFINITION_REGISTRY);
+    const p9 = world.pages.find((page) => page.id === 'p9')!;
+    const p6 = world.pages.find((page) => page.id === 'p6')!;
+    const p3 = world.pages.find((page) => page.id === 'p3')!;
+    const p2 = world.pages.find((page) => page.id === 'p2')!;
+    const withRelic = { treasureCollected: true, completed: false } as const;
+
+    const resolution = resolveObjectiveTraversal(withRelic, [p9, p6, p3, p2]);
+    expect(resolution.event).toBe('none');
+    expect(resolution.progress.completed).toBe(false);
   });
 });
