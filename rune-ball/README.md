@@ -4,19 +4,22 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P2.1 — Rebound Utility & Chase Flow**
+**P2.2 — Velocity Identity & Rebound Readability**
 
-The validated P1 ball-feel loop and P2 destruction/combo loop are now extended so wall bounces actively return the ball into useful play instead of creating dead travel time.
+The P1 ball feel and P2 destruction/combo loop are now tuned around a clearer velocity language: normal swipes control direction at a stable cruise speed, while wall rebounds create the first temporary high-speed state with a distinct in-world visual signature.
 
 Current slice includes:
 
 - four-way swipe redirect with deterministic fixed-step motion
+- stable cruise-speed steering without cumulative swipe-spam acceleration
 - Crystal and Armored Crystal targets
 - score + forgiving Combo
 - pooled hit / break feedback
-- temporary rebound speed boost
+- temporary higher-speed rebound tier
 - mild forward-cone rebound assist that never replaces swipe control
-- chase-aware target respawn bias to reduce dead air
+- rebound compression / launch beat, brighter extended trail, and directional wall response
+- chase-aware target respawn bias
+- lightweight target materialize animation on respawn
 
 Rune recognition, Flow, Overdrive, final VFX/audio, and session results remain out of scope until later gates.
 

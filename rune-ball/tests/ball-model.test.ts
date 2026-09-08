@@ -19,23 +19,31 @@ describe('BallModel', () => {
     expect(first.snapshot.velocity.y).toBeCloseTo(second.snapshot.velocity.y, 8);
   });
 
-  it('redirects strongly toward the requested four-way intent', () => {
+  it('redirects strongly toward the requested four-way intent while preserving cruise velocity', () => {
     const ball = new BallModel(bounds);
+    const cruiseSpeed = ball.snapshot.speed;
+
     ball.applyDirectionalRedirect('down');
     const afterDown = ball.snapshot;
     expect(afterDown.velocity.y).toBeGreaterThan(0);
-    expect(afterDown.speed).toBeGreaterThanOrEqual(320);
+    expect(afterDown.speed).toBeCloseTo(cruiseSpeed, 8);
 
     ball.applyDirectionalRedirect('left');
     const afterLeft = ball.snapshot;
     expect(afterLeft.velocity.x).toBeLessThan(0);
-    expect(afterLeft.speed).toBeLessThanOrEqual(440);
+    expect(afterLeft.speed).toBeCloseTo(cruiseSpeed, 8);
   });
 
-  it('keeps repeated redirects inside the authored normal-speed clamp', () => {
+  it('does not reward repeated swipe spam with cumulative speed', () => {
     const ball = new BallModel(bounds);
-    for (let index = 0; index < 20; index += 1) ball.applyDirectionalRedirect('right');
-    expect(ball.snapshot.speed).toBeCloseTo(440, 6);
+    const cruiseSpeed = ball.snapshot.speed;
+
+    for (let index = 0; index < 30; index += 1) {
+      ball.applyDirectionalRedirect(index % 2 === 0 ? 'right' : 'up');
+    }
+
+    expect(ball.snapshot.speed).toBeCloseTo(cruiseSpeed, 8);
+    expect(ball.snapshot.reboundStrength).toBe(0);
   });
 
   it('reflects from arena walls without allowing the ball center outside its radius-safe bounds', () => {
@@ -50,15 +58,16 @@ describe('BallModel', () => {
       expect(snapshot.position.x).toBeLessThanOrEqual(bounds.right - snapshot.radius);
       expect(snapshot.position.y).toBeGreaterThanOrEqual(bounds.top + snapshot.radius);
       expect(snapshot.position.y).toBeLessThanOrEqual(bounds.bottom - snapshot.radius);
-      expect(snapshot.speed).toBeLessThanOrEqual(500.000001);
-      if (snapshot.reboundStrength <= 0) expect(snapshot.speed).toBeLessThanOrEqual(440.000001);
+      expect(snapshot.speed).toBeLessThanOrEqual(470.000001);
+      if (snapshot.reboundStrength <= 0) expect(snapshot.speed).toBeLessThanOrEqual(400.000001);
     }
 
     expect(hitObserved).toBe(true);
   });
 
-  it('activates a temporary rebound speed window and decays back to the normal cap', () => {
+  it('activates a clearly separated rebound velocity tier and decays to cruise', () => {
     const ball = new BallModel(bounds);
+    const cruiseSpeed = ball.snapshot.speed;
     let wallHit = false;
 
     for (let index = 0; index < 240 && !wallHit; index += 1) {
@@ -67,12 +76,33 @@ describe('BallModel', () => {
 
     expect(wallHit).toBe(true);
     expect(ball.snapshot.reboundStrength).toBeGreaterThan(0.99);
-    expect(ball.snapshot.speed).toBeGreaterThanOrEqual(320);
+    expect(ball.snapshot.speed).toBeGreaterThan(cruiseSpeed * 1.2);
+    expect(ball.snapshot.speed).toBeLessThanOrEqual(470);
 
     ball.setBounds({ left: -10_000, right: 10_000, top: -10_000, bottom: 10_000 });
     ball.update(0.8);
     expect(ball.snapshot.reboundStrength).toBe(0);
-    expect(ball.snapshot.speed).toBeLessThanOrEqual(440.000001);
+    expect(ball.snapshot.speed).toBeCloseTo(cruiseSpeed, 6);
+  });
+
+  it('keeps swipe authoritative during rebound without stacking extra velocity', () => {
+    const ball = new BallModel(bounds);
+    let wallHit = false;
+
+    for (let index = 0; index < 240 && !wallHit; index += 1) {
+      wallHit = ball.update(1 / 60).wallHits.length > 0;
+    }
+
+    expect(wallHit).toBe(true);
+    const reboundSpeed = ball.snapshot.speed;
+    ball.applyDirectionalRedirect('left');
+    expect(ball.snapshot.velocity.x).toBeLessThan(0);
+    expect(ball.snapshot.speed).toBeCloseTo(reboundSpeed, 6);
+
+    for (let index = 0; index < 20; index += 1) {
+      ball.applyDirectionalRedirect(index % 2 === 0 ? 'up' : 'right');
+    }
+    expect(ball.snapshot.speed).toBeCloseTo(reboundSpeed, 6);
   });
 
   it('nudges rebound direction toward a forward target without changing speed', () => {
