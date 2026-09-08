@@ -35,7 +35,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Paper Trails P4 32 pixel-art page board');
+    app.canvas.setAttribute('aria-label', 'Paper Trails P4.1 mechanic-legibility page board');
     app.stage.addChild(scene);
 
     const resizeObserver = new ResizeObserver(() => {
@@ -48,7 +48,7 @@ async function bootstrap(): Promise<void> {
 
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
-    console.info('[Paper Trails] P4 pixel-art board ready.');
+    console.info('[Paper Trails] P4.1 mechanic-legibility board ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
