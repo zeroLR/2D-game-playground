@@ -73,4 +73,34 @@ describe('TargetSystem', () => {
     expect(spawned.position.x).toBeGreaterThan(origin.x);
     expect(Math.hypot(spawned.position.x - origin.x, spawned.position.y - origin.y)).toBeGreaterThanOrEqual(88);
   });
+
+  it('pulls targets toward a Vortex center while keeping them inside the arena', () => {
+    const system = new TargetSystem(bounds, 8);
+    const center = { x: 150, y: 250 };
+    const before = system.snapshot;
+    const candidate = before
+      .filter((target) => Math.hypot(target.position.x - center.x, target.position.y - center.y) < 210)
+      .sort((left, right) => Math.hypot(left.position.x - center.x, left.position.y - center.y) - Math.hypot(right.position.x - center.x, right.position.y - center.y))[0];
+    expect(candidate).toBeDefined();
+
+    const beforeDistance = Math.hypot(candidate.position.x - center.x, candidate.position.y - center.y);
+    const affected = system.applyVortex(center, 210, 0.2);
+    const after = system.snapshot.find((target) => target.id === candidate.id)!;
+    const afterDistance = Math.hypot(after.position.x - center.x, after.position.y - center.y);
+
+    expect(affected).toContain(candidate.id);
+    expect(afterDistance).toBeLessThan(beforeDistance);
+    expect(after.position.x).toBeGreaterThanOrEqual(bounds.left + after.radius);
+    expect(after.position.y).toBeLessThanOrEqual(bounds.bottom - after.radius);
+  });
+
+  it('returns nearest chain targets while respecting exclusions and limits', () => {
+    const system = new TargetSystem(bounds, 8);
+    const origin = system.snapshot[3];
+    const nearby = system.nearbyTargetIds(origin.position, 240, new Set([origin.id]), 3);
+
+    expect(nearby.length).toBeGreaterThan(0);
+    expect(nearby.length).toBeLessThanOrEqual(3);
+    expect(nearby).not.toContain(origin.id);
+  });
 });
