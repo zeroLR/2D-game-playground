@@ -4,28 +4,25 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P4.1 — Mechanic Legibility Gate**
+**P4.1.1 — Objective Semantics Gate**
 
-The P1–P4 graph, touch manipulation, traversal, objectives, local progress, and six-family 32 px Pixel Art contract are preserved. P4.1 focuses only on making the core cause-and-effect loop readable on a phone before authoring the 10-level MVP.
+P1–P4.1 graph manipulation, contextual `GO →`, route pulses, traveler legibility, local progress, and the six-family 32 px Pixel Art contract remain intact. P4.1.1 only addresses the final physical-phone comprehension issue: the player could move correctly but did not understand what the relic and exit symbols meant, and could accidentally complete the chapter by merely crossing the exit.
 
-The interaction model is now explicit:
+Objective semantics are now explicit and consistent:
 
-1. rotate or swap a Page to open a road,
-2. newly reachable routes receive a short antique-gold connection pulse,
-3. tap a reachable Page to select it,
-4. use the contextual `GO →` control to travel.
+- `◆ RELIC` is used both on the objective strip and on the Relic Page.
+- `▣ SEALED` / `▣ EXIT` is used both on the objective strip and on the Exit Page.
+- recovering the relic changes the exit state and pulses the Exit Page twice.
+- objective effects resolve only for the Page explicitly selected as the `GO →` destination; intermediate Pages never collect the relic or complete the chapter.
 
-The previous hidden `tap the destination twice to walk` convention has been removed.
+The intended loop is therefore:
 
-P4.1 also adds:
+1. reshape the book to connect roads,
+2. explicitly select `◆ RELIC` and use `GO →`,
+3. observe `▣ EXIT` open and receive the exit pulse,
+4. explicitly select `▣ EXIT` and use `GO →` to complete the chapter.
 
-- a compact objective strip in the header (`FIND THE RELIC` → `RETURN TO THE GATE`),
-- first-run visual focus cues for Rotate and contextual GO,
-- stronger traveler separation via a restrained antique-gold ground halo and dark silhouette backing,
-- the authored arrival frames on traversal completion,
-- reduced debug presentation: Page names appear only for the selected Page and reachability/rotation debug numbers are no longer part of the main HUD.
-
-The existing smoke chapter remains the gate: reshape the book, traverse to the Hidden Grove relic, then return to the Ruined Gate to complete the chapter. The next slice should only proceed to the 10-level authored set once an unbriefed mobile player can understand `reshape → connect → travel → objective` from the interface itself.
+The visual treatment extends the existing restrained antique-book system: ink, moss, stone, parchment, antique gold, and muted seal red. No new HUD pattern or accent-color family is introduced.
 
 ## Scripts
 
