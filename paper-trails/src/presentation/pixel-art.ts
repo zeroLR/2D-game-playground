@@ -52,9 +52,10 @@ export function createTravelerSprite(
   moving: boolean,
   frameTick: number,
   pageSize: number,
+  arriving = false,
 ): Sprite {
   const frames = getTravelerFrames();
-  const indices = animationIndices(facing, moving);
+  const indices = animationIndices(facing, moving, arriving);
   const frameIndex = indices[Math.abs(frameTick) % indices.length] ?? indices[0] ?? 0;
   const sprite = new Sprite(frames[frameIndex]);
   sprite.anchor.set(0.5, 1);
@@ -78,7 +79,8 @@ function getTravelerFrames(): readonly Texture[] {
   return travelerFrames;
 }
 
-function animationIndices(facing: TravelerFacing, moving: boolean): readonly number[] {
+function animationIndices(facing: TravelerFacing, moving: boolean, arriving: boolean): readonly number[] {
+  if (arriving) return TRAVELER_ANIMATIONS.arrival;
   if (!moving) return TRAVELER_ANIMATIONS.idle;
   if (facing === 'north') return TRAVELER_ANIMATIONS.walkNorth;
   if (facing === 'east' || facing === 'west') return TRAVELER_ANIMATIONS.walkEast;
