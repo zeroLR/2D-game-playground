@@ -4,9 +4,9 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P5 — VFX + Audio Characterization**
+**P5.1 — Audibility + Impact Calibration**
 
-The validated Swipe / Rebound / destruction / Rune / Flow / Overdrive loop now has a product-facing audiovisual hierarchy. P5 does not add gameplay rules; it makes the existing events readable by sight and sound without relying on prototype state labels.
+The validated Swipe / Rebound / destruction / Rune / Flow / Overdrive loop already has a product-facing visual hierarchy. P5.1 is a narrow correction after phone testing showed that the procedural Audio layer was not audible on-device and the Camera response was too subtle to perceive.
 
 Current slice includes:
 
@@ -19,14 +19,15 @@ Current slice includes:
 - tapered sampled ball trail and final-ish rotating core / sigil treatment
 - distinct pooled Contact / Break / Overdrive particle tiers with hard caps
 - directional Chain propagation and canonical Rune confirmation treatment
-- bounded camera punch hierarchy: none on normal contact, light on Break, stronger on Chain, strongest on Overdrive entry
+- bounded camera punch hierarchy with one readable directional punch + small recoil; no continuous shake
 - screen-scale Overdrive response reserved for entry / release rather than continuously flashing
 - Web Audio procedural characterization for contact, break, Rebound, Combo milestones, each Rune, Chain, Overdrive entry / exit, and a result-sting hook for P6
-- autoplay-safe audio initialization on the first explicit pointer interaction
+- hardened Web Audio activation with Safari fallback, user-gesture priming, observable runtime state, and a short first-unlock cue
+- raised phone-test audio mix so SFX / ambient intensity are intentionally audible before final sample/BGM production
 - `prefers-reduced-motion` support for camera displacement, large flashes, and secondary effect density
 - HUD cleanup: success states are primarily communicated by world feedback; text remains contextual for failed Rune input / insufficient charge
 
-P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
+P5.1 does not change gameplay. P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
 
 ## Commands
 
