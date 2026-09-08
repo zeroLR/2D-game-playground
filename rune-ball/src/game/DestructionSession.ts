@@ -4,7 +4,7 @@ import { TargetSystem, type TargetKind, type TargetState } from './TargetSystem'
 import type { Point2D, SwipeDirection } from '../input/SwipeClassifier';
 
 export type DestructionEvent =
-  | { type: 'wall-hit'; side: WallSide }
+  | { type: 'wall-hit'; side: WallSide; assisted: boolean; targetId: number | null }
   | { type: 'target-hit'; targetId: number; kind: TargetKind; position: Point2D; armorBroken: boolean }
   | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
@@ -52,9 +52,26 @@ export class DestructionSession {
   update(dtSeconds: number): DestructionEvent[] {
     const events: DestructionEvent[] = [];
     const ballUpdate = this.ball.update(dtSeconds);
-    for (const side of ballUpdate.wallHits) events.push({ type: 'wall-hit', side });
 
-    const spawned = this.targets.update(dtSeconds);
+    let assisted = false;
+    let reboundTargetId: number | null = null;
+    if (ballUpdate.wallHits.length > 0) {
+      const afterBounce = this.ball.snapshot;
+      const reboundTarget = this.targets.findReboundTarget(afterBounce.position, afterBounce.velocity);
+      if (reboundTarget) {
+        assisted = this.ball.applyReboundAssist(reboundTarget.position);
+        reboundTargetId = assisted ? reboundTarget.id : null;
+      }
+      for (const side of ballUpdate.wallHits) {
+        events.push({ type: 'wall-hit', side, assisted, targetId: reboundTargetId });
+      }
+    }
+
+    const chaseBall = this.ball.snapshot;
+    const spawned = this.targets.update(dtSeconds, {
+      origin: chaseBall.position,
+      velocity: chaseBall.velocity,
+    });
     for (const target of spawned) {
       events.push({
         type: 'target-spawn',

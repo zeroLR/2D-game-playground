@@ -18,6 +18,11 @@ export interface TargetHitResult {
   armorBroken: boolean;
 }
 
+export interface ChaseContext {
+  origin: Point2D;
+  velocity: Point2D;
+}
+
 const SPAWN_ANCHORS: Point2D[] = [
   { x: 0.20, y: 0.18 },
   { x: 0.50, y: 0.14 },
@@ -35,13 +40,16 @@ const SPAWN_ANCHORS: Point2D[] = [
 
 const DEFAULT_TARGET_COUNT = 8;
 const RESPAWN_DELAY_SECONDS = 0.24;
+const REBOUND_TARGET_MAX_ANGLE_RADIANS = Math.PI * 0.42;
+const CHASE_SPAWN_LOOKAHEAD = 4;
 
 export class TargetSystem {
   private bounds: ArenaBounds;
   private readonly desiredCount: number;
   private readonly targets = new Map<number, TargetState>();
   private nextId = 1;
-  private spawnCursor = 0;
+  private spawnCount = 0;
+  private anchorCursor = 0;
   private respawnTimer = 0;
 
   constructor(bounds: ArenaBounds, desiredCount = DEFAULT_TARGET_COUNT) {
@@ -65,7 +73,7 @@ export class TargetSystem {
     }
   }
 
-  update(dtSeconds: number): TargetState[] {
+  update(dtSeconds: number, chaseContext?: ChaseContext): TargetState[] {
     const spawned: TargetState[] = [];
     if (this.targets.size >= this.desiredCount) return spawned;
 
@@ -73,7 +81,7 @@ export class TargetSystem {
     this.respawnTimer = Math.max(0, this.respawnTimer - dt);
     if (this.respawnTimer > 0) return spawned;
 
-    const target = this.spawnNext();
+    const target = this.spawnNext(chaseContext);
     spawned.push({ ...target, position: { ...target.position } });
     this.respawnTimer = RESPAWN_DELAY_SECONDS;
     return spawned;
@@ -88,6 +96,35 @@ export class TargetSystem {
       if (dx * dx + dy * dy <= combined * combined) ids.push(target.id);
     }
     return ids;
+  }
+
+  findReboundTarget(origin: Point2D, velocity: Point2D): TargetState | null {
+    const speed = Math.hypot(velocity.x, velocity.y);
+    if (!(speed > 0)) return null;
+
+    const forward = { x: velocity.x / speed, y: velocity.y / speed };
+    const minAlignment = Math.cos(REBOUND_TARGET_MAX_ANGLE_RADIANS);
+    const diagonal = Math.hypot(this.bounds.right - this.bounds.left, this.bounds.bottom - this.bounds.top);
+    let best: TargetState | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const target of this.targets.values()) {
+      const dx = target.position.x - origin.x;
+      const dy = target.position.y - origin.y;
+      const distance = Math.hypot(dx, dy);
+      if (!(distance > 0)) continue;
+
+      const alignment = (dx * forward.x + dy * forward.y) / distance;
+      if (alignment < minAlignment) continue;
+
+      const proximity = 1 - this.clamp(distance / diagonal, 0, 1);
+      const score = alignment * 0.76 + proximity * 0.24;
+      if (score <= bestScore) continue;
+      bestScore = score;
+      best = target;
+    }
+
+    return best ? { ...best, position: { ...best.position } } : null;
   }
 
   hit(targetId: number): TargetHitResult | null {
@@ -110,24 +147,20 @@ export class TargetSystem {
     return { target: resultTarget, destroyed, armorBroken };
   }
 
-  private spawnNext(): TargetState {
-    const anchor = SPAWN_ANCHORS[this.spawnCursor % SPAWN_ANCHORS.length];
-    const sequenceIndex = this.spawnCursor;
-    this.spawnCursor += 1;
+  private spawnNext(chaseContext?: ChaseContext): TargetState {
+    const sequenceIndex = this.spawnCount;
+    this.spawnCount += 1;
 
     const kind: TargetKind = sequenceIndex % 4 === 3 ? 'armored' : 'crystal';
     const radius = kind === 'armored' ? 20 : 16;
     const maxHp = kind === 'armored' ? 2 : 1;
-    const width = this.bounds.right - this.bounds.left;
-    const height = this.bounds.bottom - this.bounds.top;
+    const anchorIndex = this.chooseAnchor(radius, chaseContext);
+    const position = this.positionForAnchor(SPAWN_ANCHORS[anchorIndex], radius);
 
     const target: TargetState = {
       id: this.nextId,
       kind,
-      position: {
-        x: this.clamp(this.bounds.left + width * anchor.x, this.bounds.left + radius, this.bounds.right - radius),
-        y: this.clamp(this.bounds.top + height * anchor.y, this.bounds.top + radius, this.bounds.bottom - radius),
-      },
+      position,
       radius,
       hp: maxHp,
       maxHp,
@@ -136,6 +169,64 @@ export class TargetSystem {
     this.nextId += 1;
     this.targets.set(target.id, target);
     return target;
+  }
+
+  private chooseAnchor(radius: number, chaseContext?: ChaseContext): number {
+    const fallbackIndex = this.anchorCursor % SPAWN_ANCHORS.length;
+    if (!chaseContext) {
+      this.anchorCursor = (fallbackIndex + 1) % SPAWN_ANCHORS.length;
+      return fallbackIndex;
+    }
+
+    const speed = Math.hypot(chaseContext.velocity.x, chaseContext.velocity.y);
+    if (!(speed > 0)) {
+      this.anchorCursor = (fallbackIndex + 1) % SPAWN_ANCHORS.length;
+      return fallbackIndex;
+    }
+
+    const forward = { x: chaseContext.velocity.x / speed, y: chaseContext.velocity.y / speed };
+    const diagonal = Math.hypot(this.bounds.right - this.bounds.left, this.bounds.bottom - this.bounds.top);
+    const idealDistance = diagonal * 0.38;
+    let bestIndex = fallbackIndex;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (let offset = 0; offset < CHASE_SPAWN_LOOKAHEAD; offset += 1) {
+      const index = (this.anchorCursor + offset) % SPAWN_ANCHORS.length;
+      const position = this.positionForAnchor(SPAWN_ANCHORS[index], radius);
+      const dx = position.x - chaseContext.origin.x;
+      const dy = position.y - chaseContext.origin.y;
+      const distance = Math.hypot(dx, dy);
+      if (!(distance > 0)) continue;
+
+      const alignment = (dx * forward.x + dy * forward.y) / distance;
+      const distanceScore = 1 - this.clamp(Math.abs(distance - idealDistance) / idealDistance, 0, 1);
+      let nearestTargetDistance = diagonal;
+      for (const target of this.targets.values()) {
+        nearestTargetDistance = Math.min(
+          nearestTargetDistance,
+          Math.hypot(position.x - target.position.x, position.y - target.position.y),
+        );
+      }
+      const separation = this.clamp(nearestTargetDistance / 96, 0, 1);
+      const nearBallPenalty = distance < 88 ? 0.8 : 0;
+      const score = alignment * 0.62 + distanceScore * 0.24 + separation * 0.14 - nearBallPenalty;
+
+      if (score <= bestScore) continue;
+      bestScore = score;
+      bestIndex = index;
+    }
+
+    this.anchorCursor = (bestIndex + 1) % SPAWN_ANCHORS.length;
+    return bestIndex;
+  }
+
+  private positionForAnchor(anchor: Point2D, radius: number): Point2D {
+    const width = this.bounds.right - this.bounds.left;
+    const height = this.bounds.bottom - this.bounds.top;
+    return {
+      x: this.clamp(this.bounds.left + width * anchor.x, this.bounds.left + radius, this.bounds.right - radius),
+      y: this.clamp(this.bounds.top + height * anchor.y, this.bounds.top + radius, this.bounds.bottom - radius),
+    };
   }
 
   private clamp(value: number, min: number, max: number): number {

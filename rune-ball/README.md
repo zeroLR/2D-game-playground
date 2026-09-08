@@ -4,9 +4,21 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P0 — Repository-complete Scaffold**
+**P2.1 — Rebound Utility & Chase Flow**
 
-This slice proves only the runtime shell: renderer startup, deterministic update boundary, portrait layout, tests, production asset paths, and repository Pages integration. Ball movement and gameplay input begin in P1.
+The validated P1 ball-feel loop and P2 destruction/combo loop are now extended so wall bounces actively return the ball into useful play instead of creating dead travel time.
+
+Current slice includes:
+
+- four-way swipe redirect with deterministic fixed-step motion
+- Crystal and Armored Crystal targets
+- score + forgiving Combo
+- pooled hit / break feedback
+- temporary rebound speed boost
+- mild forward-cone rebound assist that never replaces swipe control
+- chase-aware target respawn bias to reduce dead air
+
+Rune recognition, Flow, Overdrive, final VFX/audio, and session results remain out of scope until later gates.
 
 ## Commands
 
@@ -24,8 +36,12 @@ flowchart LR
   Browser[Browser / Pointer Layer] --> Bootstrap[Observable Renderer Bootstrap]
   Bootstrap --> Pixi[PixiJS Application]
   Pixi --> Loop[FixedStepLoop 60 Hz]
-  Loop --> Domain[Gameplay Update - P1+]
-  Loop --> Scene[Presentation Render]
+  Loop --> Session[DestructionSession]
+  Session --> Ball[BallModel]
+  Session --> Targets[TargetSystem]
+  Session --> Combo[ComboModel]
+  Session --> Events[Gameplay Events]
+  Events --> Scene[Pixi Presentation / Pooled VFX]
 ```
 
 Renderer initialization is explicitly timed and falls back across WebGL 1, WebGL, and WebGPU. Failure renders a visible error state into `#app` instead of leaving a blank page.

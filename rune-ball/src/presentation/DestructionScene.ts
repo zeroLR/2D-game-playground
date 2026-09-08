@@ -18,8 +18,8 @@ const COLORS = {
   armored: 0xb582ff,
 };
 
-const TRAIL_POINTS = 14;
-const WALL_FLASH_SECONDS = 0.10;
+const TRAIL_POINTS = 16;
+const WALL_FLASH_SECONDS = 0.14;
 const TARGET_HIT_FLASH_SECONDS = 0.11;
 const BREAK_RING_SECONDS = 0.20;
 
@@ -45,7 +45,7 @@ export class DestructionScene extends Container {
   private readonly swipeTrace = new Graphics();
   private readonly inputSurface = new Graphics();
   private readonly status = new Text({
-    text: 'P2  //  BREAK THE FIELD',
+    text: 'P2.1  //  REBOUND CHASE',
     style: {
       fill: COLORS.text,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -162,21 +162,24 @@ export class DestructionScene extends Container {
   present(alpha: number): void {
     const snapshot = this.session.snapshot;
     const position = this.session.interpolatedBallPosition(alpha);
-    const speedRatio = Math.min(1, Math.max(0, (snapshot.ball.speed - 240) / 200));
+    const speedRatio = Math.min(1, Math.max(0, (snapshot.ball.speed - 240) / 260));
+    const reboundStrength = snapshot.ball.reboundStrength;
 
     this.ball.position.set(position.x, position.y);
     this.ballCore.position.copyFrom(this.ball.position);
     this.ballGlow.position.copyFrom(this.ball.position);
-    this.ballGlow.alpha = 0.13 + speedRatio * 0.12;
-    this.ballGlow.scale.set(0.9 + speedRatio * 0.24);
+    this.ballGlow.alpha = 0.13 + speedRatio * 0.12 + reboundStrength * 0.10;
+    this.ballGlow.scale.set(0.9 + speedRatio * 0.24 + reboundStrength * 0.12);
 
     this.scoreText.text = `SCORE ${snapshot.combo.score.toString().padStart(6, '0')}`;
     this.comboText.text = snapshot.combo.combo > 0 ? `COMBO ${snapshot.combo.combo}` : 'COMBO --';
     this.comboText.alpha = snapshot.combo.combo > 0 ? 1 : 0.5;
-    this.telemetry.text = `SPEED ${Math.round(snapshot.ball.speed).toString().padStart(3, '0')}${this.lastDirection ? `  //  ${this.lastDirection.toUpperCase()}` : ''}`;
+    const reboundLabel = reboundStrength > 0.05 ? '  //  REBOUND' : '';
+    const directionLabel = this.lastDirection ? `  //  ${this.lastDirection.toUpperCase()}` : '';
+    this.telemetry.text = `SPEED ${Math.round(snapshot.ball.speed).toString().padStart(3, '0')}${reboundLabel}${directionLabel}`;
 
     this.drawTargets(snapshot.targets);
-    this.drawTrail(position, speedRatio);
+    this.drawTrail(position, speedRatio, reboundStrength);
     this.drawWallFlash();
     this.drawBreakRings();
     this.drawSwipeTrace();
@@ -299,15 +302,15 @@ export class DestructionScene extends Container {
     }
   }
 
-  private drawTrail(position: Point2D, speedRatio: number): void {
+  private drawTrail(position: Point2D, speedRatio: number, reboundStrength: number): void {
     this.trail.clear();
     const points = [...this.trailPoints, position];
     points.forEach((point, index) => {
       const life = (index + 1) / points.length;
-      const radius = 2 + life * (2.5 + speedRatio * 1.5);
+      const radius = 2 + life * (2.5 + speedRatio * 1.5 + reboundStrength * 1.2);
       this.trail.circle(point.x, point.y, radius).fill({
         color: index % 3 === 0 ? COLORS.magenta : COLORS.cyan,
-        alpha: life * (0.10 + speedRatio * 0.18),
+        alpha: life * (0.10 + speedRatio * 0.18 + reboundStrength * 0.12),
       });
     });
   }
@@ -329,10 +332,36 @@ export class DestructionScene extends Container {
     this.wallFlash.clear();
     if (peak <= 0) return;
 
-    const alpha = Math.min(0.9, peak / WALL_FLASH_SECONDS);
+    const alpha = Math.min(0.95, peak / WALL_FLASH_SECONDS);
     this.wallFlash
       .roundRect(left, top, right - left, bottom - top, 26)
-      .stroke({ color: COLORS.cyan, width: 4, alpha: alpha * 0.5 });
+      .stroke({ color: COLORS.cyan, width: 4, alpha: alpha * 0.56 });
+
+    const drawSide = (side: WallSide): void => {
+      const life = this.wallFlashes[side];
+      if (life <= 0) return;
+      const sideAlpha = Math.min(1, life / WALL_FLASH_SECONDS);
+      switch (side) {
+        case 'left':
+          this.wallFlash.moveTo(left, top + 28).lineTo(left, bottom - 28);
+          break;
+        case 'right':
+          this.wallFlash.moveTo(right, top + 28).lineTo(right, bottom - 28);
+          break;
+        case 'top':
+          this.wallFlash.moveTo(left + 28, top).lineTo(right - 28, top);
+          break;
+        case 'bottom':
+          this.wallFlash.moveTo(left + 28, bottom).lineTo(right - 28, bottom);
+          break;
+      }
+      this.wallFlash.stroke({ color: COLORS.magenta, width: 6, alpha: sideAlpha * 0.72 });
+    };
+
+    drawSide('left');
+    drawSide('right');
+    drawSide('top');
+    drawSide('bottom');
   }
 
   private drawSwipeTrace(): void {
