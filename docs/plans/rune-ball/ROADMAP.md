@@ -255,7 +255,14 @@ If fewer than four are convincingly true, continue core-loop iteration rather th
 
 ## Post-MVP candidates
 
-Only after validation:
+Only after validation.
+
+Detailed progression hypotheses are recorded in [POST-MVP-PROGRESSION.md](./POST-MVP-PROGRESSION.md).
+
+### Progression expansion candidates
+
+- **Overdrive Archetypes** — a run/build changes how the short Overdrive climax rewrites Rune and arena rules, instead of relying on flat stat bonuses.
+- **Rune Cards + Ascension Release** — each equipped Rune gets a compact bottom-edge card; successful uses build Rune-specific energy, and a full card can be tapped to release an upper-tier Rune without replacing gesture casting.
 
 ### Mechanic depth
 
