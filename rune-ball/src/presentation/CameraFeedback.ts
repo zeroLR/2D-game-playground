@@ -11,10 +11,10 @@ interface CameraImpulse {
 }
 
 const PROFILES: Record<CameraFeedbackTier, { amplitude: number; duration: number }> = {
-  break: { amplitude: 1.35, duration: 0.11 },
-  chain: { amplitude: 2.15, duration: 0.15 },
-  'overdrive-enter': { amplitude: 4.8, duration: 0.27 },
-  'overdrive-exit': { amplitude: 2.4, duration: 0.18 },
+  break: { amplitude: 1.9, duration: 0.12 },
+  chain: { amplitude: 3.2, duration: 0.17 },
+  'overdrive-enter': { amplitude: 6.0, duration: 0.30 },
+  'overdrive-exit': { amplitude: 3.4, duration: 0.20 },
 };
 
 const MAX_IMPULSES = 6;
@@ -59,9 +59,12 @@ export class CameraFeedback {
       }
 
       const progress = 1 - impulse.life / impulse.duration;
-      const envelope = Math.pow(1 - progress, 1.7);
-      const primary = Math.sin(progress * Math.PI * 4 + impulse.phase) * impulse.amplitude * envelope;
-      const secondary = Math.cos(progress * Math.PI * 5 + impulse.phase * 0.7) * impulse.amplitude * 0.34 * envelope;
+      const envelope = Math.pow(1 - progress, 1.25);
+
+      // One readable directional punch followed by a small recoil. This reads as
+      // impact rather than continuous handheld shake while staying deterministic.
+      const primary = Math.sin(progress * Math.PI * 1.75) * impulse.amplitude * envelope;
+      const secondary = Math.sin(progress * Math.PI * 2.5 + impulse.phase) * impulse.amplitude * 0.16 * envelope;
       const perpendicular = { x: -impulse.direction.y, y: impulse.direction.x };
       x += impulse.direction.x * primary + perpendicular.x * secondary;
       y += impulse.direction.y * primary + perpendicular.y * secondary;
