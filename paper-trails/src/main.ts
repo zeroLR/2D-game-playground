@@ -1,5 +1,5 @@
 import { createRenderer } from './bootstrap/create-renderer';
-import { PixelBoardScene } from './presentation/pixel-board-scene';
+import { P5BoardScene } from './presentation/p5-board-scene';
 import { preloadPixelArt } from './presentation/pixel-art';
 import './style.css';
 
@@ -31,11 +31,11 @@ async function bootstrap(): Promise<void> {
   try {
     const app = await createRenderer(host);
     await preloadPixelArt();
-    const scene = new PixelBoardScene(app.screen.width, app.screen.height);
+    const scene = new P5BoardScene(app.screen.width, app.screen.height);
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Paper Trails P4.1.1 world-embedded objective page board');
+    app.canvas.setAttribute('aria-label', 'Paper Trails P5 ten-level authored pixel campaign');
     app.stage.addChild(scene);
 
     const resizeObserver = new ResizeObserver(() => {
@@ -48,7 +48,7 @@ async function bootstrap(): Promise<void> {
 
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
-    console.info('[Paper Trails] P4.1.1 world-embedded objective board ready.');
+    console.info('[Paper Trails] P5 authored campaign ready.');
   } catch (error) {
     showBootstrapFailure(error);
   }
