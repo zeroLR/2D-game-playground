@@ -4,24 +4,28 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P4 — 32 px Pixel Art & Page Identity**
+**P4.1 — Mechanic Legibility Gate**
 
-The P1–P3 graph, touch manipulation, traversal, objective, and local-progress semantics are preserved, but the smoke-board presentation has been replaced by authored low-saturation Pixel Art.
+The P1–P4 graph, touch manipulation, traversal, objectives, local progress, and six-family 32 px Pixel Art contract are preserved. P4.1 focuses only on making the core cause-and-effect loop readable on a phone before authoring the 10-level MVP.
 
-P4 ships six Page families:
+The interaction model is now explicit:
 
-- Forest Path
-- Ruined Gate
-- Stone Bridge
-- Crossroads
-- Shrine Seal
-- Hidden Grove
+1. rotate or swap a Page to open a road,
+2. newly reachable routes receive a short antique-gold connection pulse,
+3. tap a reachable Page to select it,
+4. use the contextual `GO →` control to travel.
 
-Each Page image is authored as a 96×96 RGBA PNG on a 3×3 logical grid of 32 px tiles. Page art rotates with the Page state, while graph connectivity continues to come exclusively from the domain model.
+The previous hidden `tap the destination twice to walk` convention has been removed.
 
-The traveler now uses a 32×48 frame size and a 17-frame RGBA sprite sheet covering idle, walk south/east/north, mirrored west walking, and arrival frames. Runtime rendering keeps the palette intentionally restrained: ink, moss, stone, parchment, antique gold, and a small muted-red accent for seals/invalid state.
+P4.1 also adds:
 
-The existing P3 smoke chapter still validates the full loop: reshape the book, traverse to the Hidden Grove relic, then return to the Ruined Gate to complete the chapter.
+- a compact objective strip in the header (`FIND THE RELIC` → `RETURN TO THE GATE`),
+- first-run visual focus cues for Rotate and contextual GO,
+- stronger traveler separation via a restrained antique-gold ground halo and dark silhouette backing,
+- the authored arrival frames on traversal completion,
+- reduced debug presentation: Page names appear only for the selected Page and reachability/rotation debug numbers are no longer part of the main HUD.
+
+The existing smoke chapter remains the gate: reshape the book, traverse to the Hidden Grove relic, then return to the Ruined Gate to complete the chapter. The next slice should only proceed to the 10-level authored set once an unbriefed mobile player can understand `reshape → connect → travel → objective` from the interface itself.
 
 ## Scripts
 
