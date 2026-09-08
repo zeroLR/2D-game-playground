@@ -18,6 +18,7 @@ export interface BoardLayout {
   readonly boardWidth: number;
   readonly boardHeight: number;
   readonly rotateButton: UiRect;
+  readonly travelButton: UiRect;
   readonly resetButton: UiRect;
   readonly feedbackY: number;
 }
@@ -30,8 +31,9 @@ export function computeBoardLayout(width: number, height: number, columns = 3, r
   const margin = clamp(Math.round(safeWidth * 0.055), 16, 28);
   const headerBottom = Math.max(104, Math.round(safeHeight * 0.14));
   const controlHeight = Math.max(MIN_TOUCH_TARGET, 52);
-  const controlGap = 12;
-  const resetWidth = 104;
+  const controlGap = 10;
+  const travelWidth = 76;
+  const resetWidth = 96;
   const footerReserve = controlHeight + 80;
   const maxBoardWidth = Math.max(1, safeWidth - margin * 2);
   const maxBoardHeight = Math.max(1, safeHeight - headerBottom - footerReserve);
@@ -43,7 +45,7 @@ export function computeBoardLayout(width: number, height: number, columns = 3, r
   const boardX = Math.round((safeWidth - boardWidth) / 2);
   const boardY = Math.round(headerBottom + Math.max(0, (maxBoardHeight - boardHeight) / 2));
 
-  const groupWidth = controlHeight + controlGap + resetWidth;
+  const groupWidth = controlHeight + controlGap + travelWidth + controlGap + resetWidth;
   const controlsX = Math.round((safeWidth - groupWidth) / 2);
   const desiredControlY = boardY + boardHeight + 18;
   const controlY = Math.min(desiredControlY, safeHeight - controlHeight - 36);
@@ -59,8 +61,14 @@ export function computeBoardLayout(width: number, height: number, columns = 3, r
     boardWidth,
     boardHeight,
     rotateButton: { x: controlsX, y: controlY, width: controlHeight, height: controlHeight },
-    resetButton: {
+    travelButton: {
       x: controlsX + controlHeight + controlGap,
+      y: controlY,
+      width: travelWidth,
+      height: controlHeight,
+    },
+    resetButton: {
+      x: controlsX + controlHeight + controlGap + travelWidth + controlGap,
       y: controlY,
       width: resetWidth,
       height: controlHeight,
