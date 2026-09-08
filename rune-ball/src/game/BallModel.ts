@@ -13,6 +13,7 @@ export interface BallSnapshot {
   velocity: Point2D;
   radius: number;
   speed: number;
+  reboundStrength: number;
 }
 
 export type WallSide = 'left' | 'right' | 'top' | 'bottom';
@@ -24,10 +25,14 @@ export interface BallUpdateResult {
 const START_SPEED = 260;
 const REDIRECT_MIN_SPEED = 320;
 const REDIRECT_GAIN = 28;
-const MAX_SPEED = 440;
+const NORMAL_MAX_SPEED = 440;
+const REBOUND_MAX_SPEED = 500;
 const REDIRECT_WEIGHT = 0.78;
 const BOUNCE_SPEED_RETENTION = 0.985;
 const TARGET_DEFLECTION_WEIGHT = 0.42;
+const REBOUND_BOOST_MULTIPLIER = 1.12;
+const REBOUND_DURATION_SECONDS = 0.72;
+const REBOUND_ASSIST_MAX_TURN_RADIANS = Math.PI / 10;
 
 export class BallModel {
   readonly radius = 18;
@@ -36,6 +41,9 @@ export class BallModel {
   private position: Point2D;
   private previousPosition: Point2D;
   private velocity: Point2D;
+  private reboundSecondsRemaining = 0;
+  private reboundBonusSpeed = 0;
+  private reboundInitialBonusSpeed = 0;
 
   constructor(bounds: ArenaBounds) {
     this.bounds = bounds;
@@ -53,6 +61,7 @@ export class BallModel {
       velocity: { ...this.velocity },
       radius: this.radius,
       speed: Math.hypot(this.velocity.x, this.velocity.y),
+      reboundStrength: this.clamp(this.reboundSecondsRemaining / REBOUND_DURATION_SECONDS, 0, 1),
     };
   }
 
@@ -71,7 +80,13 @@ export class BallModel {
       y: current.y * (1 - REDIRECT_WEIGHT) + intent.y * REDIRECT_WEIGHT,
     });
     const currentSpeed = Math.hypot(this.velocity.x, this.velocity.y);
-    const nextSpeed = this.clamp(Math.max(REDIRECT_MIN_SPEED, currentSpeed + REDIRECT_GAIN), REDIRECT_MIN_SPEED, MAX_SPEED);
+    const baseSpeed = Math.max(0, currentSpeed - this.reboundBonusSpeed);
+    const nextBaseSpeed = this.clamp(
+      Math.max(REDIRECT_MIN_SPEED, baseSpeed + REDIRECT_GAIN),
+      REDIRECT_MIN_SPEED,
+      NORMAL_MAX_SPEED,
+    );
+    const nextSpeed = Math.min(REBOUND_MAX_SPEED, nextBaseSpeed + this.reboundBonusSpeed);
 
     this.velocity = {
       x: blended.x * nextSpeed,
@@ -96,8 +111,39 @@ export class BallModel {
     };
   }
 
+  applyReboundAssist(targetPosition: Point2D): boolean {
+    const toTargetRaw = {
+      x: targetPosition.x - this.position.x,
+      y: targetPosition.y - this.position.y,
+    };
+    const targetDistance = Math.hypot(toTargetRaw.x, toTargetRaw.y);
+    if (!(targetDistance > this.radius)) return false;
+
+    const current = this.normalized(this.velocity);
+    const toTarget = { x: toTargetRaw.x / targetDistance, y: toTargetRaw.y / targetDistance };
+    const dot = this.clamp(current.x * toTarget.x + current.y * toTarget.y, -1, 1);
+    if (dot <= 0) return false;
+
+    const angle = Math.acos(dot);
+    if (angle <= 0.0001) return true;
+
+    const turn = Math.min(angle, REBOUND_ASSIST_MAX_TURN_RADIANS);
+    const cross = current.x * toTarget.y - current.y * toTarget.x;
+    const signedTurn = cross >= 0 ? turn : -turn;
+    const cos = Math.cos(signedTurn);
+    const sin = Math.sin(signedTurn);
+    const assisted = {
+      x: current.x * cos - current.y * sin,
+      y: current.x * sin + current.y * cos,
+    };
+    const speed = Math.hypot(this.velocity.x, this.velocity.y);
+    this.velocity = { x: assisted.x * speed, y: assisted.y * speed };
+    return true;
+  }
+
   update(dtSeconds: number): BallUpdateResult {
     const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
+    this.updateReboundDecay(dt);
     this.previousPosition = { ...this.position };
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
@@ -129,10 +175,17 @@ export class BallModel {
     }
 
     if (wallHits.length > 0) {
-      const speed = Math.hypot(this.velocity.x, this.velocity.y);
-      const retained = this.clamp(speed * BOUNCE_SPEED_RETENTION, REDIRECT_MIN_SPEED * 0.88, MAX_SPEED);
+      const totalSpeed = Math.hypot(this.velocity.x, this.velocity.y);
+      const baseSpeed = Math.max(0, totalSpeed - this.reboundBonusSpeed);
+      const retained = this.clamp(
+        baseSpeed * BOUNCE_SPEED_RETENTION,
+        REDIRECT_MIN_SPEED * 0.88,
+        NORMAL_MAX_SPEED,
+      );
       const direction = this.normalized(this.velocity);
+      this.clearReboundBoost();
       this.velocity = { x: direction.x * retained, y: direction.y * retained };
+      this.activateReboundBoost();
     }
 
     return { wallHits };
@@ -144,6 +197,43 @@ export class BallModel {
       x: this.previousPosition.x + (this.position.x - this.previousPosition.x) * t,
       y: this.previousPosition.y + (this.position.y - this.previousPosition.y) * t,
     };
+  }
+
+  private activateReboundBoost(): void {
+    const baseSpeed = Math.hypot(this.velocity.x, this.velocity.y);
+    const boosted = this.clamp(
+      Math.max(REDIRECT_MIN_SPEED, baseSpeed * REBOUND_BOOST_MULTIPLIER),
+      REDIRECT_MIN_SPEED,
+      REBOUND_MAX_SPEED,
+    );
+    const direction = this.normalized(this.velocity);
+    this.reboundInitialBonusSpeed = Math.max(0, boosted - baseSpeed);
+    this.reboundBonusSpeed = this.reboundInitialBonusSpeed;
+    this.reboundSecondsRemaining = REBOUND_DURATION_SECONDS;
+    this.velocity = { x: direction.x * boosted, y: direction.y * boosted };
+  }
+
+  private updateReboundDecay(dtSeconds: number): void {
+    if (this.reboundSecondsRemaining <= 0 || this.reboundBonusSpeed <= 0) return;
+
+    const previousBonus = this.reboundBonusSpeed;
+    this.reboundSecondsRemaining = Math.max(0, this.reboundSecondsRemaining - dtSeconds);
+    const strength = this.clamp(this.reboundSecondsRemaining / REBOUND_DURATION_SECONDS, 0, 1);
+    const nextBonus = this.reboundInitialBonusSpeed * strength;
+    const speed = Math.hypot(this.velocity.x, this.velocity.y);
+    const baseSpeed = Math.max(0, speed - previousBonus);
+    const nextSpeed = Math.min(REBOUND_MAX_SPEED, baseSpeed + nextBonus);
+    const direction = this.normalized(this.velocity);
+    this.velocity = { x: direction.x * nextSpeed, y: direction.y * nextSpeed };
+    this.reboundBonusSpeed = nextBonus;
+
+    if (this.reboundSecondsRemaining <= 0) this.clearReboundBoost();
+  }
+
+  private clearReboundBoost(): void {
+    this.reboundSecondsRemaining = 0;
+    this.reboundBonusSpeed = 0;
+    this.reboundInitialBonusSpeed = 0;
   }
 
   private centerOf(bounds: ArenaBounds): Point2D {

@@ -51,4 +51,26 @@ describe('TargetSystem', () => {
     expect(system.collidingTargetIds(target.position, 18)).toEqual([target.id]);
     expect(system.collidingTargetIds({ x: bounds.right, y: bounds.bottom }, 4)).toEqual([]);
   });
+
+  it('finds a useful target inside the reflected forward cone', () => {
+    const system = new TargetSystem(bounds, 8);
+    const origin = { x: bounds.left + 18, y: (bounds.top + bounds.bottom) / 2 };
+    const target = system.findReboundTarget(origin, { x: 1, y: 0 });
+
+    expect(target).not.toBeNull();
+    expect(target!.position.x).toBeGreaterThan(origin.x);
+  });
+
+  it('biases delayed respawn toward the current chase direction without spawning under the ball', () => {
+    const system = new TargetSystem(bounds, 1);
+    const initial = system.snapshot[0];
+    system.hit(initial.id);
+
+    const origin = { x: 150, y: 250 };
+    expect(system.update(0.24, { origin, velocity: { x: 1, y: 0 } })).toHaveLength(1);
+    const spawned = system.snapshot[0];
+
+    expect(spawned.position.x).toBeGreaterThan(origin.x);
+    expect(Math.hypot(spawned.position.x - origin.x, spawned.position.y - origin.y)).toBeGreaterThanOrEqual(88);
+  });
 });

@@ -50,10 +50,40 @@ describe('BallModel', () => {
       expect(snapshot.position.x).toBeLessThanOrEqual(bounds.right - snapshot.radius);
       expect(snapshot.position.y).toBeGreaterThanOrEqual(bounds.top + snapshot.radius);
       expect(snapshot.position.y).toBeLessThanOrEqual(bounds.bottom - snapshot.radius);
-      expect(snapshot.speed).toBeLessThanOrEqual(440.000001);
+      expect(snapshot.speed).toBeLessThanOrEqual(500.000001);
+      if (snapshot.reboundStrength <= 0) expect(snapshot.speed).toBeLessThanOrEqual(440.000001);
     }
 
     expect(hitObserved).toBe(true);
+  });
+
+  it('activates a temporary rebound speed window and decays back to the normal cap', () => {
+    const ball = new BallModel(bounds);
+    let wallHit = false;
+
+    for (let index = 0; index < 240 && !wallHit; index += 1) {
+      wallHit = ball.update(1 / 60).wallHits.length > 0;
+    }
+
+    expect(wallHit).toBe(true);
+    expect(ball.snapshot.reboundStrength).toBeGreaterThan(0.99);
+    expect(ball.snapshot.speed).toBeGreaterThanOrEqual(320);
+
+    ball.setBounds({ left: -10_000, right: 10_000, top: -10_000, bottom: 10_000 });
+    ball.update(0.8);
+    expect(ball.snapshot.reboundStrength).toBe(0);
+    expect(ball.snapshot.speed).toBeLessThanOrEqual(440.000001);
+  });
+
+  it('nudges rebound direction toward a forward target without changing speed', () => {
+    const ball = new BallModel(bounds);
+    const before = ball.snapshot;
+    const assisted = ball.applyReboundAssist({ x: bounds.right, y: before.position.y });
+    const after = ball.snapshot;
+
+    expect(assisted).toBe(true);
+    expect(after.speed).toBeCloseTo(before.speed, 8);
+    expect(after.velocity.y).toBeGreaterThan(before.velocity.y);
   });
 
   it('interpolates between previous and current fixed-step states', () => {
