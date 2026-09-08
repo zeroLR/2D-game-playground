@@ -127,6 +127,48 @@ export class TargetSystem {
     return best ? { ...best, position: { ...best.position } } : null;
   }
 
+  nearbyTargetIds(center: Point2D, radius: number, excluded: ReadonlySet<number>, limit: number): number[] {
+    return [...this.targets.values()]
+      .filter((target) => !excluded.has(target.id))
+      .map((target) => ({
+        id: target.id,
+        distance: Math.hypot(target.position.x - center.x, target.position.y - center.y),
+      }))
+      .filter((candidate) => candidate.distance <= radius)
+      .sort((left, right) => left.distance - right.distance)
+      .slice(0, Math.max(0, Math.floor(limit)))
+      .map((candidate) => candidate.id);
+  }
+
+  applyVortex(center: Point2D, radius: number, pullFactor: number): number[] {
+    const safeRadius = Math.max(1, radius);
+    const safeFactor = this.clamp(Number.isFinite(pullFactor) ? pullFactor : 0, 0, 0.45);
+    if (safeFactor <= 0) return [];
+
+    const affected: number[] = [];
+    for (const target of this.targets.values()) {
+      const dx = center.x - target.position.x;
+      const dy = center.y - target.position.y;
+      const distance = Math.hypot(dx, dy);
+      if (!(distance > 0) || distance > safeRadius) continue;
+
+      const falloff = 1 - distance / safeRadius;
+      const step = safeFactor * (0.45 + falloff * 0.55);
+      target.position.x = this.clamp(
+        target.position.x + dx * step,
+        this.bounds.left + target.radius,
+        this.bounds.right - target.radius,
+      );
+      target.position.y = this.clamp(
+        target.position.y + dy * step,
+        this.bounds.top + target.radius,
+        this.bounds.bottom - target.radius,
+      );
+      affected.push(target.id);
+    }
+    return affected;
+  }
+
   hit(targetId: number): TargetHitResult | null {
     const target = this.targets.get(targetId);
     if (!target) return null;
