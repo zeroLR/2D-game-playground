@@ -4,25 +4,28 @@ Mobile-first antique-book spatial puzzle built with PixiJS, TypeScript, and Vite
 
 ## Current milestone
 
-**P4.1.1 Revision — World-Embedded Objective**
+**P5 — Authored Level Set & Tutorial Progression**
 
-P1–P4.1 graph manipulation, contextual `GO →`, route pulses, traveler legibility, local progress, and the six-family 32 px Pixel Art contract remain intact. The explicit-destination rule from P4.1.1 is also preserved: only the Page intentionally selected through `GO →` can resolve an objective, so merely crossing the relic or exit never collects or completes anything.
+P1–P4.1.1 graph manipulation, explicit `GO →` destination semantics, route feedback, 32 px Pixel Art, animated relic objects, and stateful gates remain intact. P5 turns that vertical slice into the first complete 10-level gameplay sequence.
 
-This revision removes the objective-strip copy and Page-corner `RELIC / SEALED / EXIT` badges. Objective meaning is now communicated by the game world itself:
+### Level progression
 
-- the Hidden Grove contains a small animated 32 px-style relic object that floats independently from the Page background,
-- the Ruined Gate is a stateful Page environment with `sealed → opening → open` visual states,
-- collecting the relic removes the world object, starts the gate-opening animation, and gives the Gate Page a restrained antique-gold pulse,
-- the main HUD no longer repeats `FIND RELIC / RETURN TO EXIT`; the board remains the primary information surface.
+1. **TURN** — one Page rotation.
+2. **MATCH** — multiple rotations / matching reciprocal exits.
+3. **EXCHANGE** — swap only; rotation is disabled for the chapter.
+4. **RESHAPE** — combine rotate + swap.
+5. **DETOUR** — an exit is already valid; an optional relic requires deliberately breaking it.
+6. **FORK** — Crossroads creates multiple valid routes.
+7. **SEAL** — connectivity alone is insufficient; the animated relic must open the stateful gate.
+8. **UNMAKE** — repurpose a connector by destroying an existing route.
+9. **RETURN** — required relic detour followed by rebuilding the exit route.
+10. **MASTERY** — all six Page families on one 3×3 board, with no new rule introduced.
 
-The intended first-run reading is therefore visual rather than textual:
+Tutorial UI remains intentionally restrained. L1 uses the established rotate cue, L3 introduces swap with an in-board `↔` cue, and later levels rely on Page topology and world-state animation rather than instruction text.
 
-1. notice the animated relic in the distant Page,
-2. reshape the book and explicitly travel to it,
-3. watch the distant sealed gate react and open,
-4. reshape or travel back to the visibly open gate and explicitly enter it.
+Relics are data-driven per level as `none`, `optional`, or `required`. Optional relic levels can exit directly; required relic levels preserve the world-embedded `relic → gate opens` cause/effect. Merely crossing either objective never resolves it — only the explicit `GO →` destination does.
 
-The visual treatment extends the existing restrained antique-book system only: ink, moss, stone, parchment, antique gold, and muted seal red. No new HUD pattern or accent-color family is introduced.
+Campaign progress uses the existing local completion save and resumes at the first incomplete level. Completion shows manipulation count only after the puzzle is solved; L5 also reports whether the optional relic was found. `NEXT` advances through the campaign, `RESET` restores the exact authored initial state, and the scene respects `prefers-reduced-motion`.
 
 ## Scripts
 
