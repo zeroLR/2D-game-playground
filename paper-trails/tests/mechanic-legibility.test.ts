@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { advanceTutorial, newlyReachable, objectiveCopy } from '../src/presentation/mechanic-legibility';
 
 describe('P4.1 mechanic legibility guidance', () => {
-  it('progresses from rotate to route choice to contextual GO without a hidden double-tap step', () => {
-    let stage = advanceTutorial('rotate', 'rotated-open-route');
+  it('progresses from route opening to route choice to contextual GO without a hidden double-tap step', () => {
+    let stage = advanceTutorial('rotate', 'opened-route');
     expect(stage).toBe('choose-route');
 
     stage = advanceTutorial(stage, 'selected-reachable');
