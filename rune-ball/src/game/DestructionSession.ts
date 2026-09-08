@@ -2,6 +2,7 @@ import { BallModel, type ArenaBounds, type BallSnapshot, type WallSide } from '.
 import { ComboModel, type ComboSnapshot } from './ComboModel';
 import { TargetSystem, type TargetKind, type TargetState } from './TargetSystem';
 import type { Point2D, SwipeDirection } from '../input/SwipeClassifier';
+import { FlowSystem, type FlowSnapshot } from '../progression/FlowSystem';
 import { RuneSystem, type RuneSnapshot } from '../rune/RuneSystem';
 import type { RuneKind } from '../rune/RuneTypes';
 
@@ -15,16 +16,21 @@ export type DestructionEvent =
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
-  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] };
+  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] }
+  | { type: 'overdrive-enter'; duration: number }
+  | { type: 'overdrive-exit' };
 
 export interface DestructionSnapshot {
   ball: BallSnapshot;
   targets: TargetState[];
   combo: ComboSnapshot;
   runes: RuneSnapshot;
+  flow: FlowSnapshot;
   splitEchoes: Point2D[];
 }
 
+const BASE_TARGET_COUNT = 8;
+const OVERDRIVE_TARGET_COUNT = 11;
 const VORTEX_RADIUS = 210;
 const VORTEX_PULL_PER_SECOND = 2.15;
 const SPLIT_ECHO_OFFSET = 42;
@@ -37,12 +43,13 @@ export class DestructionSession {
   private readonly targets: TargetSystem;
   private readonly combo = new ComboModel();
   private readonly runes = new RuneSystem();
+  private readonly flow = new FlowSystem();
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
 
   constructor(bounds: ArenaBounds) {
     this.ball = new BallModel(bounds);
-    this.targets = new TargetSystem(bounds);
+    this.targets = new TargetSystem(bounds, BASE_TARGET_COUNT);
   }
 
   get snapshot(): DestructionSnapshot {
@@ -53,6 +60,7 @@ export class DestructionSession {
       targets: this.targets.snapshot,
       combo: this.combo.snapshot,
       runes,
+      flow: this.flow.snapshot,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball) : [],
     };
   }
@@ -69,11 +77,15 @@ export class DestructionSession {
   }
 
   activateRune(rune: RuneKind, center: Point2D): DestructionEvent[] {
+    const events: DestructionEvent[] = [];
     const result = this.runes.activate(rune, center);
     if (!result.success) {
       return [{ type: 'rune-failed', rune, reason: result.reason, center: { ...center } }];
     }
-    return [{ type: 'rune-activated', rune, center: { ...center } }];
+
+    events.push({ type: 'rune-activated', rune, center: { ...center } });
+    if (this.flow.registerRune()) this.enterOverdrive(events);
+    return events;
   }
 
   interpolatedBallPosition(alpha: number): Point2D {
@@ -82,6 +94,10 @@ export class DestructionSession {
 
   update(dtSeconds: number): DestructionEvent[] {
     const events: DestructionEvent[] = [];
+    if (this.flow.update(dtSeconds)) {
+      this.syncOverdriveState(false);
+      events.push({ type: 'overdrive-exit' });
+    }
     this.runes.update(dtSeconds);
 
     const ballUpdate = this.ball.update(dtSeconds);
@@ -122,7 +138,7 @@ export class DestructionSession {
       });
     }
 
-    if (this.combo.update(dtSeconds)) events.push({ type: 'combo-reset' });
+    if (this.combo.update(dtSeconds, this.flow.snapshot.overdriveActive)) events.push({ type: 'combo-reset' });
 
     const damagedThisStep = new Set<number>();
     const ball = this.ball.snapshot;
@@ -168,6 +184,7 @@ export class DestructionSession {
     if (!hit) return false;
     damagedThisStep.add(targetId);
     this.runes.registerImpact(hit.destroyed);
+    if (this.flow.registerImpact(hit.destroyed)) this.enterOverdrive(events);
 
     events.push({
       type: 'target-hit',
@@ -214,6 +231,7 @@ export class DestructionSession {
         origin: { ...hit.target.position },
         targets: chainedPositions,
       });
+      if (this.flow.registerChain(chainedIds.length)) this.enterOverdrive(events);
 
       for (const chainedId of chainedIds) {
         this.resolveTargetHit(chainedId, 'chain', false, events, damagedThisStep);
@@ -221,6 +239,16 @@ export class DestructionSession {
     }
 
     return hit.destroyed;
+  }
+
+  private enterOverdrive(events: DestructionEvent[]): void {
+    this.syncOverdriveState(true);
+    events.push({ type: 'overdrive-enter', duration: this.flow.snapshot.overdriveDuration });
+  }
+
+  private syncOverdriveState(active: boolean): void {
+    this.runes.setOverdriveActive(active);
+    this.targets.setDesiredCount(active ? OVERDRIVE_TARGET_COUNT : BASE_TARGET_COUNT);
   }
 
   private splitEchoPositions(ball: BallSnapshot): Point2D[] {
