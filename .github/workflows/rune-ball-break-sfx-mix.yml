@@ -1,0 +1,32 @@
+name: Rune Ball break SFX mix patch
+
+on:
+  push:
+    branches:
+      - fix/rune-ball-break-sfx-mix
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rune-ball-break-sfx-mix
+      - name: Lower target break mix
+        run: |
+          file="rune-ball/src/audio/AudioDirector.ts"
+          sed -i "s/armored ? 0.86 : 0.72/armored ? 0.72 : 0.58/" "$file"
+          sed -i "s/playSfx('laser', 0.46, 1.12)/playSfx('laser', 0.38, 1.12)/" "$file"
+          sed -i "s/playSfx('powerup-get', 0.44, 1 +/playSfx('powerup-get', 0.36, 1 +/" "$file"
+          grep -A6 "playBreak" "$file"
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/rune-ball-break-sfx-mix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rune-ball/src/audio/AudioDirector.ts .github/workflows/rune-ball-break-sfx-mix.yml
+          git commit -m "fix(rune-ball): lower target break SFX mix"
+          git push origin HEAD:fix/rune-ball-break-sfx-mix
