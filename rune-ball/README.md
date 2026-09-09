@@ -4,9 +4,13 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P5.2 — Asset Audio Delivery Gate**
+**P5.3 — Preload + Audio Warm-up Gate**
 
-The validated Swipe / Rebound / destruction / Rune / Flow / Overdrive loop already has a product-facing visual hierarchy. P5.2 replaces the inaudible procedural Web Audio experiment with a materially different delivery path: vendored CC0 BGM/SFX played through `HTMLAudioElement`.
+The validated Swipe / Rebound / destruction / Rune / Flow / Overdrive loop already has a product-facing visual hierarchy. P5.3 corrects two real-device issues found after asset-backed audio shipped: BGM did not begin until a later Rune interaction, and the first Rune could stall gameplay while media work happened on demand.
+
+The runtime now uses an explicit startup lifecycle:
+
+`Boot → Preload → Ready → Tap to Enter → Audio Warm-up → Gameplay`
 
 Current slice includes:
 
@@ -24,14 +28,18 @@ Current slice includes:
 - **CC0 asset BGM:** `Claimed by the Void`, with OGG primary and MP3 compatibility fallback
 - asset SFX mapping for Contact, armored impact, Break, Rebound, Vortex, Split, Chain, Overdrive entry / exit, and a result-sting hook
 - browser codec selection: Ogg/Vorbis when supported, MP3 fallback otherwise
-- first-pointer media activation plus SFX-pool priming for mobile browser playback restrictions
+- startup progress UI using the existing cyan / violet / deep-navy visual language
+- selected runtime audio is fetched into local Blob URLs before the game is allowed to start
+- media elements are prepared before the Ready state
+- the explicit Enter tap starts BGM and primes reusable SFX voices under mobile autoplay rules
+- the FixedStepLoop is attached only after audio warm-up resolves, moving first-play decoder cost outside gameplay
 - Flow / Overdrive drive BGM intensity without changing track pitch
 - `prefers-reduced-motion` support for camera displacement, large flashes, and secondary effect density
 - HUD cleanup: success states are primarily communicated by world feedback; text remains contextual for failed Rune input / insufficient charge
 
 Audio asset provenance and CC0 licensing are recorded in `public/audio/ASSET-LICENSES.md`.
 
-P5.2 does not change gameplay. P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
+P5.3 does not change gameplay balance. The preload gate intentionally loads only the boot-critical runtime format rather than both OGG and MP3 copies. P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
 
 ## Commands
 
@@ -46,7 +54,13 @@ npm run dev
 
 ```mermaid
 flowchart LR
-  Browser[Browser / Pointer Layer] --> Gesture[PointerPathSampler + GestureRecognizer]
+  Boot[Bootstrap] --> Renderer[Renderer Init]
+  Renderer --> Preload[Boot Pack Preload]
+  Preload --> Blobs[Runtime Audio Blob Cache]
+  Blobs --> Ready[Ready / Tap to Enter]
+  Ready --> Warm[HTMLMediaElement Warm-up]
+  Warm --> Scene[Pixi Presentation + FixedStepLoop]
+  Browser[Pointer Layer] --> Gesture[PointerPathSampler + GestureRecognizer]
   Gesture --> Session[DestructionSession]
   Session --> Ball[BallModel]
   Session --> Targets[TargetSystem]
@@ -55,14 +69,13 @@ flowchart LR
   Session --> Flow[FlowSystem]
   Flow --> OD[Overdrive Rule State]
   Session --> Events[Gameplay Events]
-  Events --> Scene[Pixi Presentation]
-  Events --> Audio[AudioDirector / HTMLMediaElement]
-  Audio --> Assets[Vendored CC0 OGG + MP3 fallback]
+  Events --> Scene
+  Events --> Audio[Shared preloaded AudioDirector]
   Scene --> Pool[Pooled Impact Budget]
   Scene --> Camera[Bounded CameraFeedback]
 ```
 
-Renderer initialization is explicitly timed and falls back across WebGL 1, WebGL, and WebGPU. Failure renders a visible error state into `#app` instead of leaving a blank page.
+Renderer initialization is explicitly timed and falls back across WebGL 1, WebGL, and WebGPU. Required boot-audio failure is visible instead of silently entering an inaudible session.
 
 ## Deployment
 
