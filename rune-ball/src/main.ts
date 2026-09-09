@@ -1,4 +1,6 @@
+import { AudioDirector } from './audio/AudioDirector';
 import { createRenderer } from './bootstrap/create-renderer';
+import { PreloadScreen } from './bootstrap/PreloadScreen';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { DestructionScene } from './presentation/DestructionScene';
 import './style.css';
@@ -7,9 +9,9 @@ const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
 const host: HTMLElement = hostElement;
 
-function showBootstrapFailure(error: unknown): void {
+function showBootstrapFailure(error: unknown, detailText: string): void {
   console.error('[Rune Ball] Application bootstrap failed.', error);
-  host.dataset.bootstrapError = 'renderer';
+  host.dataset.bootstrapError = 'startup';
   host.dataset.bootstrapState = 'failed';
   host.setAttribute('aria-busy', 'false');
   host.replaceChildren();
@@ -21,18 +23,49 @@ function showBootstrapFailure(error: unknown): void {
   const title = document.createElement('strong');
   title.textContent = 'Unable to start Rune Ball';
   const detail = document.createElement('span');
-  detail.textContent = 'The renderer could not be initialized. Reload the page or try another browser.';
+  detail.textContent = detailText;
   panel.append(title, detail);
   host.append(panel);
 }
 
+function preloadLabel(asset: string): string {
+  if (asset.startsWith('bgm-')) return 'LOADING BGM';
+  return 'LOADING EFFECTS';
+}
+
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
-  console.info('[Rune Ball] Application bootstrap starting.');
+  host.setAttribute('aria-busy', 'true');
+  console.info('[Rune Ball] P5.3 preload bootstrap starting.');
+
+  const preloadScreen = new PreloadScreen(host);
+  const audio = new AudioDirector();
 
   try {
+    preloadScreen.setProgress(0.04, 'INITIALIZING RENDERER');
     const app = await createRenderer(host);
-    const scene = new DestructionScene(app.screen.width, app.screen.height);
+    preloadScreen.setProgress(0.12, 'LOADING AUDIO');
+
+    const audioReady = await audio.preload((progress) => {
+      preloadScreen.setProgress(
+        0.12 + progress.ratio * 0.88,
+        preloadLabel(progress.activeAsset),
+      );
+    });
+
+    if (!audioReady) {
+      throw new Error('Required runtime audio could not be preloaded.');
+    }
+
+    preloadScreen.setReady();
+    host.dataset.bootstrapState = 'awaiting-entry';
+    host.setAttribute('aria-busy', 'false');
+
+    // The Enter tap is the explicit mobile audio activation gate. The game loop is
+    // intentionally not running while voices are primed / decoded.
+    await preloadScreen.waitForSuccessfulEnter(() => audio.unlock());
+
+    const scene = new DestructionScene(app.screen.width, app.screen.height, audio);
     const loop = new FixedStepLoop(
       (dtSeconds) => scene.update(dtSeconds),
       (alpha) => scene.present(alpha),
@@ -40,8 +73,9 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P5.2 asset audio playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P5.3 preloaded audio playtest');
     app.stage.addChild(scene);
+
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
     });
@@ -57,9 +91,12 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P5.2 asset audio ready. BGM starts on the first arena pointer interaction.');
+    console.info('[Rune Ball] P5.3 ready. Runtime audio was downloaded and warmed before gameplay started.');
   } catch (error) {
-    showBootstrapFailure(error);
+    showBootstrapFailure(
+      error,
+      'Required renderer or audio resources could not be prepared. Reload the page and try again.',
+    );
   }
 }
 

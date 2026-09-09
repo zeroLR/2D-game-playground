@@ -154,7 +154,7 @@ export class DestructionScene extends Container {
 
   private readonly session: DestructionSession;
   private readonly pathSampler = new PointerPathSampler();
-  private readonly audio = new AudioDirector();
+  private readonly audio: AudioDirector;
   private readonly cameraFeedback = new CameraFeedback();
   private arenaBounds: ArenaBounds;
   private viewportWidth = 1;
@@ -175,8 +175,9 @@ export class DestructionScene extends Container {
   private cameraOffset: Point2D = { x: 0, y: 0 };
   private reducedMotion = false;
 
-  constructor(width: number, height: number) {
+  constructor(width: number, height: number, audio: AudioDirector) {
     super();
+    this.audio = audio;
     this.viewportWidth = Math.max(1, width);
     this.viewportHeight = Math.max(1, height);
     this.arenaBounds = this.calculateArenaBounds(width, height);
