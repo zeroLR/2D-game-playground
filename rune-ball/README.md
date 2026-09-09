@@ -4,13 +4,13 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P5.3 — Preload + Audio Warm-up Gate**
+**P5.4 — Buffered SFX Runtime Gate**
 
-The validated Swipe / Rebound / destruction / Rune / Flow / Overdrive loop already has a product-facing visual hierarchy. P5.3 corrects two real-device issues found after asset-backed audio shipped: BGM did not begin until a later Rune interaction, and the first Rune could stall gameplay while media work happened on demand.
+Real-device testing of P5.3 showed that downloading media before entry was not enough: the first `Tap to Enter` could remain stuck in a prepare state, and each `HTMLAudioElement` SFX playback could still cause visible gameplay stalls. P5.4 changes the runtime split rather than adding more media-element warm-up.
 
-The runtime now uses an explicit startup lifecycle:
+Startup lifecycle:
 
-`Boot → Preload → Ready → Tap to Enter → Audio Warm-up → Gameplay`
+`Boot → Preload bytes → Decode SFX → Ready → Tap to Enter → Resume AudioContext + Start BGM → Gameplay`
 
 Current slice includes:
 
@@ -29,17 +29,20 @@ Current slice includes:
 - asset SFX mapping for Contact, armored impact, Break, Rebound, Vortex, Split, Chain, Overdrive entry / exit, and a result-sting hook
 - browser codec selection: Ogg/Vorbis when supported, MP3 fallback otherwise
 - startup progress UI using the existing cyan / violet / deep-navy visual language
-- selected runtime audio is fetched into local Blob URLs before the game is allowed to start
-- media elements are prepared before the Ready state
-- the explicit Enter tap starts BGM and primes reusable SFX voices under mobile autoplay rules
-- the FixedStepLoop is attached only after audio warm-up resolves, moving first-play decoder cost outside gameplay
+- boot audio bytes are fetched before entry
+- all short SFX are decoded during loading into reusable in-memory `AudioBuffer`s
+- BGM remains an `HTMLAudioElement`; short SFX no longer use media-element voice pools
+- `Tap to Enter` only resumes the `AudioContext` and starts BGM; it performs no SFX decode / seek / priming
+- entry activation has a bounded timeout and returns to a retryable Ready state instead of hanging indefinitely
+- gameplay SFX use `AudioBufferSourceNode` with a hard concurrent-source cap
+- the FixedStepLoop starts only after the explicit entry activation resolves
 - Flow / Overdrive drive BGM intensity without changing track pitch
 - `prefers-reduced-motion` support for camera displacement, large flashes, and secondary effect density
 - HUD cleanup: success states are primarily communicated by world feedback; text remains contextual for failed Rune input / insufficient charge
 
 Audio asset provenance and CC0 licensing are recorded in `public/audio/ASSET-LICENSES.md`.
 
-P5.3 does not change gameplay balance. The preload gate intentionally loads only the boot-critical runtime format rather than both OGG and MP3 copies. P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
+P5.4 does not change gameplay balance. P6 still owns the 60–90 second run director, results / retry loop, sound and reduced-motion toggles, telemetry, and final production deployment validation.
 
 ## Commands
 
@@ -55,11 +58,11 @@ npm run dev
 ```mermaid
 flowchart LR
   Boot[Bootstrap] --> Renderer[Renderer Init]
-  Renderer --> Preload[Boot Pack Preload]
-  Preload --> Blobs[Runtime Audio Blob Cache]
-  Blobs --> Ready[Ready / Tap to Enter]
-  Ready --> Warm[HTMLMediaElement Warm-up]
-  Warm --> Scene[Pixi Presentation + FixedStepLoop]
+  Renderer --> Fetch[Boot Audio Fetch]
+  Fetch --> Decode[Decode Short SFX to AudioBuffer]
+  Decode --> Ready[Ready / Tap to Enter]
+  Ready --> Activate[Resume AudioContext + Start BGM]
+  Activate --> Scene[Pixi Presentation + FixedStepLoop]
   Browser[Pointer Layer] --> Gesture[PointerPathSampler + GestureRecognizer]
   Gesture --> Session[DestructionSession]
   Session --> Ball[BallModel]
@@ -70,7 +73,8 @@ flowchart LR
   Flow --> OD[Overdrive Rule State]
   Session --> Events[Gameplay Events]
   Events --> Scene
-  Events --> Audio[Shared preloaded AudioDirector]
+  Events --> SFX[AudioBufferSourceNode SFX]
+  BGM[HTMLMediaElement BGM] --> Activate
   Scene --> Pool[Pooled Impact Budget]
   Scene --> Camera[Bounded CameraFeedback]
 ```
