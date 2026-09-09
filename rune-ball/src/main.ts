@@ -29,6 +29,9 @@ function showBootstrapFailure(error: unknown, detailText: string): void {
 }
 
 function preloadLabel(asset: string): string {
+  if (asset.startsWith('decode:')) return 'DECODING EFFECTS';
+  if (asset.startsWith('prepare:')) return 'PREPARING BGM';
+  if (asset === 'ready') return 'READY';
   if (asset.startsWith('bgm-')) return 'LOADING BGM';
   return 'LOADING EFFECTS';
 }
@@ -36,7 +39,7 @@ function preloadLabel(asset: string): string {
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P5.3 preload bootstrap starting.');
+  console.info('[Rune Ball] P5.4 buffered SFX bootstrap starting.');
 
   const preloadScreen = new PreloadScreen(host);
   const audio = new AudioDirector();
@@ -54,15 +57,15 @@ async function bootstrap(): Promise<void> {
     });
 
     if (!audioReady) {
-      throw new Error('Required runtime audio could not be preloaded.');
+      throw new Error('Required runtime audio could not be preloaded and decoded.');
     }
 
     preloadScreen.setReady();
     host.dataset.bootstrapState = 'awaiting-entry';
     host.setAttribute('aria-busy', 'false');
 
-    // The Enter tap is the explicit mobile audio activation gate. The game loop is
-    // intentionally not running while voices are primed / decoded.
+    // Download + SFX decode are already complete here. The Enter gesture only
+    // resumes AudioContext and starts BGM, keeping expensive work outside gameplay.
     await preloadScreen.waitForSuccessfulEnter(() => audio.unlock());
 
     const scene = new DestructionScene(app.screen.width, app.screen.height, audio);
@@ -73,7 +76,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P5.3 preloaded audio playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P5.4 buffered SFX playtest');
     app.stage.addChild(scene);
 
     app.ticker.add((ticker) => {
@@ -91,7 +94,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P5.3 ready. Runtime audio was downloaded and warmed before gameplay started.');
+    console.info('[Rune Ball] P5.4 ready. SFX are decoded AudioBuffers before gameplay starts.');
   } catch (error) {
     showBootstrapFailure(
       error,

@@ -1,3 +1,4 @@
+import { withTimeout } from '../bootstrap/with-timeout';
 import type { ImpactSource } from '../game/DestructionSession';
 import type { RuneKind } from '../rune/RuneTypes';
 
@@ -11,10 +12,10 @@ type AudioRuntimeState =
   | 'uninitialized'
   | 'preloading'
   | 'ready'
-  | 'locked'
   | 'warming'
   | 'playing'
   | 'partial'
+  | 'locked'
   | 'failed'
   | 'unavailable';
 type SfxStem =
@@ -27,6 +28,7 @@ type SfxStem =
   | 'powerup-get'
   | 'level-complete';
 type RuntimeStem = 'bgm-claimed-by-void' | SfxStem;
+type AudioContextConstructor = new () => AudioContext;
 
 const SFX_STEMS: SfxStem[] = [
   'brick-hit',
@@ -39,7 +41,11 @@ const SFX_STEMS: SfxStem[] = [
   'level-complete',
 ];
 const RUNTIME_STEMS: RuntimeStem[] = ['bgm-claimed-by-void', ...SFX_STEMS];
-const MEDIA_READY_TIMEOUT_MS = 6000;
+const DOWNLOAD_PHASE_RATIO = 0.70;
+const DECODE_PHASE_RATIO = 0.26;
+const MEDIA_READY_TIMEOUT_MS = 2500;
+const ACTIVATION_TIMEOUT_MS = 1800;
+const MAX_ACTIVE_SFX = 28;
 
 export interface AudioPreloadProgress {
   ratio: number;
@@ -57,71 +63,8 @@ export interface AudioDebugState {
   initialized: boolean;
   state: AudioRuntimeState;
   format: AudioFormat | null;
-}
-
-class HtmlAudioPool {
-  private readonly voices: HTMLAudioElement[];
-  private cursor = 0;
-
-  constructor(url: string, voiceCount = 2) {
-    this.voices = Array.from({ length: voiceCount }, () => createAudioElement(url));
-  }
-
-  async prepare(): Promise<void> {
-    await Promise.all(this.voices.map((voice) => waitUntilMediaReady(voice)));
-  }
-
-  prime(): Promise<boolean[]> {
-    return Promise.all(this.voices.map(async (voice) => {
-      const previousMuted = voice.muted;
-      const previousVolume = voice.volume;
-      try {
-        voice.muted = true;
-        voice.volume = 0;
-        const started = voice.play();
-        await started;
-        voice.pause();
-        this.reset(voice);
-        return true;
-      } catch {
-        return false;
-      } finally {
-        voice.muted = previousMuted;
-        voice.volume = previousVolume;
-      }
-    }));
-  }
-
-  play(volume: number, playbackRate = 1): void {
-    const voice = this.acquire();
-    voice.muted = false;
-    voice.volume = clamp01(volume);
-    voice.playbackRate = Math.min(1.6, Math.max(0.55, playbackRate));
-    this.reset(voice);
-    void voice.play().catch((error: unknown) => {
-      console.debug('[Rune Ball] SFX playback skipped.', error);
-    });
-  }
-
-  pauseAll(): void {
-    for (const voice of this.voices) voice.pause();
-  }
-
-  private acquire(): HTMLAudioElement {
-    const available = this.voices.find((voice) => voice.paused || voice.ended);
-    if (available) return available;
-    const voice = this.voices[this.cursor];
-    this.cursor = (this.cursor + 1) % this.voices.length;
-    return voice;
-  }
-
-  private reset(voice: HTMLAudioElement): void {
-    try {
-      voice.currentTime = 0;
-    } catch {
-      // Some mobile browsers reject currentTime changes before metadata is ready.
-    }
-  }
+  contextState: AudioContextState | 'unavailable' | 'uninitialized';
+  decodedSfx: number;
 }
 
 export class AudioDirector {
@@ -129,13 +72,16 @@ export class AudioDirector {
   private initialized = false;
   private runtimeState: AudioRuntimeState = 'uninitialized';
   private format: AudioFormat | null = null;
+  private context: AudioContext | null = null;
+  private sfxBus: GainNode | null = null;
   private bgm: HTMLAudioElement | null = null;
-  private readonly pools = new Map<SfxStem, HtmlAudioPool>();
-  private readonly objectUrls: string[] = [];
-  private unlockPromise: Promise<boolean> | null = null;
+  private bgmObjectUrl: string | null = null;
+  private readonly sfxBuffers = new Map<SfxStem, AudioBuffer>();
   private preloadPromise: Promise<boolean> | null = null;
+  private unlockPromise: Promise<boolean> | null = null;
   private flowIntensity = 0;
   private overdrive = false;
+  private activeSfx = 0;
 
   get debugState(): AudioDebugState {
     const supported = this.supported;
@@ -145,6 +91,8 @@ export class AudioDirector {
       initialized: this.initialized,
       state: supported ? this.runtimeState : 'unavailable',
       format: this.format,
+      contextState: this.context?.state ?? (supported ? 'uninitialized' : 'unavailable'),
+      decodedSfx: this.sfxBuffers.size,
     };
   }
 
@@ -161,16 +109,13 @@ export class AudioDirector {
 
   async unlock(): Promise<boolean> {
     if (!this.enabled || !this.supported) return false;
-    if (this.runtimeState === 'playing' && this.bgm && !this.bgm.paused) return true;
-    if (this.runtimeState !== 'ready' && this.runtimeState !== 'locked' && this.runtimeState !== 'partial') {
-      console.warn('[Rune Ball] Audio unlock requested before preload completed.', this.debugState);
+    if (this.runtimeState === 'playing' && this.audioContextRunning && this.bgm && !this.bgm.paused) return true;
+    if (!this.context || !this.bgm || !['ready', 'partial', 'locked'].includes(this.runtimeState)) {
+      console.warn('[Rune Ball] Audio activation requested before preload completed.', this.debugState);
       return false;
     }
-    if (!this.bgm) return false;
     if (this.unlockPromise) return this.unlockPromise;
 
-    // performUnlock invokes all play() calls before its first await so the warm-up
-    // stays inside the user's activation chain. Gameplay starts only after it resolves.
     this.unlockPromise = this.performUnlock().finally(() => {
       this.unlockPromise = null;
     });
@@ -179,15 +124,18 @@ export class AudioDirector {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    if (this.sfxBus && this.context) {
+      this.sfxBus.gain.setTargetAtTime(enabled ? 0.95 : 0.0001, this.context.currentTime, 0.02);
+    }
+
     if (!enabled) {
       this.bgm?.pause();
-      for (const pool of this.pools.values()) pool.pauseAll();
       return;
     }
 
-    if (this.runtimeState === 'playing' && this.bgm) {
+    if ((this.runtimeState === 'playing' || this.runtimeState === 'partial') && this.bgm) {
       void this.bgm.play().catch(() => {
-        this.runtimeState = 'locked';
+        this.runtimeState = this.audioContextRunning ? 'partial' : 'locked';
       });
     }
   }
@@ -195,7 +143,7 @@ export class AudioDirector {
   update(state: MixState): void {
     this.flowIntensity = clamp01(state.flowIntensity);
     this.overdrive = state.overdrive;
-    if (!this.bgm || this.runtimeState !== 'playing') return;
+    if (!this.bgm || this.bgm.paused || !this.enabled) return;
 
     const targetVolume = this.overdrive
       ? 0.50
@@ -272,11 +220,14 @@ export class AudioDirector {
     return typeof document !== 'undefined'
       && typeof document.createElement === 'function'
       && typeof fetch === 'function'
-      && typeof URL !== 'undefined'
-      && typeof URL.createObjectURL === 'function';
+      && this.getAudioContextConstructor() !== null;
   }
 
-  private initializeFormat(): void {
+  private get audioContextRunning(): boolean {
+    return this.context?.state === 'running';
+  }
+
+  private initializeRuntime(): void {
     if (!this.supported) {
       this.runtimeState = 'unavailable';
       return;
@@ -285,12 +236,23 @@ export class AudioDirector {
     const probe = document.createElement('audio');
     const oggSupport = probe.canPlayType('audio/ogg; codecs="vorbis"');
     this.format = oggSupport === 'probably' || oggSupport === 'maybe' ? 'ogg' : 'mp3';
+
+    const AudioContextCtor = this.getAudioContextConstructor();
+    if (!AudioContextCtor) {
+      this.runtimeState = 'unavailable';
+      return;
+    }
+
+    this.context = new AudioContextCtor();
+    this.sfxBus = this.context.createGain();
+    this.sfxBus.gain.value = 0.95;
+    this.sfxBus.connect(this.context.destination);
     this.initialized = true;
   }
 
   private async performPreload(onProgress?: (progress: AudioPreloadProgress) => void): Promise<boolean> {
-    if (!this.initialized) this.initializeFormat();
-    if (!this.format) return false;
+    if (!this.initialized) this.initializeRuntime();
+    if (!this.context || !this.format) return false;
 
     this.runtimeState = 'preloading';
     const preferredFormat = this.format;
@@ -298,10 +260,10 @@ export class AudioDirector {
     try {
       await this.loadRuntimeAssets(preferredFormat, onProgress);
       this.runtimeState = 'ready';
-      console.info('[Rune Ball] Asset audio preloaded.', this.debugState);
+      console.info('[Rune Ball] Audio bytes downloaded and SFX decoded before entry.', this.debugState);
       return true;
     } catch (preferredError) {
-      console.warn(`[Rune Ball] ${preferredFormat.toUpperCase()} preload failed.`, preferredError);
+      console.warn(`[Rune Ball] ${preferredFormat.toUpperCase()} audio preload/decode failed.`, preferredError);
       this.releaseRuntimeAssets();
 
       if (preferredFormat === 'ogg') {
@@ -309,10 +271,10 @@ export class AudioDirector {
           this.format = 'mp3';
           await this.loadRuntimeAssets('mp3', onProgress);
           this.runtimeState = 'ready';
-          console.info('[Rune Ball] Asset audio preloaded with MP3 fallback.', this.debugState);
+          console.info('[Rune Ball] Audio preloaded with MP3 fallback.', this.debugState);
           return true;
         } catch (fallbackError) {
-          console.warn('[Rune Ball] MP3 fallback preload failed.', fallbackError);
+          console.warn('[Rune Ball] MP3 audio preload/decode failed.', fallbackError);
         }
       }
 
@@ -325,18 +287,20 @@ export class AudioDirector {
     format: AudioFormat,
     onProgress?: (progress: AudioPreloadProgress) => void,
   ): Promise<void> {
+    const context = this.context;
+    if (!context) throw new Error('AudioContext missing during preload.');
+
     this.format = format;
     const loadedByStem = new Map<RuntimeStem, number>();
     const totalByStem = new Map<RuntimeStem, number>();
     const completed = new Set<RuntimeStem>();
+    const rawByStem = new Map<RuntimeStem, ArrayBuffer>();
     let lastRatio = 0;
 
-    const report = (activeAsset: RuntimeStem): void => {
+    const report = (activeAsset: string, phaseRatio: number): void => {
       const loadedBytes = [...loadedByStem.values()].reduce((sum, value) => sum + value, 0);
       const totalBytes = [...totalByStem.values()].reduce((sum, value) => sum + value, 0);
-      const byteRatio = totalBytes > 0 ? loadedBytes / totalBytes : 0;
-      const fileRatio = completed.size / RUNTIME_STEMS.length;
-      const ratio = Math.min(1, Math.max(lastRatio, totalBytes > 0 ? byteRatio : fileRatio));
+      const ratio = Math.min(1, Math.max(lastRatio, phaseRatio));
       lastRatio = ratio;
       onProgress?.({
         ratio,
@@ -349,154 +313,177 @@ export class AudioDirector {
       });
     };
 
-    const blobs = await Promise.all(RUNTIME_STEMS.map(async (stem) => {
+    await Promise.all(RUNTIME_STEMS.map(async (stem) => {
       const url = new URL(`audio/${stem}.${format}`, document.baseURI).toString();
       const response = await fetch(url, { cache: 'force-cache' });
-      if (!response.ok) throw new Error(`${stem}.${format} preload returned HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`${stem}.${format} returned HTTP ${response.status}`);
 
       const declaredLength = Number(response.headers.get('content-length') ?? 0);
       if (Number.isFinite(declaredLength) && declaredLength > 0) totalByStem.set(stem, declaredLength);
-      report(stem);
 
-      const blob = await readResponseBlob(response, (loaded) => {
+      const buffer = await readResponseArrayBuffer(response, (loaded) => {
         loadedByStem.set(stem, loaded);
-        report(stem);
-      }, format);
+        const loadedBytes = [...loadedByStem.values()].reduce((sum, value) => sum + value, 0);
+        const totalBytes = [...totalByStem.values()].reduce((sum, value) => sum + value, 0);
+        const byteRatio = totalBytes > 0 ? loadedBytes / totalBytes : completed.size / RUNTIME_STEMS.length;
+        report(stem, clamp01(byteRatio) * DOWNLOAD_PHASE_RATIO);
+      });
 
-      loadedByStem.set(stem, blob.size);
-      if (!totalByStem.has(stem)) totalByStem.set(stem, blob.size);
+      rawByStem.set(stem, buffer);
+      loadedByStem.set(stem, buffer.byteLength);
+      if (!totalByStem.has(stem)) totalByStem.set(stem, buffer.byteLength);
       completed.add(stem);
-      report(stem);
-      return [stem, blob] as const;
+      report(stem, (completed.size / RUNTIME_STEMS.length) * DOWNLOAD_PHASE_RATIO);
     }));
 
-    const objectUrlByStem = new Map<RuntimeStem, string>();
-    for (const [stem, blob] of blobs) {
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrls.push(objectUrl);
-      objectUrlByStem.set(stem, objectUrl);
+    for (let index = 0; index < SFX_STEMS.length; index += 1) {
+      const stem = SFX_STEMS[index];
+      const raw = rawByStem.get(stem);
+      if (!raw) throw new Error(`${stem} bytes missing before decode.`);
+      const decoded = await context.decodeAudioData(raw.slice(0));
+      this.sfxBuffers.set(stem, decoded);
+      report(`decode:${stem}`, DOWNLOAD_PHASE_RATIO + ((index + 1) / SFX_STEMS.length) * DECODE_PHASE_RATIO);
     }
 
-    const bgmUrl = objectUrlByStem.get('bgm-claimed-by-void');
-    if (!bgmUrl) throw new Error('BGM blob URL missing after preload.');
+    const bgmBytes = rawByStem.get('bgm-claimed-by-void');
+    if (!bgmBytes) throw new Error('BGM bytes missing after preload.');
 
-    this.bgm = createAudioElement(bgmUrl);
+    const bgmBlob = new Blob([bgmBytes], { type: format === 'ogg' ? 'audio/ogg' : 'audio/mpeg' });
+    this.bgmObjectUrl = URL.createObjectURL(bgmBlob);
+    this.bgm = createAudioElement(this.bgmObjectUrl);
     this.bgm.loop = true;
     this.bgm.volume = 0.36;
+    report('prepare:bgm-claimed-by-void', DOWNLOAD_PHASE_RATIO + DECODE_PHASE_RATIO);
+    await waitUntilMediaReady(this.bgm);
 
-    for (const stem of SFX_STEMS) {
-      const url = objectUrlByStem.get(stem);
-      if (!url) throw new Error(`${stem} blob URL missing after preload.`);
-      this.pools.set(stem, new HtmlAudioPool(url, stem === 'brick-hit' ? 3 : 2));
-    }
-
-    await Promise.all([
-      waitUntilMediaReady(this.bgm),
-      ...[...this.pools.values()].map((pool) => pool.prepare()),
-    ]);
-
-    onProgress?.({
-      ratio: 1,
-      loadedBytes: [...loadedByStem.values()].reduce((sum, value) => sum + value, 0),
-      totalBytes: [...totalByStem.values()].reduce((sum, value) => sum + value, 0),
-      completedAssets: RUNTIME_STEMS.length,
-      totalAssets: RUNTIME_STEMS.length,
-      activeAsset: 'bgm-claimed-by-void',
-      format,
-    });
+    report('ready', 1);
   }
 
-  private performUnlock(): Promise<boolean> {
+  private async performUnlock(): Promise<boolean> {
+    const context = this.context;
     const bgm = this.bgm;
-    if (!bgm) return Promise.resolve(false);
+    if (!context || !bgm) return false;
 
     this.runtimeState = 'warming';
-    const bgmAttempt = bgm.play()
-      .then(() => true)
-      .catch((error: unknown) => {
-        console.warn('[Rune Ball] BGM playback failed.', error, this.debugState);
-        return false;
-      });
 
-    // Every voice is touched before gameplay starts. This intentionally moves any
-    // first-play decoder cost out of Rune / impact events and into the enter gate.
-    const primeAttempt = Promise.all([...this.pools.values()].map((pool) => pool.prime()));
-
-    return Promise.all([bgmAttempt, primeAttempt] as const).then(([bgmStarted, primeResults]) => {
-      const primedVoices = primeResults.flat().filter(Boolean).length;
-      const totalVoices = primeResults.flat().length;
-
-      if (bgmStarted && primedVoices === totalVoices) {
-        this.runtimeState = 'playing';
-        bgm.volume = this.overdrive ? 0.50 : 0.36 + this.flowIntensity * 0.08;
-        console.info('[Rune Ball] Asset audio warmed and running.', {
-          ...this.debugState,
-          primedVoices,
+    // Both activation calls are issued synchronously from the Enter click handler.
+    // No media decoding, seeking, or SFX priming is allowed in this phase.
+    const resumeAttempt = context.state === 'running'
+      ? Promise.resolve(true)
+      : context.resume().then(() => context.state === 'running').catch((error: unknown) => {
+          console.warn('[Rune Ball] AudioContext resume failed.', error);
+          return false;
         });
-        return true;
-      }
-
-      if (bgmStarted && primedVoices > 0) {
-        this.runtimeState = 'partial';
-        console.warn('[Rune Ball] Audio warm-up was partial.', {
-          ...this.debugState,
-          primedVoices,
-          totalVoices,
-        });
-        return true;
-      }
-
-      this.runtimeState = primedVoices > 0 ? 'partial' : 'locked';
-      console.warn('[Rune Ball] Asset audio did not start BGM.', {
-        ...this.debugState,
-        primedVoices,
-        totalVoices,
-      });
+    const bgmAttempt = bgm.play().then(() => true).catch((error: unknown) => {
+      console.warn('[Rune Ball] BGM activation failed.', error);
       return false;
     });
+
+    try {
+      const [contextRunning, bgmStarted] = await withTimeout(
+        Promise.all([resumeAttempt, bgmAttempt] as const),
+        ACTIVATION_TIMEOUT_MS,
+        'audio activation',
+      );
+      return this.finishActivation(contextRunning, bgmStarted);
+    } catch (error) {
+      console.warn('[Rune Ball] Audio activation timed out; returning control to the entry screen.', error, this.debugState);
+      return this.finishActivation(context.state === 'running', !bgm.paused);
+    }
+  }
+
+  private finishActivation(contextRunning: boolean, bgmStarted: boolean): boolean {
+    if (contextRunning && bgmStarted) {
+      this.runtimeState = 'playing';
+      if (this.bgm) this.bgm.volume = this.overdrive ? 0.50 : 0.36 + this.flowIntensity * 0.08;
+      console.info('[Rune Ball] Buffered SFX audio runtime active.', this.debugState);
+      return true;
+    }
+
+    if (contextRunning || bgmStarted) {
+      this.runtimeState = 'partial';
+      console.warn('[Rune Ball] Audio runtime activated partially.', this.debugState);
+      return true;
+    }
+
+    this.runtimeState = 'locked';
+    return false;
+  }
+
+  private playSfx(stem: SfxStem, volume: number, playbackRate = 1): void {
+    const context = this.context;
+    const destination = this.sfxBus;
+    const buffer = this.sfxBuffers.get(stem);
+    if (!this.enabled || !context || !destination || !buffer || context.state !== 'running') return;
+    if (this.activeSfx >= MAX_ACTIVE_SFX) return;
+
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    source.buffer = buffer;
+    source.playbackRate.value = Math.min(1.6, Math.max(0.55, playbackRate));
+    gain.gain.value = clamp01(volume);
+    source.connect(gain);
+    gain.connect(destination);
+
+    this.activeSfx += 1;
+    source.onended = () => {
+      this.activeSfx = Math.max(0, this.activeSfx - 1);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start();
   }
 
   private releaseRuntimeAssets(): void {
     this.bgm?.pause();
     this.bgm = null;
-    for (const pool of this.pools.values()) pool.pauseAll();
-    this.pools.clear();
-    for (const objectUrl of this.objectUrls.splice(0)) URL.revokeObjectURL(objectUrl);
+    if (this.bgmObjectUrl) {
+      URL.revokeObjectURL(this.bgmObjectUrl);
+      this.bgmObjectUrl = null;
+    }
+    this.sfxBuffers.clear();
+    this.activeSfx = 0;
   }
 
-  private playSfx(stem: SfxStem, volume: number, playbackRate = 1): void {
-    if (!this.enabled || (this.runtimeState !== 'playing' && this.runtimeState !== 'partial')) return;
-    this.pools.get(stem)?.play(volume, playbackRate);
+  private getAudioContextConstructor(): AudioContextConstructor | null {
+    if (typeof window === 'undefined') return null;
+    const audioWindow = window as typeof window & { webkitAudioContext?: AudioContextConstructor };
+    return audioWindow.AudioContext ?? audioWindow.webkitAudioContext ?? null;
   }
 }
 
-async function readResponseBlob(
+async function readResponseArrayBuffer(
   response: Response,
   onLoaded: (loadedBytes: number) => void,
-  format: AudioFormat,
-): Promise<Blob> {
+): Promise<ArrayBuffer> {
   if (!response.body) {
-    const blob = await response.blob();
-    onLoaded(blob.size);
-    return blob;
+    const buffer = await response.arrayBuffer();
+    onLoaded(buffer.byteLength);
+    return buffer;
   }
 
   const reader = response.body.getReader();
-  const chunks: BlobPart[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let loadedBytes = 0;
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     if (!value) continue;
-    const copy = new ArrayBuffer(value.byteLength);
-    new Uint8Array(copy).set(value);
+    const copy = new Uint8Array(new ArrayBuffer(value.byteLength));
+    copy.set(value);
     chunks.push(copy);
-    loadedBytes += value.byteLength;
+    loadedBytes += copy.byteLength;
     onLoaded(loadedBytes);
   }
 
-  return new Blob(chunks, { type: format === 'ogg' ? 'audio/ogg' : 'audio/mpeg' });
+  const result = new Uint8Array(new ArrayBuffer(loadedBytes));
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result.buffer;
 }
 
 function createAudioElement(url: string): HTMLAudioElement {
@@ -506,26 +493,29 @@ function createAudioElement(url: string): HTMLAudioElement {
   return element;
 }
 
-function waitUntilMediaReady(element: HTMLAudioElement): Promise<void> {
-  if (element.readyState >= 2) return Promise.resolve();
+async function waitUntilMediaReady(element: HTMLAudioElement): Promise<void> {
+  if (element.readyState >= 2) return;
 
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (): void => {
-      if (settled) return;
-      settled = true;
-      element.removeEventListener('canplay', finish);
-      element.removeEventListener('loadeddata', finish);
-      element.removeEventListener('error', finish);
+  await withTimeout(new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
+      element.removeEventListener('canplay', ready);
+      element.removeEventListener('loadeddata', ready);
+      element.removeEventListener('error', failed);
+    };
+    const ready = (): void => {
+      cleanup();
       resolve();
     };
+    const failed = (): void => {
+      cleanup();
+      reject(new Error('BGM media element failed to prepare.'));
+    };
 
-    element.addEventListener('canplay', finish, { once: true });
-    element.addEventListener('loadeddata', finish, { once: true });
-    element.addEventListener('error', finish, { once: true });
+    element.addEventListener('canplay', ready, { once: true });
+    element.addEventListener('loadeddata', ready, { once: true });
+    element.addEventListener('error', failed, { once: true });
     element.load();
-    window.setTimeout(finish, MEDIA_READY_TIMEOUT_MS);
-  });
+  }), MEDIA_READY_TIMEOUT_MS, 'BGM media preparation');
 }
 
 function clamp01(value: number): number {
