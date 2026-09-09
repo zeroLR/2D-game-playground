@@ -218,10 +218,10 @@ export class AudioDirector {
   }
 
   playBreak(combo: number, source: ImpactSource, armored: boolean): void {
-    this.playSfx('brick-break', armored ? 0.86 : 0.72, armored ? 0.84 : 1);
-    if (source === 'chain') this.playSfx('laser', 0.46, 1.12);
+    this.playSfx('brick-break', armored ? 0.72 : 0.58, armored ? 0.84 : 1);
+    if (source === 'chain') this.playSfx('laser', 0.38, 1.12);
     if (combo > 0 && combo % 4 === 0) {
-      this.playSfx('powerup-get', 0.44, 1 + Math.min(0.28, combo * 0.012));
+      this.playSfx('powerup-get', 0.36, 1 + Math.min(0.28, combo * 0.012));
     }
   }
 
