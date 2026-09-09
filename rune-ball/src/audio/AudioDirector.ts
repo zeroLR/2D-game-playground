@@ -82,6 +82,10 @@ export class AudioDirector {
   private flowIntensity = 0;
   private overdrive = false;
   private activeSfx = 0;
+  private readonly activeSfxSources = new Set<AudioBufferSourceNode>();
+  private backgrounded = false;
+  private resumeBgmAfterBackground = false;
+  private resumeContextAfterBackground = false;
 
   get debugState(): AudioDebugState {
     const supported = this.supported;
@@ -133,9 +137,55 @@ export class AudioDirector {
       return;
     }
 
-    if ((this.runtimeState === 'playing' || this.runtimeState === 'partial') && this.bgm) {
+    if (!this.backgrounded && (this.runtimeState === 'playing' || this.runtimeState === 'partial') && this.bgm) {
       void this.bgm.play().catch(() => {
         this.runtimeState = this.audioContextRunning ? 'partial' : 'locked';
+      });
+    }
+  }
+
+  pauseForBackground(): void {
+    if (this.backgrounded) return;
+    this.backgrounded = true;
+    this.resumeBgmAfterBackground = this.enabled && !!this.bgm && !this.bgm.paused;
+    this.resumeContextAfterBackground = this.context?.state === 'running';
+
+    this.bgm?.pause();
+    for (const source of this.activeSfxSources) {
+      try {
+        source.stop();
+      } catch {
+        // Source may already have completed between visibility events.
+      }
+    }
+
+    if (this.context?.state === 'running') {
+      void this.context.suspend().catch((error: unknown) => {
+        console.debug('[Rune Ball] AudioContext background suspend skipped.', error);
+      });
+    }
+  }
+
+  resumeFromBackground(): void {
+    if (!this.backgrounded) return;
+    this.backgrounded = false;
+
+    const shouldResumeBgm = this.resumeBgmAfterBackground;
+    const shouldResumeContext = this.resumeContextAfterBackground;
+    this.resumeBgmAfterBackground = false;
+    this.resumeContextAfterBackground = false;
+
+    if (!this.enabled) return;
+
+    if (shouldResumeContext && this.context?.state === 'suspended') {
+      void this.context.resume().catch((error: unknown) => {
+        console.debug('[Rune Ball] AudioContext foreground resume skipped.', error);
+      });
+    }
+
+    if (shouldResumeBgm && this.bgm && (this.runtimeState === 'playing' || this.runtimeState === 'partial')) {
+      void this.bgm.play().catch((error: unknown) => {
+        console.debug('[Rune Ball] BGM foreground resume skipped.', error);
       });
     }
   }
@@ -414,7 +464,7 @@ export class AudioDirector {
     const context = this.context;
     const destination = this.sfxBus;
     const buffer = this.sfxBuffers.get(stem);
-    if (!this.enabled || !context || !destination || !buffer || context.state !== 'running') return;
+    if (this.backgrounded || !this.enabled || !context || !destination || !buffer || context.state !== 'running') return;
     if (this.activeSfx >= MAX_ACTIVE_SFX) return;
 
     const source = context.createBufferSource();
@@ -426,8 +476,10 @@ export class AudioDirector {
     gain.connect(destination);
 
     this.activeSfx += 1;
+    this.activeSfxSources.add(source);
     source.onended = () => {
       this.activeSfx = Math.max(0, this.activeSfx - 1);
+      this.activeSfxSources.delete(source);
       source.disconnect();
       gain.disconnect();
     };
@@ -441,6 +493,14 @@ export class AudioDirector {
       URL.revokeObjectURL(this.bgmObjectUrl);
       this.bgmObjectUrl = null;
     }
+    for (const source of this.activeSfxSources) {
+      try {
+        source.stop();
+      } catch {
+        // Best-effort cleanup.
+      }
+    }
+    this.activeSfxSources.clear();
     this.sfxBuffers.clear();
     this.activeSfx = 0;
   }

@@ -44,6 +44,22 @@ async function bootstrap(): Promise<void> {
   const preloadScreen = new PreloadScreen(host);
   const audio = new AudioDirector();
 
+  const syncAudioVisibility = (): void => {
+    if (document.visibilityState === 'hidden') {
+      audio.pauseForBackground();
+      return;
+    }
+    audio.resumeFromBackground();
+  };
+  const handlePageHide = (): void => audio.pauseForBackground();
+  const handlePageShow = (): void => {
+    if (document.visibilityState === 'visible') audio.resumeFromBackground();
+  };
+
+  document.addEventListener('visibilitychange', syncAudioVisibility);
+  window.addEventListener('pagehide', handlePageHide);
+  window.addEventListener('pageshow', handlePageShow);
+
   try {
     preloadScreen.setProgress(0.04, 'INITIALIZING RENDERER');
     const app = await createRenderer(host);
@@ -76,7 +92,7 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P5.4 buffered SFX playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P5.5 background-audio playtest');
     app.stage.addChild(scene);
 
     app.ticker.add((ticker) => {
@@ -94,7 +110,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P5.4 ready. SFX are decoded AudioBuffers before gameplay starts.');
+    console.info('[Rune Ball] P5.5 ready. Audio pauses while the page is backgrounded.');
   } catch (error) {
     showBootstrapFailure(
       error,
