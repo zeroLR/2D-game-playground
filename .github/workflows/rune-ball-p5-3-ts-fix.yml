@@ -1,0 +1,47 @@
+name: Rune Ball P5.3 preload type fix
+
+on:
+  push:
+    branches:
+      - fix/rune-ball-p5-3-preload-audio
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[preload-type-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rune-ball-p5-3-preload-audio
+          fetch-depth: 0
+
+      - name: Fix streamed BlobPart typing
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('rune-ball/src/audio/AudioDirector.ts')
+          text = path.read_text()
+          text = text.replace('  const chunks: Uint8Array[] = [];', '  const chunks: BlobPart[] = [];')
+          text = text.replace(
+              '    chunks.push(value);\n    loadedBytes += value.byteLength;',
+              '    const copy = new ArrayBuffer(value.byteLength);\n'
+              '    new Uint8Array(copy).set(value);\n'
+              '    chunks.push(copy);\n'
+              '    loadedBytes += value.byteLength;',
+          )
+          path.write_text(text)
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/rune-ball-p5-3-ts-fix.yml
+          git add rune-ball/src/audio/AudioDirector.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(rune-ball): normalize streamed audio chunks [preload-type-fixed]"
+          git push origin HEAD:fix/rune-ball-p5-3-preload-audio
