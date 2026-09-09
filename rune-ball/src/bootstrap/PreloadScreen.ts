@@ -89,30 +89,48 @@ export class PreloadScreen {
 
   async waitForSuccessfulEnter(activate: () => Promise<boolean>): Promise<void> {
     await new Promise<void>((resolve) => {
+      const restoreReady = (): void => {
+        this.root.dataset.state = 'ready';
+        this.status.textContent = 'AUDIO BLOCKED — TAP AGAIN';
+        this.percent.textContent = 'READY';
+        this.enterButton.disabled = false;
+        this.enterButton.textContent = 'RETRY AUDIO';
+        this.enterButton.addEventListener('click', attempt, { once: true });
+      };
+
       const attempt = (): void => {
         this.root.dataset.state = 'warming';
-        this.status.textContent = 'ATTUNING AUDIO';
+        this.status.textContent = 'STARTING AUDIO';
         this.percent.textContent = 'READY';
         this.enterButton.disabled = true;
-        this.enterButton.textContent = 'PREPARING';
+        this.enterButton.textContent = 'ENTERING';
 
-        // The callback is invoked synchronously inside the click handler so browser
-        // transient user activation still applies to HTMLMediaElement.play().
-        const activation = activate();
-        void activation.then((success) => {
-          if (success) {
+        // Activation is invoked synchronously inside the click handler. Preload has
+        // already downloaded and decoded SFX, so this phase only resumes Web Audio
+        // and starts the BGM media element.
+        let activation: Promise<boolean>;
+        try {
+          activation = activate();
+        } catch (error) {
+          console.warn('[Rune Ball] Audio activation threw synchronously.', error);
+          restoreReady();
+          return;
+        }
+
+        void activation
+          .then((success) => {
+            if (!success) {
+              restoreReady();
+              return;
+            }
             this.status.textContent = 'ENTERING ARENA';
             this.enterButton.textContent = 'READY';
             resolve();
-            return;
-          }
-
-          this.root.dataset.state = 'ready';
-          this.status.textContent = 'AUDIO BLOCKED — TAP AGAIN';
-          this.enterButton.disabled = false;
-          this.enterButton.textContent = 'RETRY AUDIO';
-          this.enterButton.addEventListener('click', attempt, { once: true });
-        });
+          })
+          .catch((error: unknown) => {
+            console.warn('[Rune Ball] Audio activation rejected.', error);
+            restoreReady();
+          });
       };
 
       this.enterButton.addEventListener('click', attempt, { once: true });
