@@ -482,14 +482,16 @@ async function readResponseBlob(
   }
 
   const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: BlobPart[] = [];
   let loadedBytes = 0;
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     if (!value) continue;
-    chunks.push(value);
+    const copy = new ArrayBuffer(value.byteLength);
+    new Uint8Array(copy).set(value);
+    chunks.push(copy);
     loadedBytes += value.byteLength;
     onLoaded(loadedBytes);
   }
