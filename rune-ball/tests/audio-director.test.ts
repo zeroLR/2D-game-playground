@@ -12,6 +12,7 @@ describe('AudioDirector', () => {
       format: null,
     });
     await expect(audio.preload()).resolves.toBe(false);
+    expect(audio.debugState.state).toBe('unavailable');
     await expect(audio.unlock()).resolves.toBe(false);
   });
 });
