@@ -10,6 +10,7 @@ import type { Point2D } from '../input/SwipeClassifier';
 import type { RuneKind } from '../rune/RuneTypes';
 import { CameraFeedback } from './CameraFeedback';
 import { ImpactPool } from './ImpactPool';
+import { calculateArenaLayout, type ArenaLayout } from './ArenaLayout';
 
 const COLORS = {
   background: 0x050711,
@@ -164,6 +165,7 @@ export class DestructionScene extends Container {
   private readonly audio: AudioDirector;
   private readonly cameraFeedback = new CameraFeedback();
   private arenaBounds: ArenaBounds;
+  private arenaLayout: ArenaLayout;
   private viewportWidth = 1;
   private viewportHeight = 1;
   private readonly trailPoints: Point2D[] = [];
@@ -192,7 +194,8 @@ export class DestructionScene extends Container {
     this.onGameplayEvent = callbacks.onGameplayEvent;
     this.viewportWidth = Math.max(1, width);
     this.viewportHeight = Math.max(1, height);
-    this.arenaBounds = this.calculateArenaBounds(width, height);
+    this.arenaLayout = calculateArenaLayout(width, height);
+    this.arenaBounds = this.arenaLayout.bounds;
     this.session = new DestructionSession(this.arenaBounds, {
       vortexEvolutionPath: callbacks.vortexEvolutionPath,
     });
@@ -374,7 +377,8 @@ export class DestructionScene extends Container {
     const safeHeight = Math.max(1, height);
     this.viewportWidth = safeWidth;
     this.viewportHeight = safeHeight;
-    this.arenaBounds = this.calculateArenaBounds(safeWidth, safeHeight);
+    this.arenaLayout = calculateArenaLayout(safeWidth, safeHeight);
+    this.arenaBounds = this.arenaLayout.bounds;
     this.session.setBounds(this.arenaBounds);
     this.cameraRig.position.set(0, 0);
 
@@ -395,9 +399,9 @@ export class DestructionScene extends Container {
       .fill({ color: COLORS.arena, alpha: 0.84 })
       .stroke({ color: COLORS.arenaLine, width: 1.5, alpha: 0.66 });
 
-    this.scoreText.position.set(left + 14, top + 16);
-    this.comboText.position.set(right - 14, top + 16);
-    this.runeGuide.position.set(safeWidth / 2, bottom - 20);
+    this.scoreText.position.set(left + 14, this.arenaLayout.scoreY);
+    this.comboText.position.set(right - 14, this.arenaLayout.scoreY);
+    this.runeGuide.position.set(safeWidth / 2, this.arenaLayout.runeGuideY);
 
     this.inputSurface.clear().rect(left, top, right - left, bottom - top).fill({ color: 0xffffff, alpha: 0.001 });
     this.inputSurface.hitArea = new Rectangle(left, top, right - left, bottom - top);
@@ -978,10 +982,10 @@ export class DestructionScene extends Container {
   }
 
   private drawRuneCharge(ratio: number, ready: boolean, overdrive: boolean): void {
-    const { left, right, bottom } = this.arenaBounds;
+    const { left, right } = this.arenaBounds;
     const width = Math.min(150, (right - left) * 0.42);
     const x = (left + right) / 2 - width / 2;
-    const y = bottom - 14;
+    const y = this.arenaLayout.runeBarY;
     const clamped = Math.min(1, Math.max(0, ratio));
 
     this.runeChargeBar.clear();
@@ -996,10 +1000,10 @@ export class DestructionScene extends Container {
   }
 
   private drawFlowBar(ratio: number, overdrive: boolean, remainingRatio: number): void {
-    const { left, right, top } = this.arenaBounds;
+    const { left, right } = this.arenaBounds;
     const width = Math.min(170, (right - left) * 0.46);
     const x = (left + right) / 2 - width / 2;
-    const y = top + 17;
+    const y = this.arenaLayout.flowBarY;
     const clamped = Math.min(1, Math.max(0, overdrive ? remainingRatio : ratio));
 
     this.flowBar.clear();
@@ -1194,19 +1198,4 @@ export class DestructionScene extends Container {
     };
   }
 
-  private calculateArenaBounds(width: number, height: number): ArenaBounds {
-    const safeWidth = Math.max(1, width);
-    const safeHeight = Math.max(1, height);
-    const arenaWidth = Math.min(safeWidth * 0.88, 400);
-    const arenaHeight = Math.min(safeHeight * 0.76, arenaWidth * 1.58);
-    const centerX = safeWidth / 2;
-    const centerY = safeHeight * 0.51;
-
-    return {
-      left: centerX - arenaWidth / 2,
-      right: centerX + arenaWidth / 2,
-      top: centerY - arenaHeight / 2,
-      bottom: centerY + arenaHeight / 2,
-    };
-  }
 }
