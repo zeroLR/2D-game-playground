@@ -10,6 +10,7 @@ export class SettingsPanel {
   private readonly root: HTMLElement;
   private readonly launcher: HTMLButtonElement;
   private readonly overlay: HTMLElement;
+  private readonly panel: HTMLElement;
   private readonly soundButton: HTMLButtonElement;
   private readonly motionButton: HTMLButtonElement;
   private readonly callbacks: SettingsPanelCallbacks;
@@ -27,6 +28,7 @@ export class SettingsPanel {
     launcher.className = 'runtime-settings-launcher';
     launcher.type = 'button';
     launcher.setAttribute('aria-label', 'Open settings');
+    launcher.setAttribute('aria-haspopup', 'dialog');
     launcher.setAttribute('aria-expanded', 'false');
     launcher.innerHTML = '<span></span><span></span><span></span>';
     launcher.addEventListener('click', () => this.setOpen(true));
@@ -50,14 +52,14 @@ export class SettingsPanel {
 
     const title = document.createElement('h2');
     title.id = 'runtime-settings-title';
-    title.textContent = 'SETTINGS';
+    title.textContent = 'Settings';
 
-    const soundButton = this.makeToggle('SOUND', this.preferences.soundEnabled, (enabled) => {
+    const soundButton = this.makeToggle('Sound', this.preferences.soundEnabled, (enabled) => {
       this.preferences.soundEnabled = enabled;
       this.callbacks.onSoundChange(enabled);
     });
 
-    const motionButton = this.makeToggle('REDUCED MOTION', this.preferences.reducedMotion, (enabled) => {
+    const motionButton = this.makeToggle('Reduced Motion', this.preferences.reducedMotion, (enabled) => {
       this.preferences.reducedMotion = enabled;
       this.callbacks.onReducedMotionChange(enabled);
     });
@@ -65,7 +67,7 @@ export class SettingsPanel {
     const closeButton = document.createElement('button');
     closeButton.className = 'runtime-settings-close';
     closeButton.type = 'button';
-    closeButton.textContent = 'CLOSE';
+    closeButton.textContent = 'Done';
     closeButton.addEventListener('click', () => this.setOpen(false));
 
     panel.append(eyebrow, title, soundButton, motionButton, closeButton);
@@ -76,6 +78,7 @@ export class SettingsPanel {
     this.root = root;
     this.launcher = launcher;
     this.overlay = overlay;
+    this.panel = panel;
     this.soundButton = soundButton;
     this.motionButton = motionButton;
 
@@ -94,7 +97,24 @@ export class SettingsPanel {
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && this.open) this.setOpen(false);
+    if (event.key === 'Escape' && this.open) {
+      event.preventDefault();
+      this.setOpen(false);
+      return;
+    }
+
+    if (event.key !== 'Tab' || !this.open) return;
+    const focusable = [...this.panel.querySelectorAll<HTMLElement>('button:not([disabled])')];
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   private setOpen(open: boolean): void {
@@ -128,6 +148,9 @@ export class SettingsPanel {
 
   private renderToggle(button: HTMLButtonElement, enabled: boolean): void {
     button.setAttribute('aria-pressed', String(enabled));
-    button.innerHTML = `<span class="runtime-settings-toggle-label">${button.dataset.label ?? ''}</span><span class="runtime-settings-toggle-state">${enabled ? 'ON' : 'OFF'}</span>`;
+    button.innerHTML = [
+      `<span class="runtime-settings-toggle-label">${button.dataset.label ?? ''}</span>`,
+      '<span class="runtime-settings-switch" aria-hidden="true"><span class="runtime-settings-switch-knob"></span></span>',
+    ].join('');
   }
 }
