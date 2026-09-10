@@ -133,6 +133,7 @@ export class DestructionSession {
     if (rune === 'vortex') this.activeVortexProfile = vortexProfile;
     if (rune === 'split') {
       this.activeSplitProfile = splitProfile;
+      this.activeSplitOverlaps.clear();
       this.splitCastQualified = false;
     }
     events.push({ type: 'rune-activated', rune, center: { ...center } });
