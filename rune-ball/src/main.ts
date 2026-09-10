@@ -5,6 +5,7 @@ import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { SessionDirector } from './game/SessionDirector';
 import { DestructionScene } from './presentation/DestructionScene';
+import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
 import { SessionChrome } from './presentation/SessionChrome';
 import './style.css';
 import './session.css';
@@ -43,7 +44,7 @@ function preloadLabel(asset: string): string {
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P6.1 session-loop bootstrap starting.');
+  console.info('[Rune Ball] P6.1.1 onboarding + causality bootstrap starting.');
 
   const preloadScreen = new PreloadScreen(host);
   const audio = new AudioDirector();
@@ -93,21 +94,20 @@ async function bootstrap(): Promise<void> {
     const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
     let scene: DestructionScene;
     let chrome: SessionChrome;
+    let causality: RuneCausalityOverlay | null = null;
     let resultHandled = false;
 
     const onGameplayEvent = (event: DestructionEvent): void => {
       session.registerEvent(event);
-    };
-
-    const onPlayerAction = (): void => {
-      if (session.start()) chrome.render(session.snapshot);
+      causality?.handle(event);
+      if (event.type === 'rune-activated' && session.start()) chrome.render(session.snapshot);
     };
 
     const createScene = (): DestructionScene => new DestructionScene(
       app.screen.width,
       app.screen.height,
       audio,
-      { onPlayerAction, onGameplayEvent },
+      { onGameplayEvent },
     );
 
     scene = createScene();
@@ -133,13 +133,14 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P6.1 session loop playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P6.1.1 onboarding and causality playtest');
     app.stage.addChild(scene);
 
     const restartRun = (): void => {
       app.stage.removeChild(scene);
       scene.destroy({ children: true });
       session.reset();
+      causality?.reset();
       loop.reset();
       resultHandled = false;
       scene = createScene();
@@ -147,6 +148,7 @@ async function bootstrap(): Promise<void> {
       chrome.render(session.snapshot);
     };
 
+    causality = new RuneCausalityOverlay(host);
     chrome = new SessionChrome(host, restartRun);
     chrome.render(session.snapshot);
 
@@ -170,7 +172,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P6.1 ready. First valid action starts the authored 75-second run.');
+    console.info('[Rune Ball] P6.1.1 ready. First successful Rune starts the 75-second run.');
   } catch (error) {
     showBootstrapFailure(
       error,

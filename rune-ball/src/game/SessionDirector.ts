@@ -141,7 +141,7 @@ export class SessionDirector {
         this.stats.score += event.scoreAdded;
         this.stats.breaks += 1;
         this.stats.maxCombo = Math.max(this.stats.maxCombo, event.combo);
-        if (event.source !== 'ball') this.stats.runeBreaks += 1;
+        if (event.runeInfluence !== null) this.stats.runeBreaks += 1;
         if (this.overdriveActive) this.stats.overdriveBreaks += 1;
         break;
       case 'rune-activated':

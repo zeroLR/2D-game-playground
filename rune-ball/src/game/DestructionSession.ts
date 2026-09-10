@@ -11,7 +11,7 @@ export type ImpactSource = 'ball' | 'split' | 'chain';
 export type DestructionEvent =
   | { type: 'wall-hit'; side: WallSide; assisted: boolean; targetId: number | null }
   | { type: 'target-hit'; targetId: number; kind: TargetKind; position: Point2D; armorBroken: boolean; source: ImpactSource }
-  | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource }
+  | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource; runeInfluence: RuneKind | null }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
@@ -182,6 +182,17 @@ export class DestructionSession {
     if (damagedThisStep.has(targetId)) return false;
     const hit = this.targets.hit(targetId);
     if (!hit) return false;
+    const runeStateAtImpact = this.runes.snapshot;
+    const runeInfluence: RuneKind | null = source === 'split'
+      ? 'split'
+      : source === 'chain'
+        ? 'chain'
+        : canTriggerChain && runeStateAtImpact.chainReady
+          ? 'chain'
+          : runeStateAtImpact.vortexStrength > 0
+            ? 'vortex'
+            : null;
+
     damagedThisStep.add(targetId);
     this.runes.registerImpact(hit.destroyed);
     if (this.flow.registerImpact(hit.destroyed)) this.enterOverdrive(events);
@@ -205,6 +216,7 @@ export class DestructionSession {
         combo: reward.combo,
         scoreAdded: reward.scoreAdded,
         source,
+        runeInfluence,
       });
     } else {
       this.combo.registerContact();

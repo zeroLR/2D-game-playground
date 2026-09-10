@@ -12,6 +12,7 @@ export class SessionChrome {
   private readonly phase: HTMLElement;
   private readonly timer: HTMLElement;
   private readonly hint: HTMLElement;
+  private readonly startPrompt: HTMLElement;
   private readonly results: HTMLElement;
   private readonly score: HTMLElement;
   private readonly maxCombo: HTMLElement;
@@ -41,6 +42,22 @@ export class SessionChrome {
     hint.className = 'session-hint';
 
     hud.append(phase, timer, hint);
+
+    const startPrompt = document.createElement('div');
+    startPrompt.className = 'session-start-prompt';
+    startPrompt.setAttribute('aria-hidden', 'true');
+
+    const startRune = document.createElement('div');
+    startRune.className = 'session-start-rune';
+    const startRing = document.createElement('span');
+    startRing.className = 'session-start-rune-ring';
+    const startOrbit = document.createElement('span');
+    startOrbit.className = 'session-start-rune-orbit';
+    const startSpark = document.createElement('span');
+    startSpark.className = 'session-start-rune-spark';
+    startOrbit.append(startSpark);
+    startRune.append(startRing, startOrbit);
+    startPrompt.append(startRune);
 
     const results = document.createElement('div');
     results.className = 'session-results';
@@ -91,13 +108,14 @@ export class SessionChrome {
 
     panel.append(eyebrow, title, scoreLabel, score, stats, retryButton, footnote);
     results.append(panel);
-    root.append(hud, results);
+    root.append(hud, startPrompt, results);
     host.append(root);
 
     this.root = root;
     this.phase = phase;
     this.timer = timer;
     this.hint = hint;
+    this.startPrompt = startPrompt;
     this.results = results;
     this.score = score;
     this.maxCombo = maxCombo;
@@ -121,22 +139,26 @@ export class SessionChrome {
       switch (snapshot.phase) {
         case 'ready':
           this.phase.textContent = 'READY';
-          this.hint.textContent = 'SWIPE TO START // DRAW ○ V Z';
+          this.hint.textContent = '';
+          this.startPrompt.hidden = false;
           this.results.hidden = true;
           break;
         case 'playing':
           this.phase.textContent = 'RUN';
           this.hint.textContent = '';
+          this.startPrompt.hidden = true;
           this.results.hidden = true;
           break;
         case 'final-release':
           this.phase.textContent = 'FINAL RELEASE';
           this.hint.textContent = 'CASH OUT THE LAST CHAIN';
+          this.startPrompt.hidden = true;
           this.results.hidden = true;
           break;
         case 'results':
           this.phase.textContent = 'COMPLETE';
           this.hint.textContent = '';
+          this.startPrompt.hidden = true;
           this.showResults(snapshot.stats);
           break;
       }
