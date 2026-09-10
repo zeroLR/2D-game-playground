@@ -6,7 +6,7 @@ import { FlowSystem, type FlowSnapshot } from '../progression/FlowSystem';
 import { RuneSystem, type RuneSnapshot } from '../rune/RuneSystem';
 import type { RuneKind } from '../rune/RuneTypes';
 
-export type ImpactSource = 'ball' | 'split' | 'chain';
+export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
 export type DestructionEvent =
   | { type: 'wall-hit'; side: WallSide; assisted: boolean; targetId: number | null }
@@ -15,6 +15,8 @@ export type DestructionEvent =
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
+  | { type: 'ascension-activated'; rune: 'vortex'; ascension: 'singularity'; center: Point2D; duration: number }
+  | { type: 'ascension-pulse'; rune: 'vortex'; ascension: 'singularity'; center: Point2D; targets: Point2D[] }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
   | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] }
   | { type: 'overdrive-enter'; duration: number }
@@ -37,6 +39,10 @@ const SPLIT_ECHO_OFFSET = 42;
 const SPLIT_ECHO_RADIUS = 13;
 const CHAIN_RADIUS = 155;
 const CHAIN_TARGET_LIMIT = 3;
+const SINGULARITY_DURATION_SECONDS = 1.35;
+const SINGULARITY_RADIUS = 300;
+const SINGULARITY_PULL_PER_SECOND = 4.8;
+const SINGULARITY_PULSE_RADIUS = 145;
 
 export class DestructionSession {
   private readonly ball: BallModel;
@@ -46,6 +52,8 @@ export class DestructionSession {
   private readonly flow = new FlowSystem();
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
+  private singularityCenter: Point2D | null = null;
+  private singularitySecondsRemaining = 0;
 
   constructor(bounds: ArenaBounds) {
     this.ball = new BallModel(bounds);
@@ -70,6 +78,8 @@ export class DestructionSession {
     this.targets.setBounds(bounds);
     this.activeOverlaps.clear();
     this.activeSplitOverlaps.clear();
+    this.singularityCenter = null;
+    this.singularitySecondsRemaining = 0;
   }
 
   applyDirectionalRedirect(direction: SwipeDirection): void {
@@ -88,6 +98,19 @@ export class DestructionSession {
     return events;
   }
 
+  activateVortexAscension(center: Point2D): DestructionEvent[] {
+    if (this.singularitySecondsRemaining > 0) return [];
+    this.singularityCenter = { ...center };
+    this.singularitySecondsRemaining = SINGULARITY_DURATION_SECONDS;
+    return [{
+      type: 'ascension-activated',
+      rune: 'vortex',
+      ascension: 'singularity',
+      center: { ...center },
+      duration: SINGULARITY_DURATION_SECONDS,
+    }];
+  }
+
   interpolatedBallPosition(alpha: number): Point2D {
     return this.ball.interpolatedPosition(alpha);
   }
@@ -99,6 +122,18 @@ export class DestructionSession {
       events.push({ type: 'overdrive-exit' });
     }
     this.runes.update(dtSeconds);
+
+    let singularityPulseCenter: Point2D | null = null;
+    if (this.singularityCenter && this.singularitySecondsRemaining > 0) {
+      const dt = Math.max(0, dtSeconds);
+      this.targets.applyVortex(
+        this.singularityCenter,
+        SINGULARITY_RADIUS,
+        dt * SINGULARITY_PULL_PER_SECOND,
+      );
+      this.singularitySecondsRemaining = Math.max(0, this.singularitySecondsRemaining - dt);
+      if (this.singularitySecondsRemaining <= 0) singularityPulseCenter = { ...this.singularityCenter };
+    }
 
     const ballUpdate = this.ball.update(dtSeconds);
     let assisted = false;
@@ -141,6 +176,26 @@ export class DestructionSession {
     if (this.combo.update(dtSeconds, this.flow.snapshot.overdriveActive)) events.push({ type: 'combo-reset' });
 
     const damagedThisStep = new Set<number>();
+    if (singularityPulseCenter) {
+      const targetIds = this.targets.collidingTargetIds(singularityPulseCenter, SINGULARITY_PULSE_RADIUS);
+      const positionsById = new Map(this.targets.snapshot.map((target) => [target.id, target.position]));
+      const pulseTargets = targetIds
+        .map((id) => positionsById.get(id))
+        .filter((position): position is Point2D => Boolean(position))
+        .map((position) => ({ ...position }));
+      events.push({
+        type: 'ascension-pulse',
+        rune: 'vortex',
+        ascension: 'singularity',
+        center: { ...singularityPulseCenter },
+        targets: pulseTargets,
+      });
+      for (const targetId of targetIds) {
+        this.resolveTargetHit(targetId, 'singularity', false, events, damagedThisStep);
+      }
+      this.singularityCenter = null;
+    }
+
     const ball = this.ball.snapshot;
     const ballCollidingIds = this.targets.collidingTargetIds(ball.position, ball.radius);
     const currentOverlaps = new Set<number>(ballCollidingIds);
@@ -185,7 +240,9 @@ export class DestructionSession {
     const runeStateAtImpact = this.runes.snapshot;
     const runeInfluence: RuneKind | null = source === 'split'
       ? 'split'
-      : source === 'chain'
+      : source === 'singularity'
+        ? 'vortex'
+        : source === 'chain'
         ? 'chain'
         : canTriggerChain && runeStateAtImpact.chainReady
           ? 'chain'
