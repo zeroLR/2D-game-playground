@@ -1,0 +1,234 @@
+.ascension-card-root {
+  --ascension-progress: 0%;
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 4;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.ascension-card {
+  position: relative;
+  width: 132px;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+  padding: 8px 10px 10px;
+  border: 1px solid rgb(143 77 255 / 18%);
+  border-radius: 13px;
+  background: rgb(7 10 20 / 72%);
+  color: #dcecff;
+  text-align: left;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 24%);
+  opacity: 0.58;
+  transition:
+    opacity 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.ascension-card[aria-disabled="false"] {
+  pointer-events: auto;
+  opacity: 1;
+  border-color: rgb(111 233 255 / 58%);
+  box-shadow:
+    0 0 0 1px rgb(215 86 255 / 18%),
+    0 0 26px rgb(111 233 255 / 16%),
+    0 14px 36px rgb(0 0 0 / 30%);
+  animation: ascension-ready-pulse 1.7s ease-in-out infinite;
+}
+
+.ascension-card-glyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(111 233 255 / 28%);
+  border-radius: 50%;
+  color: #6fe9ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 27px;
+  line-height: 1;
+  text-shadow: 0 0 14px rgb(111 233 255 / 30%);
+}
+
+.ascension-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.ascension-card-name,
+.ascension-card-state {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ascension-card-name {
+  color: #cfefff;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+
+.ascension-card-state {
+  color: #71829b;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ascension-card[data-state="ready"] .ascension-card-state {
+  color: #6fe9ff;
+}
+
+.ascension-card-meter {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgb(113 130 155 / 14%);
+}
+
+.ascension-card-meter::after {
+  content: '';
+  display: block;
+  width: var(--ascension-progress);
+  height: 100%;
+  background: linear-gradient(90deg, #8f4dff, #6fe9ff);
+  box-shadow: 0 0 12px rgb(111 233 255 / 34%);
+  transition: width 220ms ease;
+}
+
+.ascension-card:focus-visible {
+  outline: 2px solid #6fe9ff;
+  outline-offset: 3px;
+}
+
+.ascension-card:active[aria-disabled="false"] {
+  transform: scale(0.97);
+}
+
+.rune-causality-ascension {
+  color: #6fe9ff;
+  fill: none;
+  stroke: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.rune-causality-ascension .rune-causality-ring {
+  stroke-width: 2.4;
+}
+
+.rune-causality-ascension .rune-causality-glyph {
+  stroke-width: 3.2;
+}
+
+.rune-causality-ascension--cast {
+  animation: singularity-cast 900ms ease-out forwards;
+}
+
+.rune-causality-ascension--pulse {
+  animation: singularity-pulse 680ms ease-out forwards;
+}
+
+@keyframes ascension-ready-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgb(215 86 255 / 16%),
+      0 0 20px rgb(111 233 255 / 12%),
+      0 14px 36px rgb(0 0 0 / 30%);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px rgb(215 86 255 / 26%),
+      0 0 32px rgb(111 233 255 / 24%),
+      0 14px 36px rgb(0 0 0 / 30%);
+  }
+}
+
+@keyframes singularity-cast {
+  0% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+
+  22% {
+    opacity: 0.92;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+}
+
+@keyframes singularity-pulse {
+  0% {
+    opacity: 0.96;
+    transform: scale(0.54);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.44);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ascension-card,
+  .ascension-card-meter::after {
+    transition: none;
+  }
+
+  .ascension-card[aria-disabled="false"] {
+    animation: none;
+  }
+
+  .rune-causality-ascension--cast,
+  .rune-causality-ascension--pulse {
+    animation-duration: 260ms;
+    transform: none;
+  }
+}
+
+html[data-reduced-motion="true"] .ascension-card,
+html[data-reduced-motion="true"] .ascension-card-meter::after {
+  transition: none;
+}
+
+html[data-reduced-motion="true"] .ascension-card[aria-disabled="false"] {
+  animation: none;
+}
+
+html[data-reduced-motion="true"] .rune-causality-ascension--cast,
+html[data-reduced-motion="true"] .rune-causality-ascension--pulse {
+  animation-duration: 260ms;
+  transform: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ascension-card {
+    background: rgb(7 10 20 / 96%);
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .ascension-card {
+    background: rgb(4 7 14 / 98%);
+    border-color: rgb(207 239 255 / 52%);
+  }
+}

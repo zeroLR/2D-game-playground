@@ -9,6 +9,8 @@ import {
   writeRuntimePreferences,
   type RuntimePreferences,
 } from './preferences/RuntimePreferences';
+import { AscensionSystem } from './progression/AscensionSystem';
+import { AscensionCard } from './presentation/AscensionCard';
 import { DestructionScene } from './presentation/DestructionScene';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
 import { SessionChrome } from './presentation/SessionChrome';
@@ -16,6 +18,7 @@ import { SettingsPanel } from './presentation/SettingsPanel';
 import './style.css';
 import './session.css';
 import './settings.css';
+import './ascension.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
@@ -68,7 +71,7 @@ function applyMotionPreference(enabled: boolean): void {
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P6.2 production controls bootstrap starting.');
+  console.info('[Rune Ball] P7.1 Vortex Ascension bootstrap starting.');
 
   const storage = getStorage();
   let preferences: RuntimePreferences = readRuntimePreferences(storage, systemPrefersReducedMotion());
@@ -127,10 +130,12 @@ async function bootstrap(): Promise<void> {
     });
 
     const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
+    const ascension = new AscensionSystem();
     let scene: DestructionScene;
     let chrome: SessionChrome;
     let causality: RuneCausalityOverlay | null = null;
     let settings: SettingsPanel | null = null;
+    let ascensionCard: AscensionCard | null = null;
     let resultHandled = false;
     let settingsOpen = false;
     let runtimePaused = false;
@@ -142,7 +147,11 @@ async function bootstrap(): Promise<void> {
     const onGameplayEvent = (event: DestructionEvent): void => {
       session.registerEvent(event);
       causality?.handle(event);
-      if (event.type === 'rune-activated' && session.start()) chrome.render(session.snapshot);
+      if (event.type === 'rune-activated') {
+        ascension.registerRuneActivation(event.rune);
+        ascensionCard?.render(ascension.snapshot);
+        if (session.start()) chrome.render(session.snapshot);
+      }
     };
 
     const createScene = (): DestructionScene => {
@@ -170,6 +179,7 @@ async function bootstrap(): Promise<void> {
         if (transition === 'results' && !resultHandled) {
           resultHandled = true;
           scene.setInputEnabled(false);
+          ascensionCard?.setRuntimeEnabled(false);
           audio.playResultSting();
           chrome.render(session.snapshot);
         }
@@ -179,8 +189,10 @@ async function bootstrap(): Promise<void> {
 
     const syncRuntimePause = (): void => {
       const nextPaused = pagePaused || settingsOpen;
+      const interactionEnabled = !nextPaused && session.snapshot.phase !== 'results';
       session.setPaused(nextPaused);
-      scene.setInputEnabled(!nextPaused && session.snapshot.phase !== 'results');
+      scene.setInputEnabled(interactionEnabled);
+      ascensionCard?.setRuntimeEnabled(interactionEnabled);
       if (runtimePaused && !nextPaused) loop.reset();
       runtimePaused = nextPaused;
     };
@@ -188,13 +200,15 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball production MVP');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P7.1 Vortex Ascension playtest');
     app.stage.addChild(scene);
 
     const restartRun = (): void => {
       app.stage.removeChild(scene);
       scene.destroy({ children: true });
       session.reset();
+      ascension.reset();
+      ascensionCard?.render(ascension.snapshot);
       causality?.reset();
       loop.reset();
       resultHandled = false;
@@ -207,6 +221,17 @@ async function bootstrap(): Promise<void> {
     causality = new RuneCausalityOverlay(host);
     chrome = new SessionChrome(host, restartRun);
     chrome.render(session.snapshot);
+
+    ascensionCard = new AscensionCard(host, () => {
+      const phase = session.snapshot.phase;
+      if (runtimePaused || (phase !== 'playing' && phase !== 'final-release')) return false;
+      if (!ascension.snapshot.ready) return false;
+      if (!scene.releaseVortexAscension()) return false;
+      if (!ascension.consume()) return false;
+      ascensionCard?.render(ascension.snapshot);
+      return true;
+    });
+    ascensionCard.render(ascension.snapshot);
 
     settings = new SettingsPanel(host, preferences, {
       onSoundChange: (enabled) => {
@@ -244,7 +269,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P6.2 ready. Runtime settings and persisted accessibility preferences active.');
+    console.info('[Rune Ball] P7.1 ready. Four successful Vortex casts charge one Singularity release.');
   } catch (error) {
     showBootstrapFailure(
       error,

@@ -405,6 +405,16 @@ export class DestructionScene extends Container {
     if (!enabled) this.clearPointer();
   }
 
+  releaseVortexAscension(): boolean {
+    if (!this.inputEnabled) return false;
+    const center = this.session.snapshot.ball.position;
+    const events = this.session.activateVortexAscension(center);
+    if (!events.some((event) => event.type === 'ascension-activated')) return false;
+    for (const event of events) this.handleGameplayEvent(event);
+    this.clearPointer();
+    return true;
+  }
+
   private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
     if (!this.inputEnabled || this.activePointerId !== null) return;
     void this.audio.unlock();
@@ -508,6 +518,19 @@ export class DestructionScene extends Container {
           MAX_RUNE_CONFIRMATIONS,
         );
         this.audio.playRune(event.rune);
+        break;
+      case 'ascension-activated':
+        this.pushCapped(
+          this.runeConfirmations,
+          { rune: 'vortex', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * 1.8, success: true },
+          MAX_RUNE_CONFIRMATIONS,
+        );
+        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
+        this.audio.playRune('vortex');
+        break;
+      case 'ascension-pulse':
+        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
+        this.audio.playChain(Math.max(1, event.targets.length));
         break;
       case 'rune-failed':
         this.pushCapped(

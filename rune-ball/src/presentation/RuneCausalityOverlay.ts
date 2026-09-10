@@ -22,6 +22,12 @@ export class RuneCausalityOverlay {
       case 'rune-activated':
         this.spawnSignature(event.rune, event.center, 'cast');
         break;
+      case 'ascension-activated':
+        this.spawnAscension(event.center, false);
+        break;
+      case 'ascension-pulse':
+        this.spawnAscension(event.center, true);
+        break;
       case 'target-break':
         if (event.runeInfluence) this.spawnSignature(event.runeInfluence, event.position, 'break');
         break;
@@ -62,6 +68,28 @@ export class RuneCausalityOverlay {
     group.append(glyph);
 
     this.addTransient(group, variant === 'cast' ? 720 : 560);
+  }
+
+  private spawnAscension(point: Point2D, pulse: boolean): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.rune = 'vortex';
+    group.classList.add('rune-causality-ascension', pulse ? 'rune-causality-ascension--pulse' : 'rune-causality-ascension--cast');
+
+    for (const radius of pulse ? [40, 68, 96] : [34, 54, 74]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', radius.toString());
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+
+    const glyph = document.createElementNS(SVG_NS, 'path');
+    glyph.setAttribute('d', this.glyphPath('vortex', point, pulse ? 34 : 27));
+    glyph.classList.add('rune-causality-glyph');
+    group.append(glyph);
+
+    this.addTransient(group, pulse ? 680 : 900);
   }
 
   private spawnChainLinks(origin: Point2D, targets: Point2D[]): void {
