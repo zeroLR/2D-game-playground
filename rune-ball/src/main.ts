@@ -1,6 +1,7 @@
 import { AudioDirector } from './audio/AudioDirector';
 import { createRenderer } from './bootstrap/create-renderer';
 import { PreloadScreen } from './bootstrap/PreloadScreen';
+import type { StageId } from './content/StageCatalog';
 import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { SessionDirector } from './game/SessionDirector';
@@ -9,17 +10,19 @@ import {
   writeRuntimePreferences,
   type RuntimePreferences,
 } from './preferences/RuntimePreferences';
+import { readPlayerProfile, writePlayerProfile, type PlayerProfile } from './profile/PlayerProfile';
 import type { VortexEvolutionPath } from './progression/VortexEvolutionSystem';
 import { DestructionScene } from './presentation/DestructionScene';
+import { GameShell } from './presentation/GameShell';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
 import { SessionChrome } from './presentation/SessionChrome';
 import { SettingsPanel } from './presentation/SettingsPanel';
-import { VortexBuildPicker } from './presentation/VortexBuildPicker';
 import { VortexEvolutionStatus } from './presentation/VortexEvolutionStatus';
 import './style.css';
 import './session.css';
 import './settings.css';
 import './evolution.css';
+import './product-shell.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
@@ -72,10 +75,11 @@ function applyMotionPreference(enabled: boolean): void {
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P7.2 Vortex Evolution bootstrap starting.');
+  console.info('[Rune Ball] P8.1 Product Shell bootstrap starting.');
 
   const storage = getStorage();
   let preferences: RuntimePreferences = readRuntimePreferences(storage, systemPrefersReducedMotion());
+  let profile: PlayerProfile = readPlayerProfile(storage);
   applyMotionPreference(preferences.reducedMotion);
 
   const preloadScreen = new PreloadScreen(host);
@@ -129,26 +133,29 @@ async function bootstrap(): Promise<void> {
     });
 
     const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
-    let selectedPath: VortexEvolutionPath = 'gravity-well';
+    let selectedPath: VortexEvolutionPath = profile.vortexPath;
     let scene: DestructionScene;
     let chrome: SessionChrome;
-    let causality: RuneCausalityOverlay | null = null;
-    let settings: SettingsPanel | null = null;
-    let buildPicker: VortexBuildPicker;
-    let evolutionStatus: VortexEvolutionStatus | null = null;
+    let causality: RuneCausalityOverlay;
+    let evolutionStatus: VortexEvolutionStatus;
+    let shell: GameShell;
     let resultHandled = false;
     let settingsOpen = false;
-    let buildSelecting = true;
-    let runtimePaused = false;
+    let productShellOpen = true;
+    let runtimePaused = true;
 
     const persistPreferences = (): void => {
       writeRuntimePreferences(storage, preferences);
     };
 
+    const persistProfile = (): void => {
+      writePlayerProfile(storage, profile);
+    };
+
     const onGameplayEvent = (event: DestructionEvent): void => {
       session.registerEvent(event);
-      causality?.handle(event);
-      evolutionStatus?.handle(event);
+      causality.handle(event);
+      evolutionStatus.handle(event);
       if (event.type === 'rune-activated' && session.start()) chrome.render(session.snapshot);
     };
 
@@ -177,7 +184,7 @@ async function bootstrap(): Promise<void> {
         if (transition === 'results' && !resultHandled) {
           resultHandled = true;
           scene.setInputEnabled(false);
-          evolutionStatus?.setVisible(false);
+          evolutionStatus.setVisible(false);
           audio.playResultSting();
           chrome.render(session.snapshot);
         }
@@ -186,7 +193,7 @@ async function bootstrap(): Promise<void> {
     );
 
     const syncRuntimePause = (): void => {
-      const nextPaused = pagePaused || settingsOpen || buildSelecting;
+      const nextPaused = pagePaused || settingsOpen || productShellOpen;
       const interactionEnabled = !nextPaused && session.snapshot.phase !== 'results';
       session.setPaused(nextPaused);
       scene.setInputEnabled(interactionEnabled);
@@ -197,47 +204,58 @@ async function bootstrap(): Promise<void> {
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P7.2 Vortex Evolution playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball arena');
     app.stage.addChild(scene);
 
     causality = new RuneCausalityOverlay(host);
     evolutionStatus = new VortexEvolutionStatus(host, selectedPath);
     evolutionStatus.setVisible(false);
-    buildPicker = new VortexBuildPicker(host);
 
-    const replaceSceneForBuild = (): void => {
+    const replaceScene = (): void => {
       app.stage.removeChild(scene);
       scene.destroy({ children: true });
       scene = createScene();
       app.stage.addChild(scene);
     };
 
-    const chooseBuild = async (): Promise<void> => {
-      buildSelecting = true;
-      evolutionStatus?.setVisible(false);
-      syncRuntimePause();
-      const nextPath = await buildPicker.choose(selectedPath);
-      selectedPath = nextPath;
-      replaceSceneForBuild();
-      evolutionStatus?.reset(selectedPath);
-      evolutionStatus?.setVisible(true);
+    const prepareRun = (): void => {
+      session.reset();
+      causality.reset();
+      resultHandled = false;
+      replaceScene();
+      evolutionStatus.reset(selectedPath);
+      evolutionStatus.setVisible(true);
+      chrome.render(session.snapshot);
+      chrome.setVisible(true);
+      productShellOpen = false;
       loop.reset();
-      buildSelecting = false;
       syncRuntimePause();
     };
 
     const restartRun = (): void => {
-      session.reset();
-      causality?.reset();
-      resultHandled = false;
-      chrome.render(session.snapshot);
-      void chooseBuild();
+      prepareRun();
     };
 
-    chrome = new SessionChrome(host, restartRun);
-    chrome.render(session.snapshot);
+    const returnHome = (): void => {
+      session.reset();
+      causality.reset();
+      resultHandled = false;
+      evolutionStatus.setVisible(false);
+      chrome.render(session.snapshot);
+      chrome.setVisible(false);
+      productShellOpen = true;
+      shell.showHome();
+      syncRuntimePause();
+    };
 
-    settings = new SettingsPanel(host, preferences, {
+    chrome = new SessionChrome(host, {
+      onRetry: restartRun,
+      onHome: returnHome,
+    });
+    chrome.render(session.snapshot);
+    chrome.setVisible(false);
+
+    const settings = new SettingsPanel(host, preferences, {
       onSoundChange: (enabled) => {
         preferences = { ...preferences, soundEnabled: enabled };
         audio.setEnabled(enabled);
@@ -256,8 +274,29 @@ async function bootstrap(): Promise<void> {
     });
     settings.setPreferences(preferences);
 
+    shell = new GameShell(host, selectedPath, {
+      onStartStage: (stageId: StageId) => {
+        host.dataset.activeStage = stageId;
+        console.info(`[Rune Ball] Starting stage ${stageId} with Vortex path ${selectedPath}.`);
+        prepareRun();
+      },
+      onVortexPathChange: (path) => {
+        selectedPath = path;
+        profile = { ...profile, vortexPath: path };
+        persistProfile();
+      },
+      onScreenChange: (screen) => {
+        host.dataset.appScreen = screen;
+        productShellOpen = screen !== 'run';
+        if (productShellOpen) {
+          chrome.setVisible(false);
+          evolutionStatus.setVisible(false);
+        }
+        syncRuntimePause();
+      },
+    });
+
     syncRuntimePause();
-    void chooseBuild();
 
     app.ticker.add((ticker) => {
       if (!runtimePaused) loop.tick(ticker.deltaMS);
@@ -272,9 +311,10 @@ async function bootstrap(): Promise<void> {
     resizeObserver.observe(host);
 
     host.dataset.bootstrapState = 'ready';
+    host.dataset.appScreen = 'home';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P7.2 ready. Choose a Vortex path, then qualify uses to evolve automatically.');
+    console.info('[Rune Ball] P8.1 ready. Product shell owns Home, Journey, Runes, Stage Detail, Run, and Results flow.');
   } catch (error) {
     showBootstrapFailure(
       error,

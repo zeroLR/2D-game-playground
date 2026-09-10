@@ -1,5 +1,10 @@
 import type { SessionSnapshot, SessionStats } from '../game/SessionDirector';
 
+export interface SessionChromeCallbacks {
+  onRetry(): void;
+  onHome(): void;
+}
+
 function formatTime(seconds: number): string {
   const clamped = Math.max(0, Math.ceil(seconds));
   const minutes = Math.floor(clamped / 60);
@@ -24,7 +29,7 @@ export class SessionChrome {
   private lastPhase = '';
   private lastTimer = '';
 
-  constructor(host: HTMLElement, onRetry: () => void) {
+  constructor(host: HTMLElement, callbacks: SessionChromeCallbacks) {
     const root = document.createElement('section');
     root.className = 'session-ui';
     root.setAttribute('aria-live', 'polite');
@@ -96,17 +101,28 @@ export class SessionChrome {
     const [chainItem, chainLinks] = this.makeStat('CHAIN LINKS');
     stats.append(maxComboItem, breaksItem, runesItem, overdriveItem, chainItem);
 
+    const actions = document.createElement('div');
+    actions.className = 'session-results-actions';
+
     const retryButton = document.createElement('button');
     retryButton.className = 'session-retry';
     retryButton.type = 'button';
     retryButton.textContent = 'RETRY';
-    retryButton.addEventListener('click', onRetry);
+    retryButton.addEventListener('click', callbacks.onRetry);
+
+    const homeButton = document.createElement('button');
+    homeButton.className = 'session-home';
+    homeButton.type = 'button';
+    homeButton.textContent = 'HOME';
+    homeButton.addEventListener('click', callbacks.onHome);
+
+    actions.append(retryButton, homeButton);
 
     const footnote = document.createElement('span');
     footnote.className = 'session-results-note';
-    footnote.textContent = 'Same rules. Cleaner line. Higher release.';
+    footnote.textContent = 'Retry keeps this stage and Rune build.';
 
-    panel.append(eyebrow, title, scoreLabel, score, stats, retryButton, footnote);
+    panel.append(eyebrow, title, scoreLabel, score, stats, actions, footnote);
     results.append(panel);
     root.append(hud, startPrompt, results);
     host.append(root);
@@ -165,6 +181,10 @@ export class SessionChrome {
     }
 
     if (snapshot.phase === 'results') this.showResults(snapshot.stats);
+  }
+
+  setVisible(visible: boolean): void {
+    this.root.hidden = !visible;
   }
 
   destroy(): void {
