@@ -24,78 +24,47 @@ jobs:
           path = Path('rune-ball/src/presentation/DestructionScene.ts')
           text = path.read_text()
 
-          marker = "export class DestructionScene extends Container {"
-          callbacks = """export interface DestructionSceneCallbacks {
-            onPlayerAction?: () => void;
-            onGameplayEvent?: (event: DestructionEvent) => void;
-          }
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              if old not in text:
+                  raise SystemExit(f'{label} marker missing')
+              text = text.replace(old, new, 1)
 
-          """
-          if marker not in text:
-              raise SystemExit('class marker missing')
-          text = text.replace(marker, callbacks + marker, 1)
-
-          old = """  private cameraOffset: Point2D = { x: 0, y: 0 };
-            private reducedMotion = false;
-
-            constructor(width: number, height: number, audio: AudioDirector) {
-              super();
-              this.audio = audio;
-          """
-          new = """  private cameraOffset: Point2D = { x: 0, y: 0 };
-            private reducedMotion = false;
-            private inputEnabled = true;
-            private readonly onPlayerAction?: () => void;
-            private readonly onGameplayEvent?: (event: DestructionEvent) => void;
-
-            constructor(width: number, height: number, audio: AudioDirector, callbacks: DestructionSceneCallbacks = {}) {
-              super();
-              this.audio = audio;
-              this.onPlayerAction = callbacks.onPlayerAction;
-              this.onGameplayEvent = callbacks.onGameplayEvent;
-          """
-          if old not in text:
-              raise SystemExit('constructor marker missing')
-          text = text.replace(old, new, 1)
-
-          marker = """  private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
-              if (this.activePointerId !== null) return;
-          """
-          replacement = """  setInputEnabled(enabled: boolean): void {
-              this.inputEnabled = enabled;
-              this.inputSurface.eventMode = enabled ? 'static' : 'none';
-              if (!enabled) this.clearPointer();
-            }
-
-            private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
-              if (!this.inputEnabled || this.activePointerId !== null) return;
-          """
-          if marker not in text:
-              raise SystemExit('pointer-down marker missing')
-          text = text.replace(marker, replacement, 1)
-
-          marker = """    if (path.length > 1) {
-              this.releasedGesture = {
-          """
-          replacement = """    if (success) this.onPlayerAction?.();
-
-              if (path.length > 1) {
-                this.releasedGesture = {
-          """
-          if marker not in text:
-              raise SystemExit('player-action marker missing')
-          text = text.replace(marker, replacement, 1)
-
-          marker = """  private handleGameplayEvent(event: DestructionEvent): void {
-              switch (event.type) {
-          """
-          replacement = """  private handleGameplayEvent(event: DestructionEvent): void {
-              this.onGameplayEvent?.(event);
-              switch (event.type) {
-          """
-          if marker not in text:
-              raise SystemExit('event marker missing')
-          text = text.replace(marker, replacement, 1)
+          replace_once(
+              'export class DestructionScene extends Container {',
+              "export interface DestructionSceneCallbacks {\n  onPlayerAction?: () => void;\n  onGameplayEvent?: (event: DestructionEvent) => void;\n}\n\nexport class DestructionScene extends Container {",
+              'class',
+          )
+          replace_once(
+              '  private reducedMotion = false;\n',
+              "  private reducedMotion = false;\n  private inputEnabled = true;\n  private readonly onPlayerAction?: () => void;\n  private readonly onGameplayEvent?: (event: DestructionEvent) => void;\n",
+              'fields',
+          )
+          replace_once(
+              '  constructor(width: number, height: number, audio: AudioDirector) {',
+              '  constructor(width: number, height: number, audio: AudioDirector, callbacks: DestructionSceneCallbacks = {}) {',
+              'constructor signature',
+          )
+          replace_once(
+              '    this.audio = audio;\n',
+              '    this.audio = audio;\n    this.onPlayerAction = callbacks.onPlayerAction;\n    this.onGameplayEvent = callbacks.onGameplayEvent;\n',
+              'constructor body',
+          )
+          replace_once(
+              '  private readonly handlePointerDown = (event: FederatedPointerEvent): void => {\n    if (this.activePointerId !== null) return;',
+              "  setInputEnabled(enabled: boolean): void {\n    this.inputEnabled = enabled;\n    this.inputSurface.eventMode = enabled ? 'static' : 'none';\n    if (!enabled) this.clearPointer();\n  }\n\n  private readonly handlePointerDown = (event: FederatedPointerEvent): void => {\n    if (!this.inputEnabled || this.activePointerId !== null) return;",
+              'pointer down',
+          )
+          replace_once(
+              '    if (path.length > 1) {',
+              '    if (success) this.onPlayerAction?.();\n\n    if (path.length > 1) {',
+              'player action',
+          )
+          replace_once(
+              '  private handleGameplayEvent(event: DestructionEvent): void {\n    switch (event.type) {',
+              '  private handleGameplayEvent(event: DestructionEvent): void {\n    this.onGameplayEvent?.(event);\n    switch (event.type) {',
+              'gameplay event',
+          )
 
           path.write_text(text)
           PY
