@@ -18,6 +18,24 @@ describe('TargetSystem', () => {
     }
   });
 
+  it('keeps the initial target ring away from the central interaction lane', () => {
+    const system = new TargetSystem(bounds, 8);
+    const targets = system.snapshot;
+    const center = { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
+    const clearRadius = Math.min(bounds.right - bounds.left, bounds.bottom - bounds.top) * 0.30;
+    const sideThreshold = (bounds.right - bounds.left) * 0.30;
+
+    for (const target of targets) {
+      expect(Math.hypot(target.position.x - center.x, target.position.y - center.y)).toBeGreaterThan(clearRadius);
+    }
+
+    const sideAnchored = targets.filter((target) =>
+      target.position.x <= bounds.left + sideThreshold
+      || target.position.x >= bounds.right - sideThreshold,
+    );
+    expect(sideAnchored).toHaveLength(8);
+  });
+
   it('destroys a crystal in one hit and respawns after the authored delay', () => {
     const system = new TargetSystem(bounds, 4);
     const crystal = system.snapshot.find((target) => target.kind === 'crystal');
