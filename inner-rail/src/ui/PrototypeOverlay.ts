@@ -145,7 +145,8 @@ export class PrototypeOverlay {
     const magnitude = Math.min(1, Math.hypot(clampedX, clampedY));
     const angleDeg = Math.atan2(clampedY, clampedX) * (180 / Math.PI) + 90;
     this.vectorNeedle.style.setProperty('--vector-angle', `${angleDeg}deg`);
-    this.vectorNeedle.style.setProperty('--vector-strength', magnitude.toFixed(3));
+    this.vectorNeedle.style.height = `${8 + 39 * magnitude}%`;
+    this.vectorNeedle.style.opacity = `${0.35 + 0.65 * magnitude}`;
     this.vectorLabel.textContent = magnitude < 0.02 ? 'FIELD / NEUTRAL' : `FIELD / ${(magnitude * 100).toFixed(0)}%`;
   }
 
@@ -157,8 +158,8 @@ export class PrototypeOverlay {
       const y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
       const clampedX = Math.max(-1, Math.min(1, x));
       const clampedY = Math.max(-1, Math.min(1, y));
-      knob.style.setProperty('--pad-x', clampedX.toFixed(3));
-      knob.style.setProperty('--pad-y', clampedY.toFixed(3));
+      knob.style.left = `${50 + clampedX * 42}%`;
+      knob.style.top = `${50 + clampedY * 42}%`;
       this.callbacks.onSyntheticTilt(clampedX, clampedY);
     };
 

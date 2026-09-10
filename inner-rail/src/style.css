@@ -85,14 +85,13 @@ button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 
 .vector-origin { width: 12px; height: 12px; border: 2px solid var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
 .vector-needle {
   --vector-angle: 0deg;
-  --vector-strength: 0;
   width: 3px;
-  height: calc(8% + 39% * var(--vector-strength));
+  height: 8%;
   border-radius: 999px;
   background: linear-gradient(to top, rgba(184, 234, 223, 0.12), var(--accent-strong));
   transform-origin: 50% 100%;
   transform: translate(-50%, -100%) rotate(var(--vector-angle));
-  box-shadow: 0 0 20px rgba(184, 234, 223, calc(0.15 + 0.45 * var(--vector-strength)));
+  box-shadow: 0 0 20px rgba(184, 234, 223, 0.46);
 }
 .vector-needle span { position: absolute; top: -5px; left: 50%; width: 9px; height: 9px; border-top: 2px solid var(--accent-strong); border-right: 2px solid var(--accent-strong); transform: translateX(-50%) rotate(-45deg); }
 .vector-caption { position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); color: var(--muted); font-size: 10px; white-space: nowrap; }
@@ -149,11 +148,9 @@ button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 
 .synthetic-crosshair::before { width: 100%; height: 1px; }
 .synthetic-crosshair::after { width: 1px; height: 100%; }
 .synthetic-knob {
-  --pad-x: 0;
-  --pad-y: 0;
   position: absolute;
-  left: calc(50% + var(--pad-x) * 42%);
-  top: calc(50% + var(--pad-y) * 42%);
+  left: 50%;
+  top: 50%;
   width: 24px;
   height: 24px;
   border: 2px solid var(--accent);

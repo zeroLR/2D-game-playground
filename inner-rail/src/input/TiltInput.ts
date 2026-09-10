@@ -37,6 +37,8 @@ export class TiltInput {
   private current: Vec2 = { x: 0, y: 0 };
   private neutral: Vec2 | null = null;
   private filtered: Vec2 = { x: 0, y: 0 };
+  private target: Vec2 = { x: 0, y: 0 };
+  private lastFilterUpdateAtMs: number | null = null;
   private source: TiltSourceKind | null = null;
   private raw: RawOrientationTelemetry | null = null;
   private lastSampleAtMs: number | null = null;
@@ -46,7 +48,6 @@ export class TiltInput {
   }
 
   ingest(sample: TiltSourceSample): void {
-    const previousAt = this.lastSampleAtMs;
     this.source = sample.source;
     this.current = { x: sample.screenXDeg, y: sample.screenYDeg };
     this.raw = sample.raw ?? null;
@@ -55,28 +56,36 @@ export class TiltInput {
     if (!this.neutral) return;
 
     const relative = relativeTilt(this.current, this.neutral);
-    const target = {
+    this.target = {
       x: applyAxisResponse(relative.x, this.config.deadZoneDeg, this.config.saturationDeg),
       y: applyAxisResponse(relative.y, this.config.deadZoneDeg, this.config.saturationDeg),
     };
-    const dtSeconds = previousAt === null ? 1 / 60 : Math.max(0, (sample.timestampMs - previousAt) / 1000);
+  }
 
+  update(nowMs: number): void {
+    if (!this.neutral) return;
+    const dtSeconds = this.lastFilterUpdateAtMs === null ? 1 / 60 : Math.max(0, (nowMs - this.lastFilterUpdateAtMs) / 1000);
+    this.lastFilterUpdateAtMs = nowMs;
     this.filtered = {
-      x: smoothExp(this.filtered.x, target.x, this.config.smoothingResponsePerSecond, dtSeconds),
-      y: smoothExp(this.filtered.y, target.y, this.config.smoothingResponsePerSecond, dtSeconds),
+      x: smoothExp(this.filtered.x, this.target.x, this.config.smoothingResponsePerSecond, dtSeconds),
+      y: smoothExp(this.filtered.y, this.target.y, this.config.smoothingResponsePerSecond, dtSeconds),
     };
   }
 
   recenter(): boolean {
     if (this.lastSampleAtMs === null) return false;
     this.neutral = { ...this.current };
+    this.target = { x: 0, y: 0 };
     this.filtered = { x: 0, y: 0 };
+    this.lastFilterUpdateAtMs = null;
     return true;
   }
 
   clearCalibration(): void {
     this.neutral = null;
+    this.target = { x: 0, y: 0 };
     this.filtered = { x: 0, y: 0 };
+    this.lastFilterUpdateAtMs = null;
   }
 
   snapshot(): TiltSnapshot {

@@ -156,6 +156,7 @@ export class GameApp {
   }
 
   private tick = (): void => {
+    this.tiltInput.update(performance.now());
     const snapshot = this.tiltInput.snapshot();
     this.overlay.renderVector(snapshot.normalized.x, snapshot.normalized.y);
     this.telemetry.render(snapshot);
