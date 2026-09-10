@@ -7,6 +7,7 @@ import { SessionDirector } from './game/SessionDirector';
 import { DestructionScene } from './presentation/DestructionScene';
 import { SessionChrome } from './presentation/SessionChrome';
 import './style.css';
+import './session.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
@@ -91,6 +92,7 @@ async function bootstrap(): Promise<void> {
 
     const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
     let scene: DestructionScene;
+    let chrome: SessionChrome;
     let resultHandled = false;
 
     const onGameplayEvent = (event: DestructionEvent): void => {
@@ -145,7 +147,7 @@ async function bootstrap(): Promise<void> {
       chrome.render(session.snapshot);
     };
 
-    const chrome = new SessionChrome(host, restartRun);
+    chrome = new SessionChrome(host, restartRun);
     chrome.render(session.snapshot);
 
     setRuntimePaused = (paused: boolean): void => {
