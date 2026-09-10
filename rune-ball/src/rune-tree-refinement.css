@@ -1,0 +1,292 @@
+/* P8.2.1 — glyph-first tree. Names and mechanics live in the detail surface. */
+.rune-tree-canvas {
+  gap: 8px;
+}
+
+.rune-tree-graph {
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.rune-tree-base-node {
+  width: 78px;
+  min-height: 78px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.rune-tree-node-base-glyph {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: var(--rb-cyan) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: 38px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+}
+
+.rune-tree-branch-grid {
+  gap: 18px;
+  padding-top: 20px;
+}
+
+.rune-tree-branch {
+  grid-template-rows: 16px 88px 24px 88px;
+  justify-items: center;
+  gap: 8px;
+}
+
+.rune-tree-path-mark,
+.rune-tree-future-path-mark {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(143 77 255 / 44%);
+  border-radius: 50%;
+}
+
+.rune-tree-path-mark::after {
+  position: absolute;
+  content: '';
+}
+
+.rune-tree-path-mark--gravity-well::after {
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--rb-violet);
+  box-shadow: 0 0 8px rgb(143 77 255 / 38%);
+}
+
+.rune-tree-path-mark--orbit::after {
+  top: -3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rb-cyan);
+  box-shadow: 0 0 7px rgb(111 233 255 / 52%);
+  transform: translateX(-50%);
+}
+
+.rune-tree-branch[data-equipped='true'] .rune-tree-path-mark {
+  border-color: rgb(111 233 255 / 76%);
+  box-shadow: 0 0 12px rgb(111 233 255 / 15%);
+}
+
+.rune-tree-evolution-node,
+.rune-tree-future-node {
+  width: 88px;
+  min-height: 88px;
+  padding: 0;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.rune-tree-node-sigil {
+  position: relative;
+  display: block !important;
+  width: 54px;
+  height: 54px;
+  border: 1.5px solid rgb(143 77 255 / 66%);
+  border-radius: 50%;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+.rune-tree-node-sigil::before,
+.rune-tree-node-sigil::after,
+.rune-tree-node-sigil-core {
+  position: absolute;
+  content: '';
+}
+
+.rune-tree-node-sigil-core {
+  display: block !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+.rune-tree-node-sigil--gravity-well::before {
+  inset: 9px;
+  border: 1px solid rgb(111 233 255 / 58%);
+  border-radius: 50%;
+}
+
+.rune-tree-node-sigil--gravity-well::after {
+  inset: 18px;
+  border: 1px solid rgb(215 86 255 / 72%);
+  border-radius: 50%;
+}
+
+.rune-tree-node-sigil--gravity-well .rune-tree-node-sigil-core {
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rb-cyan);
+  box-shadow: 0 0 11px rgb(111 233 255 / 54%);
+  transform: translate(-50%, -50%);
+}
+
+.rune-tree-node-sigil--gravity-well.rune-tree-node-sigil--tier-2 {
+  border-color: rgb(111 233 255 / 72%);
+  box-shadow: inset 0 0 14px rgb(215 86 255 / 10%);
+}
+
+.rune-tree-node-sigil--gravity-well.rune-tree-node-sigil--tier-2::before {
+  inset: 6px;
+  border-width: 2px;
+}
+
+.rune-tree-node-sigil--gravity-well.rune-tree-node-sigil--tier-2::after {
+  inset: 15px;
+  border-width: 2px;
+}
+
+.rune-tree-node-sigil--gravity-well.rune-tree-node-sigil--tier-2 .rune-tree-node-sigil-core {
+  width: 10px;
+  height: 10px;
+  background: var(--rb-text);
+  box-shadow: 0 0 14px rgb(111 233 255 / 72%), 0 0 24px rgb(215 86 255 / 32%);
+}
+
+.rune-tree-node-sigil--orbit {
+  border-color: rgb(143 77 255 / 72%);
+}
+
+.rune-tree-node-sigil--orbit::before {
+  inset: 9px;
+  border: 1px solid rgb(111 233 255 / 60%);
+  border-top-color: transparent;
+  border-radius: 50%;
+  transform: rotate(-24deg);
+}
+
+.rune-tree-node-sigil--orbit::after {
+  top: 4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rb-cyan);
+  box-shadow: 0 0 10px rgb(111 233 255 / 48%);
+  transform: translateX(-50%);
+}
+
+.rune-tree-node-sigil--orbit .rune-tree-node-sigil-core {
+  right: 5px;
+  bottom: 11px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rb-magenta);
+  box-shadow: 0 0 8px rgb(215 86 255 / 44%);
+}
+
+.rune-tree-node-sigil--orbit.rune-tree-node-sigil--tier-2 {
+  border-width: 2px;
+  box-shadow: 0 0 0 5px rgb(111 233 255 / 8%);
+}
+
+.rune-tree-node-sigil--orbit.rune-tree-node-sigil--tier-2::before {
+  inset: 6px;
+  border-width: 2px;
+  border-right-color: transparent;
+  transform: rotate(38deg);
+}
+
+.rune-tree-node-sigil--orbit.rune-tree-node-sigil--tier-2::after {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 12px rgb(111 233 255 / 62%), -26px 25px 0 -1px var(--rb-magenta);
+}
+
+.rune-tree-branch[data-equipped='true'] .rune-tree-node-sigil {
+  border-color: rgb(111 233 255 / 82%);
+}
+
+.rune-tree-evolution-node[aria-pressed='true'] {
+  border-color: rgb(234 246 255 / 82%);
+  background: rgb(17 28 45 / 94%);
+  box-shadow: 0 0 0 2px rgb(111 233 255 / 12%), 0 0 26px rgb(111 233 255 / 11%);
+}
+
+.rune-tree-evolution-node[aria-pressed='true'] .rune-tree-node-sigil {
+  filter: drop-shadow(0 0 8px rgb(111 233 255 / 24%));
+}
+
+.rune-tree-detail-mount {
+  min-height: 184px;
+}
+
+.rune-tree-detail-active {
+  justify-self: start;
+  padding: 5px 8px;
+  border: 1px solid rgb(111 233 255 / 24%);
+  border-radius: 999px;
+  background: rgb(111 233 255 / 6%);
+  color: var(--rb-cyan);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+}
+
+.rune-tree-future-path-mark {
+  border-style: dashed;
+  border-color: rgb(113 130 155 / 26%);
+}
+
+.rune-tree-future-node-mark {
+  position: relative;
+  display: block !important;
+  width: 42px;
+  height: 42px;
+  border: 1px dashed rgb(113 130 155 / 34%);
+  border-radius: 50%;
+  font-size: 0 !important;
+}
+
+.rune-tree-future-node-mark::before,
+.rune-tree-future-node-mark::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 1px;
+  background: rgb(113 130 155 / 34%);
+  content: '';
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.rune-tree-future-node-mark::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.rune-tree-future-node-mark--final {
+  width: 50px;
+  height: 50px;
+}
+
+@media (max-width: 350px) {
+  .rune-tree-branch-grid {
+    gap: 10px;
+  }
+
+  .rune-tree-evolution-node,
+  .rune-tree-future-node {
+    width: 80px;
+    min-height: 80px;
+  }
+
+  .rune-tree-node-sigil {
+    width: 48px;
+    height: 48px;
+  }
+}

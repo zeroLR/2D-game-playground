@@ -10,6 +10,11 @@ import {
   type VortexEvolutionStage,
 } from '../progression/VortexEvolutionSystem';
 import { RuneSystem, type RuneSnapshot } from '../rune/RuneSystem';
+import {
+  BASE_VORTEX_PROFILE,
+  getVortexCastProfile,
+  type VortexCastProfile,
+} from '../progression/VortexEvolutionTuning';
 import type { RuneKind } from '../rune/RuneTypes';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
@@ -43,27 +48,8 @@ export interface DestructionSessionOptions {
   vortexEvolutionPath?: VortexEvolutionPath;
 }
 
-interface VortexCastProfile {
-  mode: 'pull' | 'orbit';
-  radius: number;
-  durationSeconds: number;
-  pullPerSecond: number;
-  orbitPerSecond: number;
-  inwardPerSecond: number;
-  collapseRadius: number;
-}
-
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
-const BASE_VORTEX_PROFILE: VortexCastProfile = {
-  mode: 'pull',
-  radius: 210,
-  durationSeconds: 0.65,
-  pullPerSecond: 2.15,
-  orbitPerSecond: 0,
-  inwardPerSecond: 0,
-  collapseRadius: 0,
-};
 const SPLIT_ECHO_OFFSET = 42;
 const SPLIT_ECHO_RADIUS = 13;
 const CHAIN_RADIUS = 155;
@@ -359,51 +345,7 @@ export class DestructionSession {
 
   private vortexProfileForCurrentStage(): VortexCastProfile {
     const evolution = this.vortexEvolution.snapshot;
-    if (evolution.stage === 0) return BASE_VORTEX_PROFILE;
-
-    if (evolution.path === 'gravity-well') {
-      if (evolution.stage === 1) {
-        return {
-          mode: 'pull',
-          radius: 255,
-          durationSeconds: 0.78,
-          pullPerSecond: 3.1,
-          orbitPerSecond: 0,
-          inwardPerSecond: 0,
-          collapseRadius: 0,
-        };
-      }
-      return {
-        mode: 'pull',
-        radius: 290,
-        durationSeconds: 0.96,
-        pullPerSecond: 4.0,
-        orbitPerSecond: 0,
-        inwardPerSecond: 0,
-        collapseRadius: 138,
-      };
-    }
-
-    if (evolution.stage === 1) {
-      return {
-        mode: 'orbit',
-        radius: 245,
-        durationSeconds: 0.88,
-        pullPerSecond: 0,
-        orbitPerSecond: 1.05,
-        inwardPerSecond: 0.48,
-        collapseRadius: 0,
-      };
-    }
-    return {
-      mode: 'orbit',
-      radius: 282,
-      durationSeconds: 1.18,
-      pullPerSecond: 0,
-      orbitPerSecond: 1.48,
-      inwardPerSecond: 0.62,
-      collapseRadius: 0,
-    };
+    return getVortexCastProfile(evolution.path, evolution.stage);
   }
 
   private enterOverdrive(events: DestructionEvent[]): void {

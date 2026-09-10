@@ -206,11 +206,11 @@ export class GameShell {
 
     const intro = document.createElement('p');
     intro.className = 'game-shell-screen-copy';
-    intro.textContent = 'Inspect evolution nodes, then equip one path. During a run, qualified Rune uses advance that path automatically.';
+    intro.textContent = 'Choose a Rune, then tap an evolution symbol to make that path active. Qualified uses evolve it automatically during a run.';
     body.append(intro);
 
     this.runeTree = new RuneTreePanel(body, this.selectedPath, {
-      onEquipVortexPath: (path) => {
+      onVortexPathChange: (path) => {
         this.selectedPath = path;
         this.renderBuild();
         this.callbacks.onVortexPathChange(path);

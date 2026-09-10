@@ -9,13 +9,14 @@ import {
   type VortexEvolutionTier,
 } from '../progression/RuneEvolutionCatalog';
 import '../rune-tree.css';
+import '../rune-tree-refinement.css';
 
 type VortexNodeSelection =
   | { kind: 'base' }
   | { kind: 'evolution'; path: VortexEvolutionPath; tier: VortexEvolutionTier };
 
 export interface RuneTreePanelCallbacks {
-  onEquipVortexPath(path: VortexEvolutionPath): void;
+  onVortexPathChange(path: VortexEvolutionPath): void;
 }
 
 export class RuneTreePanel {
@@ -132,40 +133,20 @@ export class RuneTreePanel {
 
   private renderVortexTree(): void {
     const base = getRuneBaseDefinition('vortex');
-    const activePath = getVortexPathDefinition(this.selectedPath);
-
-    const summary = document.createElement('div');
-    summary.className = 'rune-tree-active-build';
-    const summaryLabel = document.createElement('span');
-    summaryLabel.textContent = 'ACTIVE PATH';
-    const summaryValue = document.createElement('strong');
-    summaryValue.textContent = `${activePath.title} → ${activePath.tierTwo.name}`;
-    const summaryIdentity = document.createElement('small');
-    summaryIdentity.textContent = activePath.identity;
-    summary.append(summaryLabel, summaryValue, summaryIdentity);
-
     const graph = document.createElement('div');
     graph.className = 'rune-tree-graph';
-
-    const identity = document.createElement('header');
-    identity.className = 'rune-tree-identity';
-    const glyph = document.createElement('span');
-    glyph.className = 'rune-tree-identity-glyph';
-    glyph.textContent = base.glyph;
-    const identityCopy = document.createElement('span');
-    const name = document.createElement('strong');
-    name.textContent = base.name;
-    const role = document.createElement('small');
-    role.textContent = base.role;
-    identityCopy.append(name, role);
-    identity.append(glyph, identityCopy);
 
     const baseNode = document.createElement('button');
     baseNode.type = 'button';
     baseNode.className = 'rune-tree-node rune-tree-base-node';
     baseNode.dataset.node = 'vortex-base';
     baseNode.setAttribute('aria-pressed', String(this.selectedNode.kind === 'base'));
-    baseNode.innerHTML = '<span>BASE</span><strong>VORTEX</strong><small>START OF RUN</small>';
+    baseNode.setAttribute('aria-label', 'Base Vortex');
+    const baseGlyph = document.createElement('span');
+    baseGlyph.className = 'rune-tree-node-base-glyph';
+    baseGlyph.textContent = base.glyph;
+    baseGlyph.setAttribute('aria-hidden', 'true');
+    baseNode.append(baseGlyph);
     baseNode.addEventListener('click', () => {
       this.selectedNode = { kind: 'base' };
       this.syncNodeSelection();
@@ -183,13 +164,9 @@ export class RuneTreePanel {
       branch.dataset.path = path;
       branch.dataset.equipped = String(path === this.selectedPath);
 
-      const branchHeader = document.createElement('div');
-      branchHeader.className = 'rune-tree-branch-header';
-      const pathTitle = document.createElement('strong');
-      pathTitle.textContent = pathDefinition.title;
-      const pathIdentity = document.createElement('small');
-      pathIdentity.textContent = pathDefinition.identity;
-      branchHeader.append(pathTitle, pathIdentity);
+      const pathMark = document.createElement('span');
+      pathMark.className = `rune-tree-path-mark rune-tree-path-mark--${path}`;
+      pathMark.setAttribute('aria-hidden', 'true');
 
       const tierOne = this.makeEvolutionNode(path, 1);
       const rail = document.createElement('span');
@@ -197,13 +174,13 @@ export class RuneTreePanel {
       rail.setAttribute('aria-hidden', 'true');
       const tierTwo = this.makeEvolutionNode(path, 2);
 
-      branch.append(branchHeader, tierOne, rail, tierTwo);
+      branch.append(pathMark, tierOne, rail, tierTwo);
       branches.append(branch);
       this.branchRoots.set(path, branch);
     }
 
-    graph.append(identity, baseNode, branches);
-    this.treeMount.append(summary, graph);
+    graph.append(baseNode, branches);
+    this.treeMount.append(graph);
     this.syncVortexState();
   }
 
@@ -217,17 +194,21 @@ export class RuneTreePanel {
     button.setAttribute('aria-pressed', 'false');
     button.setAttribute('aria-label', `Tier ${tier} ${node.name}. Auto evolves at ${node.threshold} qualified Vortex uses.`);
 
-    const tierLabel = document.createElement('span');
-    tierLabel.textContent = `T${tier}`;
-    const name = document.createElement('strong');
-    name.textContent = node.name;
-    const trigger = document.createElement('small');
-    trigger.textContent = `${node.threshold} USES`;
-    button.append(tierLabel, name, trigger);
+    const sigil = document.createElement('span');
+    sigil.className = `rune-tree-node-sigil rune-tree-node-sigil--${path} rune-tree-node-sigil--tier-${tier}`;
+    sigil.setAttribute('aria-hidden', 'true');
+    const core = document.createElement('span');
+    core.className = 'rune-tree-node-sigil-core';
+    sigil.append(core);
+    button.append(sigil);
 
     button.addEventListener('click', () => {
+      if (path !== this.selectedPath) {
+        this.selectedPath = path;
+        this.callbacks.onVortexPathChange(path);
+      }
       this.selectedNode = { kind: 'evolution', path, tier };
-      this.syncNodeSelection();
+      this.syncVortexState();
       this.renderDetail();
     });
 
@@ -238,23 +219,16 @@ export class RuneTreePanel {
   private renderFutureRune(): void {
     const definition = getRuneBaseDefinition(this.selectedRune);
 
-    const summary = document.createElement('div');
-    summary.className = 'rune-tree-active-build rune-tree-active-build-future';
-    summary.innerHTML = `<span>EVOLUTION</span><strong>BASE RUNE ONLY</strong><small>PATHS NOT YET AUTHORED</small>`;
-
     const graph = document.createElement('div');
     graph.className = 'rune-tree-graph rune-tree-graph-future';
 
-    const identity = document.createElement('header');
-    identity.className = 'rune-tree-identity';
-    identity.innerHTML = [
-      `<span class="rune-tree-identity-glyph">${definition.glyph}</span>`,
-      `<span><strong>${definition.name}</strong><small>${definition.role}</small></span>`,
-    ].join('');
-
     const baseNode = document.createElement('div');
     baseNode.className = 'rune-tree-node rune-tree-base-node rune-tree-future-base';
-    baseNode.innerHTML = `<span>BASE</span><strong>${definition.name}</strong><small>AVAILABLE</small>`;
+    const baseGlyph = document.createElement('span');
+    baseGlyph.className = 'rune-tree-node-base-glyph';
+    baseGlyph.textContent = definition.glyph;
+    baseGlyph.setAttribute('aria-hidden', 'true');
+    baseNode.append(baseGlyph);
 
     const branches = document.createElement('div');
     branches.className = 'rune-tree-branch-grid rune-tree-future-branches';
@@ -262,16 +236,16 @@ export class RuneTreePanel {
       const branch = document.createElement('div');
       branch.className = 'rune-tree-branch rune-tree-future-branch';
       branch.innerHTML = [
-        '<div class="rune-tree-branch-header"><strong>UNAWAKENED</strong><small>FUTURE PATH</small></div>',
-        '<div class="rune-tree-node rune-tree-future-node"><span>T1</span><strong>—</strong><small>NOT AUTHORED</small></div>',
+        '<span class="rune-tree-future-path-mark" aria-hidden="true"></span>',
+        '<div class="rune-tree-node rune-tree-future-node"><span class="rune-tree-future-node-mark" aria-hidden="true"></span></div>',
         '<span class="rune-tree-rail" aria-hidden="true"></span>',
-        '<div class="rune-tree-node rune-tree-future-node"><span>T2</span><strong>—</strong><small>NOT AUTHORED</small></div>',
+        '<div class="rune-tree-node rune-tree-future-node"><span class="rune-tree-future-node-mark rune-tree-future-node-mark--final" aria-hidden="true"></span></div>',
       ].join('');
       branches.append(branch);
     }
 
-    graph.append(identity, baseNode, branches);
-    this.treeMount.append(summary, graph);
+    graph.append(baseNode, branches);
+    this.treeMount.append(graph);
   }
 
   private renderDetail(): void {
@@ -311,14 +285,10 @@ export class RuneTreePanel {
       trigger: `AUTO-EVOLVE · ${node.threshold} QUALIFIED VORTEX USES`,
     });
 
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'rune-tree-equip';
-    const equipped = path.id === this.selectedPath;
-    action.disabled = equipped;
-    action.textContent = equipped ? `EQUIPPED · ${path.title}` : `EQUIP ${path.title} PATH`;
-    action.addEventListener('click', () => this.equipPath(path.id));
-    card.append(action);
+    const active = document.createElement('span');
+    active.className = 'rune-tree-detail-active';
+    active.textContent = `${path.title} PATH ACTIVE`;
+    card.append(active);
     this.detailMount.append(card);
   }
 
@@ -358,15 +328,6 @@ export class RuneTreePanel {
     return card;
   }
 
-  private equipPath(path: VortexEvolutionPath): void {
-    if (path === this.selectedPath) return;
-    this.selectedPath = path;
-    this.selectedNode = { kind: 'evolution', path, tier: 2 };
-    this.syncVortexState();
-    this.renderDetail();
-    this.callbacks.onEquipVortexPath(path);
-  }
-
   private syncVortexState(): void {
     if (this.selectedRune !== 'vortex') return;
     for (const [path, branch] of this.branchRoots) {
@@ -374,14 +335,6 @@ export class RuneTreePanel {
     }
     this.syncNodeSelection();
 
-    const active = this.treeMount.querySelector<HTMLElement>('.rune-tree-active-build');
-    if (active) {
-      const definition = getVortexPathDefinition(this.selectedPath);
-      const value = active.querySelector<HTMLElement>('strong');
-      const identity = active.querySelector<HTMLElement>('small');
-      if (value) value.textContent = `${definition.title} → ${definition.tierTwo.name}`;
-      if (identity) identity.textContent = definition.identity;
-    }
   }
 
   private syncNodeSelection(): void {
