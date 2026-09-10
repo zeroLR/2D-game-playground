@@ -10,8 +10,8 @@ describe('VortexEvolutionTuning', () => {
 
     expect(orbitT1.mode).toBe('orbit');
     expect(orbitT2.mode).toBe('orbit');
-    expect(orbitT1.durationSeconds).toBeGreaterThan(gravityT1.durationSeconds * 1.5);
-    expect(orbitT2.durationSeconds).toBeGreaterThan(gravityT2.durationSeconds * 1.75);
+    expect(orbitT1.durationSeconds).toBeGreaterThan(gravityT1.durationSeconds * 2);
+    expect(orbitT2.durationSeconds).toBeGreaterThan(gravityT2.durationSeconds * 2.25);
     expect(orbitT2.durationSeconds).toBeGreaterThan(orbitT1.durationSeconds);
   });
 });

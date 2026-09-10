@@ -9,7 +9,8 @@ describe('ArenaLayout', () => {
   ])('keeps telemetry and Rune HUD outside collision bounds at %ix%i', (width, height) => {
     const layout = calculateArenaLayout(width, height);
 
-    expect(layout.scoreY).toBeLessThan(layout.bounds.top);
+    expect(layout.telemetryY).toBe(layout.scoreY);
+    expect(layout.telemetryY).toBeLessThan(layout.bounds.top);
     expect(layout.flowBarY).toBeLessThan(layout.bounds.top);
     expect(layout.runeBarY).toBeGreaterThan(layout.bounds.bottom);
     expect(layout.runeGuideY).toBeGreaterThan(layout.bounds.bottom);

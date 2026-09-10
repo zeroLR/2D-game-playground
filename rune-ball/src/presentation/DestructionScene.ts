@@ -205,8 +205,8 @@ export class DestructionScene extends Container {
     this.cameraFeedback.setReducedMotion(this.reducedMotion);
     this.impactPool.setReducedMotion(this.reducedMotion);
 
-    this.scoreText.anchor.set(0, 0);
-    this.comboText.anchor.set(1, 0);
+    this.scoreText.anchor.set(0, 0.5);
+    this.comboText.anchor.set(1, 0.5);
     this.runeGuide.anchor.set(0.5, 1);
     this.runeFeedback.anchor.set(0.5);
     this.runeFeedback.alpha = 0;
@@ -399,8 +399,8 @@ export class DestructionScene extends Container {
       .fill({ color: COLORS.arena, alpha: 0.84 })
       .stroke({ color: COLORS.arenaLine, width: 1.5, alpha: 0.66 });
 
-    this.scoreText.position.set(left + 14, this.arenaLayout.scoreY);
-    this.comboText.position.set(right - 14, this.arenaLayout.scoreY);
+    this.scoreText.position.set(left + 14, this.arenaLayout.telemetryY);
+    this.comboText.position.set(right - 14, this.arenaLayout.telemetryY);
     this.runeGuide.position.set(safeWidth / 2, this.arenaLayout.runeGuideY);
 
     this.inputSurface.clear().rect(left, top, right - left, bottom - top).fill({ color: 0xffffff, alpha: 0.001 });

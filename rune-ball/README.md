@@ -4,7 +4,7 @@ Mobile-first neon occult arcade game prototype built with PixiJS, Vite, and stri
 
 ## Current milestone
 
-**P8.2.1 — Rune Tree + Arena Clarity Refinement**
+**P8.2.2 — Runtime Readability Refinement**
 
 P0–P6 established the mobile arena loop, Rune gestures, Flow / Overdrive, VFX/audio, 75-second sessions, Results / Retry, accessibility controls, persisted settings, and background-aware lifecycle behavior. P7.2 replaced the temporary tap-Ascension experiment with automatic Rune Evolution: the player configures a Vortex path and qualified uses evolve it at runtime.
 
@@ -34,6 +34,13 @@ Open Web → Home
                                    ├─ Retry
                                    └─ Home
 ```
+
+
+P8.2.2 closes the follow-up readability pass from phone playtesting:
+
+- Rune Tree Base nodes now depict each Rune's **gameplay effect** rather than repeating its input gesture glyph; Rune cards remain the gesture/identity surface.
+- Orbit control windows are extended again so `Orbit` / `Event Horizon` read as sustained capture/control.
+- Time, Score, and Combo share one top telemetry row derived from `ArenaLayout`, with the Flow/Overdrive meter acting as the divider before the collision frame.
 
 ### Product shell contract
 

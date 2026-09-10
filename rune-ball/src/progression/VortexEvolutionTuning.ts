@@ -53,7 +53,7 @@ export function getVortexCastProfile(
     return {
       mode: 'orbit',
       radius: 245,
-      durationSeconds: 1.35,
+      durationSeconds: 1.70,
       pullPerSecond: 0,
       orbitPerSecond: 1.05,
       inwardPerSecond: 0.48,
@@ -64,7 +64,7 @@ export function getVortexCastProfile(
   return {
     mode: 'orbit',
     radius: 282,
-    durationSeconds: 1.85,
+    durationSeconds: 2.40,
     pullPerSecond: 0,
     orbitPerSecond: 1.48,
     inwardPerSecond: 0.62,

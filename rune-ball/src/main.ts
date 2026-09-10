@@ -232,6 +232,7 @@ function bootstrap(): void {
       onRetry: restartRun,
       onHome: returnHome,
     });
+    chrome.setViewport(nextApp.screen.width, nextApp.screen.height);
     chrome.render(session.snapshot);
     chrome.setVisible(false);
 
@@ -269,6 +270,7 @@ function bootstrap(): void {
       const height = Math.max(1, host.clientHeight);
       nextApp.renderer.resize(width, height);
       scene?.setViewport(width, height);
+      chrome?.setViewport(width, height);
     });
     resizeObserver.observe(host);
     runtimeLoaded = true;
