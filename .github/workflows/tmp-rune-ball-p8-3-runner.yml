@@ -1,0 +1,80 @@
+name: Rune Ball P8.3 patch runner
+
+on:
+  push:
+    branches:
+      - feat/rune-ball-p8-3-split-evolution
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/rune-ball-p8-3-split-evolution
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply stored source patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/tmp-rune-ball-p8-3-patch.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(source) if "python - <<'PY'" in line) + 1
+          end = next(i for i in range(start, len(source)) if source[i].strip() == 'PY')
+          script = textwrap.dedent('\n'.join(source[start:end]))
+          exec(compile(script, '<p8-3-patch>', 'exec'))
+          PY
+
+      - name: Install dependencies
+        working-directory: rune-ball
+        run: npm ci
+
+      - name: Run tests
+        working-directory: rune-ball
+        run: npm test
+
+      - name: Build
+        working-directory: rune-ball
+        run: npm run build
+
+      - name: Commit product changes and remove temporary runners
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-rune-ball-p8-3-patch.yml .github/workflows/tmp-rune-ball-p8-3-runner.yml
+          git add \
+            rune-ball/src/progression/RuneEvolutionCatalog.ts \
+            rune-ball/src/progression/SplitEvolutionSystem.ts \
+            rune-ball/src/progression/SplitEvolutionTuning.ts \
+            rune-ball/src/profile/PlayerProfile.ts \
+            rune-ball/src/rune/RuneSystem.ts \
+            rune-ball/src/game/DestructionSession.ts \
+            rune-ball/src/presentation/DestructionScene.ts \
+            rune-ball/src/presentation/RuneCausalityOverlay.ts \
+            rune-ball/src/presentation/GameShell.ts \
+            rune-ball/src/presentation/RuneTreePanel.ts \
+            rune-ball/src/presentation/RuneEvolutionStatus.ts \
+            rune-ball/src/presentation/VortexEvolutionStatus.ts \
+            rune-ball/src/rune-tree-refinement.css \
+            rune-ball/src/evolution.css \
+            rune-ball/src/main.ts \
+            rune-ball/tests/rune-evolution-catalog.test.ts \
+            rune-ball/tests/player-profile.test.ts \
+            rune-ball/tests/split-evolution-system.test.ts \
+            rune-ball/tests/split-evolution-tuning.test.ts \
+            rune-ball/README.md \
+            docs/plans/rune-ball/P8-3-SPLIT-EVOLUTION.md
+          git commit -m 'feat(rune-ball): author Split evolution paths'
+          git push origin HEAD:feat/rune-ball-p8-3-split-evolution
