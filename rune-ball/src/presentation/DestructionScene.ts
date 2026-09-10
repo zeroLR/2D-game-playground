@@ -81,6 +81,11 @@ interface OverdriveBeat {
   entering: boolean;
 }
 
+export interface DestructionSceneCallbacks {
+  onPlayerAction?: () => void;
+  onGameplayEvent?: (event: DestructionEvent) => void;
+}
+
 export class DestructionScene extends Container {
   private readonly backdrop = new Graphics();
   private readonly cameraRig = new Container();
@@ -174,10 +179,15 @@ export class DestructionScene extends Container {
   private presentationTime = 0;
   private cameraOffset: Point2D = { x: 0, y: 0 };
   private reducedMotion = false;
+  private inputEnabled = true;
+  private readonly onPlayerAction?: () => void;
+  private readonly onGameplayEvent?: (event: DestructionEvent) => void;
 
-  constructor(width: number, height: number, audio: AudioDirector) {
+  constructor(width: number, height: number, audio: AudioDirector, callbacks: DestructionSceneCallbacks = {}) {
     super();
     this.audio = audio;
+    this.onPlayerAction = callbacks.onPlayerAction;
+    this.onGameplayEvent = callbacks.onGameplayEvent;
     this.viewportWidth = Math.max(1, width);
     this.viewportHeight = Math.max(1, height);
     this.arenaBounds = this.calculateArenaBounds(width, height);
@@ -389,8 +399,14 @@ export class DestructionScene extends Container {
     this.inputSurface.hitArea = new Rectangle(left, top, right - left, bottom - top);
   }
 
+  setInputEnabled(enabled: boolean): void {
+    this.inputEnabled = enabled;
+    this.inputSurface.eventMode = enabled ? 'static' : 'none';
+    if (!enabled) this.clearPointer();
+  }
+
   private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
-    if (this.activePointerId !== null) return;
+    if (!this.inputEnabled || this.activePointerId !== null) return;
     void this.audio.unlock();
     this.activePointerId = event.pointerId;
     this.releasedGesture = null;
@@ -427,6 +443,8 @@ export class DestructionScene extends Container {
         break;
     }
 
+    if (success) this.onPlayerAction?.();
+
     if (path.length > 1) {
       this.releasedGesture = {
         points: path.map((point) => ({ ...point })),
@@ -447,6 +465,7 @@ export class DestructionScene extends Container {
   }
 
   private handleGameplayEvent(event: DestructionEvent): void {
+    this.onGameplayEvent?.(event);
     switch (event.type) {
       case 'wall-hit': {
         this.wallFlashes[event.side] = WALL_FLASH_SECONDS;
