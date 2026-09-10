@@ -4,11 +4,18 @@ import { PreloadScreen } from './bootstrap/PreloadScreen';
 import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { SessionDirector } from './game/SessionDirector';
+import {
+  readRuntimePreferences,
+  writeRuntimePreferences,
+  type RuntimePreferences,
+} from './preferences/RuntimePreferences';
 import { DestructionScene } from './presentation/DestructionScene';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
 import { SessionChrome } from './presentation/SessionChrome';
+import { SettingsPanel } from './presentation/SettingsPanel';
 import './style.css';
 import './session.css';
+import './settings.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
@@ -41,29 +48,53 @@ function preloadLabel(asset: string): string {
   return 'LOADING EFFECTS';
 }
 
+function getStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function systemPrefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function applyMotionPreference(enabled: boolean): void {
+  document.documentElement.dataset.reducedMotion = String(enabled);
+}
+
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P6.1.1 onboarding + causality bootstrap starting.');
+  console.info('[Rune Ball] P6.2 production controls bootstrap starting.');
+
+  const storage = getStorage();
+  let preferences: RuntimePreferences = readRuntimePreferences(storage, systemPrefersReducedMotion());
+  applyMotionPreference(preferences.reducedMotion);
 
   const preloadScreen = new PreloadScreen(host);
   const audio = new AudioDirector();
-  let setRuntimePaused: ((paused: boolean) => void) | null = null;
+  let pagePaused = document.visibilityState === 'hidden';
+  let setRuntimePaused: (() => void) | null = null;
 
   const syncAppVisibility = (): void => {
-    const hidden = document.visibilityState === 'hidden';
-    if (hidden) audio.pauseForBackground();
+    pagePaused = document.visibilityState === 'hidden';
+    if (pagePaused) audio.pauseForBackground();
     else audio.resumeFromBackground();
-    setRuntimePaused?.(hidden);
+    setRuntimePaused?.();
   };
   const handlePageHide = (): void => {
+    pagePaused = true;
     audio.pauseForBackground();
-    setRuntimePaused?.(true);
+    setRuntimePaused?.();
   };
   const handlePageShow = (): void => {
     if (document.visibilityState !== 'visible') return;
+    pagePaused = false;
     audio.resumeFromBackground();
-    setRuntimePaused?.(false);
+    setRuntimePaused?.();
   };
 
   document.addEventListener('visibilitychange', syncAppVisibility);
@@ -89,13 +120,24 @@ async function bootstrap(): Promise<void> {
     preloadScreen.setReady();
     host.dataset.bootstrapState = 'awaiting-entry';
     host.setAttribute('aria-busy', 'false');
-    await preloadScreen.waitForSuccessfulEnter(() => audio.unlock());
+    await preloadScreen.waitForSuccessfulEnter(async () => {
+      const unlocked = await audio.unlock();
+      if (unlocked) audio.setEnabled(preferences.soundEnabled);
+      return unlocked;
+    });
 
     const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
     let scene: DestructionScene;
     let chrome: SessionChrome;
     let causality: RuneCausalityOverlay | null = null;
+    let settings: SettingsPanel | null = null;
     let resultHandled = false;
+    let settingsOpen = false;
+    let runtimePaused = false;
+
+    const persistPreferences = (): void => {
+      writeRuntimePreferences(storage, preferences);
+    };
 
     const onGameplayEvent = (event: DestructionEvent): void => {
       session.registerEvent(event);
@@ -103,12 +145,16 @@ async function bootstrap(): Promise<void> {
       if (event.type === 'rune-activated' && session.start()) chrome.render(session.snapshot);
     };
 
-    const createScene = (): DestructionScene => new DestructionScene(
-      app.screen.width,
-      app.screen.height,
-      audio,
-      { onGameplayEvent },
-    );
+    const createScene = (): DestructionScene => {
+      const nextScene = new DestructionScene(
+        app.screen.width,
+        app.screen.height,
+        audio,
+        { onGameplayEvent },
+      );
+      nextScene.setReducedMotion(preferences.reducedMotion);
+      return nextScene;
+    };
 
     scene = createScene();
 
@@ -131,9 +177,18 @@ async function bootstrap(): Promise<void> {
       (alpha) => scene.present(alpha),
     );
 
+    const syncRuntimePause = (): void => {
+      const nextPaused = pagePaused || settingsOpen;
+      session.setPaused(nextPaused);
+      scene.setInputEnabled(!nextPaused && session.snapshot.phase !== 'results');
+      if (runtimePaused && !nextPaused) loop.reset();
+      runtimePaused = nextPaused;
+    };
+    setRuntimePaused = syncRuntimePause;
+
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P6.1.1 onboarding and causality playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball production MVP');
     app.stage.addChild(scene);
 
     const restartRun = (): void => {
@@ -146,19 +201,36 @@ async function bootstrap(): Promise<void> {
       scene = createScene();
       app.stage.addChild(scene);
       chrome.render(session.snapshot);
+      syncRuntimePause();
     };
 
     causality = new RuneCausalityOverlay(host);
     chrome = new SessionChrome(host, restartRun);
     chrome.render(session.snapshot);
 
-    setRuntimePaused = (paused: boolean): void => {
-      session.setPaused(paused);
-      if (!paused) loop.reset();
-    };
+    settings = new SettingsPanel(host, preferences, {
+      onSoundChange: (enabled) => {
+        preferences = { ...preferences, soundEnabled: enabled };
+        audio.setEnabled(enabled);
+        persistPreferences();
+      },
+      onReducedMotionChange: (enabled) => {
+        preferences = { ...preferences, reducedMotion: enabled };
+        applyMotionPreference(enabled);
+        scene.setReducedMotion(enabled);
+        persistPreferences();
+      },
+      onOpenChange: (open) => {
+        settingsOpen = open;
+        syncRuntimePause();
+      },
+    });
+    settings.setPreferences(preferences);
+
+    syncRuntimePause();
 
     app.ticker.add((ticker) => {
-      loop.tick(ticker.deltaMS);
+      if (!runtimePaused) loop.tick(ticker.deltaMS);
     });
 
     const resizeObserver = new ResizeObserver(() => {
@@ -172,7 +244,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P6.1.1 ready. First successful Rune starts the 75-second run.');
+    console.info('[Rune Ball] P6.2 ready. Runtime settings and persisted accessibility preferences active.');
   } catch (error) {
     showBootstrapFailure(
       error,
