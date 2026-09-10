@@ -15,6 +15,7 @@ export interface RuneSnapshot {
 
 export interface RuneActivationOptions {
   vortexDurationSeconds?: number;
+  splitDurationSeconds?: number;
 }
 
 export type RuneActivationResult =
@@ -35,6 +36,7 @@ export class RuneSystem {
   private vortexSecondsRemaining = 0;
   private vortexDurationSeconds = VORTEX_DURATION_SECONDS;
   private splitSecondsRemaining = 0;
+  private splitDurationSeconds = SPLIT_DURATION_SECONDS;
   private chainReady = false;
   private overdriveActive = false;
 
@@ -46,7 +48,7 @@ export class RuneSystem {
       baseCost: RUNE_COST,
       vortexCenter: this.vortexCenter ? { ...this.vortexCenter } : null,
       vortexStrength: this.clamp01(this.vortexSecondsRemaining / this.vortexDurationSeconds),
-      splitStrength: this.clamp01(this.splitSecondsRemaining / SPLIT_DURATION_SECONDS),
+      splitStrength: this.clamp01(this.splitSecondsRemaining / this.splitDurationSeconds),
       chainReady: this.chainReady,
       overdriveActive: this.overdriveActive,
     };
@@ -79,9 +81,14 @@ export class RuneSystem {
         this.vortexSecondsRemaining = this.vortexDurationSeconds;
         break;
       }
-      case 'split':
-        this.splitSecondsRemaining = SPLIT_DURATION_SECONDS;
+      case 'split': {
+        const requestedDuration = options.splitDurationSeconds ?? SPLIT_DURATION_SECONDS;
+        this.splitDurationSeconds = Number.isFinite(requestedDuration)
+          ? Math.max(0.1, requestedDuration)
+          : SPLIT_DURATION_SECONDS;
+        this.splitSecondsRemaining = this.splitDurationSeconds;
         break;
+      }
       case 'chain':
         this.chainReady = true;
         break;

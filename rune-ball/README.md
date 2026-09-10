@@ -4,7 +4,7 @@ Mobile-first neon occult arcade game prototype built with PixiJS, Vite, and stri
 
 ## Current milestone
 
-**P8.2.2 — Runtime Readability Refinement**
+**P8.3 — Split Evolution Gate**
 
 P0–P6 established the mobile arena loop, Rune gestures, Flow / Overdrive, VFX/audio, 75-second sessions, Results / Retry, accessibility controls, persisted settings, and background-aware lifecycle behavior. P7.2 replaced the temporary tap-Ascension experiment with automatic Rune Evolution: the player configures a Vortex path and qualified uses evolve it at runtime.
 
@@ -42,13 +42,20 @@ P8.2.2 closes the follow-up readability pass from phone playtesting:
 - Orbit control windows are extended again so `Orbit` / `Event Horizon` read as sustained capture/control.
 - Time, Score, and Combo share one top telemetry row derived from `ArenaLayout`, with the Flow/Overdrive meter acting as the divider before the collision frame.
 
+P8.3 authors the second complete Rune evolution tree:
+
+- **Prism** expands Split from two side echoes into 4/6-point attack fans for coverage.
+- **Lance** collapses echoes onto the forward travel axis for deliberate reach and precision pressure.
+- Split evolves only when an active echo actually hits a target; empty casts do not advance the tree.
+- One compact Rune Evolution Status follows the most recently progressed authored Rune, avoiding a second persistent HUD row.
+
 ### Product shell contract
 
 - **Home** is immediately available on page load and presents one dominant `PLAY` action, current Stage, current Rune Build, and secondary `JOURNEY` / `RUNES` destinations.
 - **Journey** is the authored stage progression surface. Only implemented stages are playable; future stages are explicitly locked.
 - **Rune Tree** keeps Vortex / Split / Chain as readable Rune cards. The selected Rune's evolution graph is glyph-first; tapping a Vortex evolution node immediately makes that branch active, while names, mechanics, play pattern, and thresholds live in the detail surface below.
 - **Vortex** supports `Gravity Well → Singularity` and `Orbit → Event Horizon`. Gravity remains cluster/collapse; Orbit is now deliberately longer-lived to reinforce capture/control.
-- **Split / Chain** remain selectable Base Runes with intentionally unauthored graphical branch placeholders rather than fake unlock content.
+- **Split** now supports `Prism → Refraction → Aurora Prism` and `Lance → Convergence → Void Lance`; only echo-caused target contact counts as a qualified Split use. **Chain** remains the intentionally unauthored next tree.
 - **Stage Detail** owns the run briefing: objective, current Rune Build, edit route, and `START RUN`.
 - **Stage Loading** appears only after `START RUN` and shows only the selected level title and loading bar.
 - **Run** uses a physical UI hierarchy: top telemetry/system gutter, clean rounded collision Arena, and bottom Rune/evolution gutter. Score, Combo, Flow/Overdrive, Rune charge, and Rune guide no longer occupy collision space.
@@ -57,7 +64,7 @@ P8.2.2 closes the follow-up readability pass from phone playtesting:
 
 The current playable stage remains the existing 75-second `Shattered Gate` session. `Prism Wake` and `Null Cathedral` are navigation/content placeholders only; P8 does not claim those gameplay variants are implemented.
 
-Rune names, Vortex path identities, evolution thresholds, node descriptions, runtime stage names, and build summaries share `RuneEvolutionCatalog`. Vortex field tuning is isolated in `VortexEvolutionTuning`, while `ArenaLayout` owns the screen-space relationship between HUD gutters and collision bounds.
+Rune names, Vortex/Split path identities, evolution thresholds, node descriptions, runtime stage names, and build summaries share `RuneEvolutionCatalog`. Vortex field tuning is isolated in `VortexEvolutionTuning`; Split attack geometry is isolated in `SplitEvolutionTuning`; `ArenaLayout` owns the screen-space relationship between HUD gutters and collision bounds.
 
 See `docs/plans/rune-ball/P8-1-PRODUCT-SHELL.md`, `docs/plans/rune-ball/P8-1-1-HOME-FIRST-BOOT.md`, `docs/plans/rune-ball/P8-2-RUNE-TREE-UX.md`, and `docs/plans/rune-ball/P8-2-1-RUNE-TREE-ARENA-CLARITY.md`.
 
@@ -88,6 +95,7 @@ flowchart LR
   Runes --> Catalog[RuneEvolutionCatalog]
   Runes --> Profile[PlayerProfile / Active Build]
   Catalog --> Evolution[VortexEvolutionSystem]
+  Catalog --> SplitEvolution[SplitEvolutionSystem]
   Profile --> Stage
 
   Stage --> Loading[Stage Loading]
@@ -99,10 +107,12 @@ flowchart LR
   Run --> Layout[ArenaLayout / HUD Gutters]
   Run --> Domain[DestructionSession]
   Domain --> Evolution
+  Domain --> SplitEvolution
   Evolution --> Tuning[VortexEvolutionTuning]
+  SplitEvolution --> SplitTuning[SplitEvolutionTuning]
   Domain --> Events[Gameplay Events]
   Events --> Causality[Rune Causality Overlay]
-  Events --> Status[Vortex Evolution Status]
+  Events --> Status[Rune Evolution Status]
   Run --> Final[Final Release]
   Final --> Results[Results]
   Results -->|Retry same build| Ready
@@ -119,7 +129,7 @@ flowchart LR
   Loading --> Pause
 ```
 
-`SessionDirector`, `VortexEvolutionSystem`, collision, Rune, Flow, Overdrive, target, and scoring logic remain renderer-independent. `GameShell` owns product navigation, `RuneTreePanel` owns Rune configuration UI state, `PlayerProfile` owns persisted build choice, `ArenaLayout` owns presentation geometry, and stage entry owns lazy renderer/audio preparation before gameplay begins.
+`SessionDirector`, `VortexEvolutionSystem`, `SplitEvolutionSystem`, collision, Rune, Flow, Overdrive, target, and scoring logic remain renderer-independent. `GameShell` owns product navigation, `RuneTreePanel` owns Rune configuration UI state, `PlayerProfile` owns persisted build choice, `ArenaLayout` owns presentation geometry, and stage entry owns lazy renderer/audio preparation before gameplay begins.
 
 Renderer initialization remains explicitly timed and falls back across WebGL 1, WebGL, and WebGPU. Required stage-runtime failure remains visible instead of leaving an empty mount element. Audio SFX are fully fetched and decoded before Arena Ready; if browser media activation remains gesture-locked after asynchronous loading, the first arena pointer input retries activation without another modal.
 

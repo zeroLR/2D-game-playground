@@ -16,6 +16,18 @@ import {
   type VortexCastProfile,
 } from '../progression/VortexEvolutionTuning';
 import type { RuneKind } from '../rune/RuneTypes';
+import {
+  SplitEvolutionSystem,
+  type SplitEvolutionPath,
+  type SplitEvolutionSnapshot,
+  type SplitEvolutionStage,
+} from '../progression/SplitEvolutionSystem';
+import {
+  BASE_SPLIT_PROFILE,
+  getSplitCastProfile,
+  projectSplitEchoes,
+  type SplitCastProfile,
+} from '../progression/SplitEvolutionTuning';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
@@ -29,6 +41,8 @@ export type DestructionEvent =
   | { type: 'vortex-evolution-progress'; path: VortexEvolutionPath; stage: VortexEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
   | { type: 'vortex-evolved'; path: VortexEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
   | { type: 'vortex-collapse'; center: Point2D; targets: Point2D[] }
+  | { type: 'split-evolution-progress'; path: SplitEvolutionPath; stage: SplitEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
+  | { type: 'split-evolved'; path: SplitEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
   | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] }
   | { type: 'overdrive-enter'; duration: number }
@@ -41,17 +55,17 @@ export interface DestructionSnapshot {
   runes: RuneSnapshot;
   flow: FlowSnapshot;
   vortexEvolution: VortexEvolutionSnapshot;
+  splitEvolution: SplitEvolutionSnapshot;
   splitEchoes: Point2D[];
 }
 
 export interface DestructionSessionOptions {
   vortexEvolutionPath?: VortexEvolutionPath;
+  splitEvolutionPath?: SplitEvolutionPath;
 }
 
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
-const SPLIT_ECHO_OFFSET = 42;
-const SPLIT_ECHO_RADIUS = 13;
 const CHAIN_RADIUS = 155;
 const CHAIN_TARGET_LIMIT = 3;
 
@@ -62,14 +76,18 @@ export class DestructionSession {
   private readonly runes = new RuneSystem();
   private readonly flow = new FlowSystem();
   private readonly vortexEvolution: VortexEvolutionSystem;
+  private readonly splitEvolution: SplitEvolutionSystem;
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
+  private activeSplitProfile: SplitCastProfile = BASE_SPLIT_PROFILE;
+  private splitCastQualified = false;
 
   constructor(bounds: ArenaBounds, options: DestructionSessionOptions = {}) {
     this.ball = new BallModel(bounds);
     this.targets = new TargetSystem(bounds, BASE_TARGET_COUNT);
     this.vortexEvolution = new VortexEvolutionSystem(options.vortexEvolutionPath ?? 'gravity-well');
+    this.splitEvolution = new SplitEvolutionSystem(options.splitEvolutionPath ?? 'prism');
   }
 
   get snapshot(): DestructionSnapshot {
@@ -82,7 +100,8 @@ export class DestructionSession {
       runes,
       flow: this.flow.snapshot,
       vortexEvolution: this.vortexEvolution.snapshot,
-      splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball) : [],
+      splitEvolution: this.splitEvolution.snapshot,
+      splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball, this.activeSplitProfile) : [],
     };
   }
 
@@ -100,16 +119,22 @@ export class DestructionSession {
   activateRune(rune: RuneKind, center: Point2D): DestructionEvent[] {
     const events: DestructionEvent[] = [];
     const vortexProfile = rune === 'vortex' ? this.vortexProfileForCurrentStage() : BASE_VORTEX_PROFILE;
-    const result = this.runes.activate(
-      rune,
-      center,
-      rune === 'vortex' ? { vortexDurationSeconds: vortexProfile.durationSeconds } : {},
-    );
+    const splitProfile = rune === 'split' ? this.splitProfileForCurrentStage() : BASE_SPLIT_PROFILE;
+    const activationOptions = rune === 'vortex'
+      ? { vortexDurationSeconds: vortexProfile.durationSeconds }
+      : rune === 'split'
+        ? { splitDurationSeconds: splitProfile.durationSeconds }
+        : {};
+    const result = this.runes.activate(rune, center, activationOptions);
     if (!result.success) {
       return [{ type: 'rune-failed', rune, reason: result.reason, center: { ...center } }];
     }
 
     if (rune === 'vortex') this.activeVortexProfile = vortexProfile;
+    if (rune === 'split') {
+      this.activeSplitProfile = splitProfile;
+      this.splitCastQualified = false;
+    }
     events.push({ type: 'rune-activated', rune, center: { ...center } });
 
     if (rune === 'vortex') {
@@ -243,8 +268,8 @@ export class DestructionSession {
     const currentRuneState = this.runes.snapshot;
     if (currentRuneState.splitStrength > 0) {
       const echoIds = new Set<number>();
-      for (const echo of this.splitEchoPositions(this.ball.snapshot)) {
-        for (const targetId of this.targets.collidingTargetIds(echo, SPLIT_ECHO_RADIUS)) echoIds.add(targetId);
+      for (const echo of this.splitEchoPositions(this.ball.snapshot, this.activeSplitProfile)) {
+        for (const targetId of this.targets.collidingTargetIds(echo, this.activeSplitProfile.hitRadius)) echoIds.add(targetId);
       }
       const currentSplitOverlaps = new Set<number>(echoIds);
       for (const targetId of echoIds) {
@@ -270,6 +295,32 @@ export class DestructionSession {
     if (damagedThisStep.has(targetId)) return false;
     const hit = this.targets.hit(targetId);
     if (!hit) return false;
+
+    if (source === 'split' && !this.splitCastQualified) {
+      this.splitCastQualified = true;
+      const advance = this.splitEvolution.registerQualifiedUse();
+      const evolution = advance.snapshot;
+      events.push({
+        type: 'split-evolution-progress',
+        path: evolution.path,
+        stage: evolution.stage,
+        stageName: evolution.stageName,
+        qualifiedUses: evolution.qualifiedUses,
+        nextThreshold: evolution.nextThreshold,
+      });
+      if (advance.evolved && (evolution.stage === 1 || evolution.stage === 2)) {
+        events.push({
+          type: 'split-evolved',
+          path: evolution.path,
+          stage: evolution.stage,
+          stageName: evolution.stageName,
+          qualifiedUses: evolution.qualifiedUses,
+          nextThreshold: evolution.nextThreshold,
+          center: { ...this.ball.snapshot.position },
+        });
+      }
+    }
+
     const runeStateAtImpact = this.runes.snapshot;
     const runeInfluence: RuneKind | null = source === 'split'
       ? 'split'
@@ -348,6 +399,11 @@ export class DestructionSession {
     return getVortexCastProfile(evolution.path, evolution.stage);
   }
 
+  private splitProfileForCurrentStage(): SplitCastProfile {
+    const evolution = this.splitEvolution.snapshot;
+    return getSplitCastProfile(evolution.path, evolution.stage);
+  }
+
   private enterOverdrive(events: DestructionEvent[]): void {
     this.syncOverdriveState(true);
     events.push({ type: 'overdrive-enter', duration: this.flow.snapshot.overdriveDuration });
@@ -358,19 +414,7 @@ export class DestructionSession {
     this.targets.setDesiredCount(active ? OVERDRIVE_TARGET_COUNT : BASE_TARGET_COUNT);
   }
 
-  private splitEchoPositions(ball: BallSnapshot): Point2D[] {
-    const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
-    if (!(speed > 0)) return [];
-    const normal = { x: -ball.velocity.y / speed, y: ball.velocity.x / speed };
-    return [
-      {
-        x: ball.position.x + normal.x * SPLIT_ECHO_OFFSET,
-        y: ball.position.y + normal.y * SPLIT_ECHO_OFFSET,
-      },
-      {
-        x: ball.position.x - normal.x * SPLIT_ECHO_OFFSET,
-        y: ball.position.y - normal.y * SPLIT_ECHO_OFFSET,
-      },
-    ];
+  private splitEchoPositions(ball: BallSnapshot, profile: SplitCastProfile): Point2D[] {
+    return projectSplitEchoes(ball.position, ball.velocity, profile);
   }
 }

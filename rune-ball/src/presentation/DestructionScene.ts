@@ -4,6 +4,7 @@ import { type ArenaBounds, type WallSide } from '../game/BallModel';
 import { DestructionSession, type DestructionEvent } from '../game/DestructionSession';
 import type { TargetState } from '../game/TargetSystem';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
+import type { SplitEvolutionPath } from '../progression/SplitEvolutionSystem';
 import { classifyGesturePath } from '../input/GestureRecognizer';
 import { PointerPathSampler } from '../input/PointerPathSampler';
 import type { Point2D } from '../input/SwipeClassifier';
@@ -87,6 +88,7 @@ export interface DestructionSceneCallbacks {
   onPlayerAction?: () => void;
   onGameplayEvent?: (event: DestructionEvent) => void;
   vortexEvolutionPath?: VortexEvolutionPath;
+  splitEvolutionPath?: SplitEvolutionPath;
 }
 
 export class DestructionScene extends Container {
@@ -198,6 +200,7 @@ export class DestructionScene extends Container {
     this.arenaBounds = this.arenaLayout.bounds;
     this.session = new DestructionSession(this.arenaBounds, {
       vortexEvolutionPath: callbacks.vortexEvolutionPath,
+      splitEvolutionPath: callbacks.splitEvolutionPath,
     });
     this.reducedMotion = typeof window !== 'undefined'
       && typeof window.matchMedia === 'function'
@@ -527,6 +530,17 @@ export class DestructionScene extends Container {
         );
         this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());
         this.audio.playRune('vortex');
+        break;
+      case 'split-evolution-progress':
+        break;
+      case 'split-evolved':
+        this.pushCapped(
+          this.runeConfirmations,
+          { rune: 'split', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * (event.stage === 2 ? 2 : 1.45), success: true },
+          MAX_RUNE_CONFIRMATIONS,
+        );
+        this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());
+        this.audio.playRune('split');
         break;
       case 'vortex-collapse':
         this.cameraFeedback.kick('chain', event.center, this.arenaCenter());

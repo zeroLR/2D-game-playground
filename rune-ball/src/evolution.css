@@ -1,8 +1,8 @@
-.vortex-evolution-status[hidden] {
+.rune-evolution-status[hidden] {
   display: none;
 }
 
-.vortex-evolution-status {
+.rune-evolution-status {
   position: absolute;
   left: 50%;
   bottom: max(10px, env(safe-area-inset-bottom));
@@ -24,18 +24,18 @@
   transition: opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.vortex-evolution-status[data-stage="1"] {
+.rune-evolution-status[data-stage="1"] {
   opacity: 0.74;
   border-color: rgb(111 233 255 / 26%);
 }
 
-.vortex-evolution-status[data-stage="2"] {
+.rune-evolution-status[data-stage="2"] {
   opacity: 0.88;
   border-color: rgb(111 233 255 / 40%);
   box-shadow: 0 0 22px rgb(111 233 255 / 8%);
 }
 
-.vortex-evolution-glyph {
+.rune-evolution-glyph {
   display: grid;
   place-items: center;
   width: 32px;
@@ -48,39 +48,39 @@
   line-height: 1;
 }
 
-.vortex-evolution-copy {
+.rune-evolution-copy {
   min-width: 0;
   display: grid;
   gap: 2px;
 }
 
-.vortex-evolution-stage,
-.vortex-evolution-progress {
+.rune-evolution-stage,
+.rune-evolution-progress {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.vortex-evolution-stage {
+.rune-evolution-stage {
   color: #cfefff;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
-.vortex-evolution-progress {
+.rune-evolution-progress {
   color: #71829b;
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
-.vortex-evolution-status.is-evolving {
-  animation: vortex-evolution-flash 820ms ease-out both;
+.rune-evolution-status.is-evolving {
+  animation: rune-evolution-flash 820ms ease-out both;
 }
 
-@keyframes vortex-evolution-flash {
+@keyframes rune-evolution-flash {
   0% {
     opacity: 0.72;
     transform: translateX(-50%) scale(0.98);
@@ -99,33 +99,40 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vortex-evolution-status {
+  .rune-evolution-status {
     transition: none;
   }
 
-  .vortex-evolution-status.is-evolving {
+  .rune-evolution-status.is-evolving {
     animation: none;
   }
 }
 
-html[data-reduced-motion="true"] .vortex-evolution-status {
+html[data-reduced-motion="true"] .rune-evolution-status {
   transition: none;
 }
 
-html[data-reduced-motion="true"] .vortex-evolution-status.is-evolving {
+html[data-reduced-motion="true"] .rune-evolution-status.is-evolving {
   animation: none;
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .vortex-evolution-status {
+  .rune-evolution-status {
     backdrop-filter: none;
     background: rgb(7 10 20 / 96%);
   }
 }
 
 @media (prefers-contrast: more) {
-  .vortex-evolution-status {
+  .rune-evolution-status {
     border-color: rgb(207 239 255 / 58%);
     background: rgb(4 7 14 / 98%);
   }
+}
+
+
+.rune-evolution-status[data-rune='split'] .rune-evolution-glyph {
+  border-radius: 11px;
+  color: #d756ff;
+  border-color: rgb(215 86 255 / 34%);
 }
