@@ -81,25 +81,50 @@
 
 .session-start-rune {
   position: relative;
-  width: 92px;
-  height: 92px;
-  opacity: 0.82;
+  width: clamp(136px, 38vw, 168px);
+  height: clamp(136px, 38vw, 168px);
+  opacity: 0.96;
+  filter: drop-shadow(0 0 18px rgb(111 233 255 / 12%));
+}
+
+.session-start-rune::before,
+.session-start-rune::after {
+  position: absolute;
+  content: '';
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.session-start-rune::before {
+  inset: 27%;
+  border: 3px solid rgb(111 233 255 / 84%);
+  box-shadow:
+    0 0 20px rgb(111 233 255 / 32%),
+    inset 0 0 16px rgb(111 233 255 / 12%);
+}
+
+.session-start-rune::after {
+  inset: 39%;
+  border: 2px solid rgb(234 246 255 / 72%);
+  box-shadow: 0 0 16px rgb(111 233 255 / 24%);
 }
 
 .session-start-rune-ring {
   position: absolute;
-  inset: 12px;
-  border: 2px solid rgb(143 77 255 / 52%);
+  inset: 10px;
+  border: 3px solid rgb(143 77 255 / 70%);
   border-radius: 50%;
   box-shadow:
-    0 0 28px rgb(143 77 255 / 16%),
-    inset 0 0 24px rgb(111 233 255 / 8%);
+    0 0 36px rgb(143 77 255 / 24%),
+    inset 0 0 32px rgb(111 233 255 / 12%);
   animation: rune-start-breathe 1.8s ease-in-out infinite;
 }
 
 .session-start-rune-orbit {
   position: absolute;
-  inset: 8px;
+  inset: 4px;
+  border: 1px solid rgb(111 233 255 / 18%);
+  border-radius: 50%;
   animation: rune-start-orbit 1.5s linear infinite;
 }
 
@@ -107,13 +132,14 @@
   position: absolute;
   top: 0;
   left: 50%;
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #6fe9ff;
   box-shadow:
-    0 0 10px rgb(111 233 255 / 90%),
-    0 0 22px rgb(215 86 255 / 38%);
+    0 0 12px rgb(111 233 255 / 96%),
+    0 0 30px rgb(111 233 255 / 54%),
+    0 0 42px rgb(215 86 255 / 32%);
   transform: translate(-50%, -50%);
 }
 
@@ -308,13 +334,13 @@
 @keyframes rune-start-breathe {
   0%,
   100% {
-    opacity: 0.38;
-    transform: scale(0.94);
+    opacity: 0.46;
+    transform: scale(0.95);
   }
 
   50% {
-    opacity: 0.88;
-    transform: scale(1.03);
+    opacity: 1;
+    transform: scale(1.035);
   }
 }
 
