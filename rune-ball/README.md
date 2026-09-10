@@ -4,29 +4,33 @@ Mobile-first neon occult arcade prototype built with PixiJS, Vite, and strict Ty
 
 ## Current milestone
 
-**P7.1 — Rune Card Interaction Gate**
+**P7.2 — Vortex Evolution Tree Gate**
 
 P0–P5 established mobile control, target destruction, Rune, Flow / Overdrive, VFX, and production-safe buffered audio. P6 packaged the mechanic into a 75-second run with Results / Retry, Rune-first onboarding, explicit causality feedback, runtime Sound / Reduced Motion controls, persisted preferences, and background-aware lifecycle handling.
 
-The final Production Pages Smoke Gate is intentionally deferred while the project explores the previously documented Post-MVP progression track.
+The final Production Pages Smoke Gate remains intentionally deferred while the project explores the Post-MVP progression track.
 
-Session lifecycle remains:
+P7.1 tested a Vortex Ascension card and one-shot Singularity tap release. Real-device feedback validated readable per-Rune progression and the upper-tier Vortex presentation, but the manual tap model did not match the intended build grammar and cast-count charging encouraged low-value Rune spam. P7.2 supersedes that runtime interaction model.
 
-`Boot → Audio Preload / Decode → Tap to Enter → Ready → Playing → Final Release → Results → Retry`
+Current progression grammar:
 
-P7.1 adds one deliberately narrow progression vertical slice:
+```text
+Choose Vortex path before the run
+→ play only with Swipe + Rune gestures
+→ qualified Vortex uses advance automatically
+→ 3 uses: Tier 1
+→ 6 uses: Tier 2
+→ evolved rules persist for the rest of the run
+```
 
-- one Vortex Ascension card at the bottom safe area
-- four successful Vortex casts charge the card from 0 → 100
-- Split / Chain do not charge it
-- charging state remains visually quiet and non-interactive
-- full charge changes the card into a deliberate `SINGULARITY READY` tap target
-- tapping the card does **not** cast normal Vortex; it releases the upper-tier Singularity
-- Singularity anchors to the ball, strongly gathers targets, then resolves through a Vortex-authored collapse pulse
-- card interaction is disabled with gameplay input during Settings, background pause, and Results
-- Retry resets Ascension Energy
+P7.2 provides two Vortex paths:
 
-The P7.1 risk is whether this second tap decision deepens the gesture-first loop without turning Rune Ball into a skill-bar game or pulling attention away from the arena. See `docs/plans/rune-ball/P7-1-RUNE-CARD-ASCENSION.md`.
+- **Gravity → Gravity Well → Singularity**: increasingly strong gathering; Tier 2 Vortexes end with a collapse payoff.
+- **Orbit → Orbit → Event Horizon**: target capture gains tangential / orbital motion and a longer control field.
+
+A Vortex only counts as a qualified evolution use when at least one target is inside its effective field at cast time. Empty/off-target casts still spend normal Rune charge but do not advance evolution.
+
+There is no Ascension tap button in P7.2. The in-run evolution surface is informational only; automatic evolution is communicated primarily through world-space feedback. See `docs/plans/rune-ball/P7-2-VORTEX-EVOLUTION.md`.
 
 Audio asset provenance and CC0 licensing remain recorded in `public/audio/ASSET-LICENSES.md`.
 
@@ -47,30 +51,33 @@ flowchart LR
   Renderer --> Fetch[Boot Audio Fetch]
   Fetch --> Decode[Decode Short SFX to AudioBuffer]
   Decode --> Enter[Tap to Enter]
-  Enter --> Ready[Session Ready / Circle Prompt]
+  Enter --> Build[Choose Vortex Evolution Path]
+  Build --> Ready[Session Ready / Circle Prompt]
   Ready -->|Successful Rune| Run[SessionDirector / Playing]
   Run --> Final[Final Release]
   Final --> Results[Results]
-  Results -->|Retry| Ready
+  Results -->|Retry| Build
 
-  Gesture[Vortex Gesture] --> Domain[DestructionSession]
-  Domain --> RuneEvent[Vortex Activated]
-  RuneEvent --> Ascension[AscensionSystem]
-  Ascension --> Card[Vortex Card]
-  Card -->|Full + Tap| Scene[DestructionScene]
-  Scene --> Singularity[Singularity Domain Release]
-  Singularity --> Events[Gather + Collapse Events]
+  Gesture[Vortex Gesture] --> Scene[DestructionScene]
+  Scene --> Domain[DestructionSession]
+  Domain --> Qualify[Qualified Vortex Use]
+  Qualify --> Evolution[VortexEvolutionSystem]
+  Evolution --> Rules[Stage-specific Vortex Rules]
+  Rules --> Targets[Pull / Orbit / Collapse]
+  Domain --> Events[Gameplay + Evolution Events]
   Events --> Causality[Rune Causality Overlay]
+  Events --> Status[Vortex Evolution Status]
 
   Settings[Settings] --> Prefs[Runtime Preferences]
   Prefs --> Audio[AudioDirector]
   Prefs --> Scene
   Visibility[Page Visibility] --> Pause[Runtime Pause Reasons]
   Settings --> Pause
+  Build --> Pause
   Pause --> Run
 ```
 
-`SessionDirector`, `AscensionSystem`, collision, Rune, Flow, Overdrive, target, and scoring logic remain renderer-independent. The DOM card is presentation only; a release is consumed only after the gameplay domain accepts it.
+`SessionDirector`, `VortexEvolutionSystem`, collision, Rune, Flow, Overdrive, target, and scoring logic remain renderer-independent. Pre-run build selection is presentation/application state; the gameplay domain receives the selected path and owns qualification plus evolved behavior.
 
 Renderer initialization is explicitly timed and falls back across WebGL 1, WebGL, and WebGPU. Required boot-audio failure remains visible instead of silently entering an inaudible session.
 

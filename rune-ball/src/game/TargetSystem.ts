@@ -24,8 +24,6 @@ export interface ChaseContext {
 }
 
 const SPAWN_ANCHORS: Point2D[] = [
-  // The first eight anchors form a readable perimeter ring and keep the central
-  // interaction lane open for the ball plus the Ready-state Rune prompt.
   { x: 0.16, y: 0.16 },
   { x: 0.84, y: 0.16 },
   { x: 0.10, y: 0.39 },
@@ -34,8 +32,6 @@ const SPAWN_ANCHORS: Point2D[] = [
   { x: 0.87, y: 0.67 },
   { x: 0.28, y: 0.86 },
   { x: 0.72, y: 0.86 },
-  // Overdrive / respawn candidates fill remaining perimeter gaps without
-  // occupying the center by default. Vortex can still intentionally pull them in.
   { x: 0.50, y: 0.11 },
   { x: 0.50, y: 0.91 },
   { x: 0.08, y: 0.52 },
@@ -170,6 +166,42 @@ export class TargetSystem {
       );
       target.position.y = this.clamp(
         target.position.y + dy * step,
+        this.bounds.top + target.radius,
+        this.bounds.bottom - target.radius,
+      );
+      affected.push(target.id);
+    }
+    return affected;
+  }
+
+  applyOrbit(center: Point2D, radius: number, orbitFactor: number, inwardFactor: number): number[] {
+    const safeRadius = Math.max(1, radius);
+    const safeOrbit = this.clamp(Number.isFinite(orbitFactor) ? orbitFactor : 0, 0, 0.12);
+    const safeInward = this.clamp(Number.isFinite(inwardFactor) ? inwardFactor : 0, 0, 0.12);
+    if (safeOrbit <= 0 && safeInward <= 0) return [];
+
+    const affected: number[] = [];
+    for (const target of this.targets.values()) {
+      const dx = center.x - target.position.x;
+      const dy = center.y - target.position.y;
+      const distance = Math.hypot(dx, dy);
+      if (!(distance > 0) || distance > safeRadius) continue;
+
+      const radialX = dx / distance;
+      const radialY = dy / distance;
+      const tangentX = -radialY;
+      const tangentY = radialX;
+      const falloff = 1 - distance / safeRadius;
+      const orbitStep = distance * safeOrbit * (0.42 + falloff * 0.58);
+      const inwardStep = distance * safeInward * (0.36 + falloff * 0.64);
+
+      target.position.x = this.clamp(
+        target.position.x + tangentX * orbitStep + radialX * inwardStep,
+        this.bounds.left + target.radius,
+        this.bounds.right - target.radius,
+      );
+      target.position.y = this.clamp(
+        target.position.y + tangentY * orbitStep + radialY * inwardStep,
         this.bounds.top + target.radius,
         this.bounds.bottom - target.radius,
       );

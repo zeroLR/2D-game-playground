@@ -3,6 +3,7 @@ import { AudioDirector } from '../audio/AudioDirector';
 import { type ArenaBounds, type WallSide } from '../game/BallModel';
 import { DestructionSession, type DestructionEvent } from '../game/DestructionSession';
 import type { TargetState } from '../game/TargetSystem';
+import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 import { classifyGesturePath } from '../input/GestureRecognizer';
 import { PointerPathSampler } from '../input/PointerPathSampler';
 import type { Point2D } from '../input/SwipeClassifier';
@@ -84,6 +85,7 @@ interface OverdriveBeat {
 export interface DestructionSceneCallbacks {
   onPlayerAction?: () => void;
   onGameplayEvent?: (event: DestructionEvent) => void;
+  vortexEvolutionPath?: VortexEvolutionPath;
 }
 
 export class DestructionScene extends Container {
@@ -191,7 +193,9 @@ export class DestructionScene extends Container {
     this.viewportWidth = Math.max(1, width);
     this.viewportHeight = Math.max(1, height);
     this.arenaBounds = this.calculateArenaBounds(width, height);
-    this.session = new DestructionSession(this.arenaBounds);
+    this.session = new DestructionSession(this.arenaBounds, {
+      vortexEvolutionPath: callbacks.vortexEvolutionPath,
+    });
     this.reducedMotion = typeof window !== 'undefined'
       && typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -405,16 +409,6 @@ export class DestructionScene extends Container {
     if (!enabled) this.clearPointer();
   }
 
-  releaseVortexAscension(): boolean {
-    if (!this.inputEnabled) return false;
-    const center = this.session.snapshot.ball.position;
-    const events = this.session.activateVortexAscension(center);
-    if (!events.some((event) => event.type === 'ascension-activated')) return false;
-    for (const event of events) this.handleGameplayEvent(event);
-    this.clearPointer();
-    return true;
-  }
-
   private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
     if (!this.inputEnabled || this.activePointerId !== null) return;
     void this.audio.unlock();
@@ -519,16 +513,18 @@ export class DestructionScene extends Container {
         );
         this.audio.playRune(event.rune);
         break;
-      case 'ascension-activated':
+      case 'vortex-evolution-progress':
+        break;
+      case 'vortex-evolved':
         this.pushCapped(
           this.runeConfirmations,
-          { rune: 'vortex', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * 1.8, success: true },
+          { rune: 'vortex', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * (event.stage === 2 ? 2 : 1.45), success: true },
           MAX_RUNE_CONFIRMATIONS,
         );
-        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
+        this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());
         this.audio.playRune('vortex');
         break;
-      case 'ascension-pulse':
+      case 'vortex-collapse':
         this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
         this.audio.playChain(Math.max(1, event.targets.length));
         break;

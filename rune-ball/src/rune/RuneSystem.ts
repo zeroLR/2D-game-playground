@@ -13,6 +13,10 @@ export interface RuneSnapshot {
   overdriveActive: boolean;
 }
 
+export interface RuneActivationOptions {
+  vortexDurationSeconds?: number;
+}
+
 export type RuneActivationResult =
   | { success: true; rune: RuneKind }
   | { success: false; rune: RuneKind; reason: 'charge' | 'busy' };
@@ -29,6 +33,7 @@ export class RuneSystem {
   private charge = STARTING_CHARGE;
   private vortexCenter: Point2D | null = null;
   private vortexSecondsRemaining = 0;
+  private vortexDurationSeconds = VORTEX_DURATION_SECONDS;
   private splitSecondsRemaining = 0;
   private chainReady = false;
   private overdriveActive = false;
@@ -40,7 +45,7 @@ export class RuneSystem {
       cost: this.overdriveActive ? 0 : RUNE_COST,
       baseCost: RUNE_COST,
       vortexCenter: this.vortexCenter ? { ...this.vortexCenter } : null,
-      vortexStrength: this.clamp01(this.vortexSecondsRemaining / VORTEX_DURATION_SECONDS),
+      vortexStrength: this.clamp01(this.vortexSecondsRemaining / this.vortexDurationSeconds),
       splitStrength: this.clamp01(this.splitSecondsRemaining / SPLIT_DURATION_SECONDS),
       chainReady: this.chainReady,
       overdriveActive: this.overdriveActive,
@@ -58,17 +63,22 @@ export class RuneSystem {
     this.overdriveActive = active;
   }
 
-  activate(rune: RuneKind, center: Point2D): RuneActivationResult {
+  activate(rune: RuneKind, center: Point2D, options: RuneActivationOptions = {}): RuneActivationResult {
     const cost = this.overdriveActive ? 0 : RUNE_COST;
     if (this.charge < cost) return { success: false, rune, reason: 'charge' };
     if (rune === 'chain' && this.chainReady) return { success: false, rune, reason: 'busy' };
 
     this.charge -= cost;
     switch (rune) {
-      case 'vortex':
+      case 'vortex': {
+        const requestedDuration = options.vortexDurationSeconds ?? VORTEX_DURATION_SECONDS;
+        this.vortexDurationSeconds = Number.isFinite(requestedDuration)
+          ? Math.max(0.1, requestedDuration)
+          : VORTEX_DURATION_SECONDS;
         this.vortexCenter = { ...center };
-        this.vortexSecondsRemaining = VORTEX_DURATION_SECONDS;
+        this.vortexSecondsRemaining = this.vortexDurationSeconds;
         break;
+      }
       case 'split':
         this.splitSecondsRemaining = SPLIT_DURATION_SECONDS;
         break;
