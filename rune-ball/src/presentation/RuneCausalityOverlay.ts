@@ -22,11 +22,11 @@ export class RuneCausalityOverlay {
       case 'rune-activated':
         this.spawnSignature(event.rune, event.center, 'cast');
         break;
-      case 'ascension-activated':
-        this.spawnAscension(event.center, false);
+      case 'vortex-evolved':
+        this.spawnEvolution(event.center, event.stage);
         break;
-      case 'ascension-pulse':
-        this.spawnAscension(event.center, true);
+      case 'vortex-collapse':
+        this.spawnCollapse(event.center, event.targets);
         break;
       case 'target-break':
         if (event.runeInfluence) this.spawnSignature(event.runeInfluence, event.position, 'break');
@@ -70,12 +70,13 @@ export class RuneCausalityOverlay {
     this.addTransient(group, variant === 'cast' ? 720 : 560);
   }
 
-  private spawnAscension(point: Point2D, pulse: boolean): void {
+  private spawnEvolution(point: Point2D, stage: 1 | 2): void {
     const group = document.createElementNS(SVG_NS, 'g');
     group.dataset.rune = 'vortex';
-    group.classList.add('rune-causality-ascension', pulse ? 'rune-causality-ascension--pulse' : 'rune-causality-ascension--cast');
+    group.classList.add('rune-causality-ascension', 'rune-causality-ascension--cast');
 
-    for (const radius of pulse ? [40, 68, 96] : [34, 54, 74]) {
+    const radii = stage === 2 ? [38, 62, 88] : [34, 54, 72];
+    for (const radius of radii) {
       const ring = document.createElementNS(SVG_NS, 'circle');
       ring.setAttribute('cx', point.x.toFixed(2));
       ring.setAttribute('cy', point.y.toFixed(2));
@@ -85,11 +86,38 @@ export class RuneCausalityOverlay {
     }
 
     const glyph = document.createElementNS(SVG_NS, 'path');
-    glyph.setAttribute('d', this.glyphPath('vortex', point, pulse ? 34 : 27));
+    glyph.setAttribute('d', this.glyphPath('vortex', point, stage === 2 ? 34 : 27));
     glyph.classList.add('rune-causality-glyph');
     group.append(glyph);
 
-    this.addTransient(group, pulse ? 680 : 900);
+    this.addTransient(group, stage === 2 ? 980 : 820);
+  }
+
+  private spawnCollapse(point: Point2D, targets: Point2D[]): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.rune = 'vortex';
+    group.classList.add('rune-causality-ascension', 'rune-causality-ascension--pulse');
+
+    for (const radius of [40, 68, 96]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', radius.toString());
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+
+    for (const target of targets) {
+      const line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('x1', point.x.toFixed(2));
+      line.setAttribute('y1', point.y.toFixed(2));
+      line.setAttribute('x2', target.x.toFixed(2));
+      line.setAttribute('y2', target.y.toFixed(2));
+      line.classList.add('rune-causality-link');
+      group.append(line);
+    }
+
+    this.addTransient(group, 700);
   }
 
   private spawnChainLinks(origin: Point2D, targets: Point2D[]): void {
