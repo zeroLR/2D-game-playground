@@ -1,0 +1,109 @@
+name: Rune Ball P6.1 scene hook patch
+
+on:
+  push:
+    branches:
+      - feat/rune-ball-p6-1-session-loop
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/rune-ball-p6-1-session-loop
+      - name: Patch DestructionScene session hooks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('rune-ball/src/presentation/DestructionScene.ts')
+          text = path.read_text()
+
+          marker = "export class DestructionScene extends Container {"
+          callbacks = """export interface DestructionSceneCallbacks {
+            onPlayerAction?: () => void;
+            onGameplayEvent?: (event: DestructionEvent) => void;
+          }
+
+          """
+          if marker not in text:
+              raise SystemExit('class marker missing')
+          text = text.replace(marker, callbacks + marker, 1)
+
+          old = """  private cameraOffset: Point2D = { x: 0, y: 0 };
+            private reducedMotion = false;
+
+            constructor(width: number, height: number, audio: AudioDirector) {
+              super();
+              this.audio = audio;
+          """
+          new = """  private cameraOffset: Point2D = { x: 0, y: 0 };
+            private reducedMotion = false;
+            private inputEnabled = true;
+            private readonly onPlayerAction?: () => void;
+            private readonly onGameplayEvent?: (event: DestructionEvent) => void;
+
+            constructor(width: number, height: number, audio: AudioDirector, callbacks: DestructionSceneCallbacks = {}) {
+              super();
+              this.audio = audio;
+              this.onPlayerAction = callbacks.onPlayerAction;
+              this.onGameplayEvent = callbacks.onGameplayEvent;
+          """
+          if old not in text:
+              raise SystemExit('constructor marker missing')
+          text = text.replace(old, new, 1)
+
+          marker = """  private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
+              if (this.activePointerId !== null) return;
+          """
+          replacement = """  setInputEnabled(enabled: boolean): void {
+              this.inputEnabled = enabled;
+              this.inputSurface.eventMode = enabled ? 'static' : 'none';
+              if (!enabled) this.clearPointer();
+            }
+
+            private readonly handlePointerDown = (event: FederatedPointerEvent): void => {
+              if (!this.inputEnabled || this.activePointerId !== null) return;
+          """
+          if marker not in text:
+              raise SystemExit('pointer-down marker missing')
+          text = text.replace(marker, replacement, 1)
+
+          marker = """    if (path.length > 1) {
+              this.releasedGesture = {
+          """
+          replacement = """    if (success) this.onPlayerAction?.();
+
+              if (path.length > 1) {
+                this.releasedGesture = {
+          """
+          if marker not in text:
+              raise SystemExit('player-action marker missing')
+          text = text.replace(marker, replacement, 1)
+
+          marker = """  private handleGameplayEvent(event: DestructionEvent): void {
+              switch (event.type) {
+          """
+          replacement = """  private handleGameplayEvent(event: DestructionEvent): void {
+              this.onGameplayEvent?.(event);
+              switch (event.type) {
+          """
+          if marker not in text:
+              raise SystemExit('event marker missing')
+          text = text.replace(marker, replacement, 1)
+
+          path.write_text(text)
+          PY
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/rune-ball-p6-1-scene-hook.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rune-ball/src/presentation/DestructionScene.ts .github/workflows/rune-ball-p6-1-scene-hook.yml
+          git commit -m "feat(rune-ball): expose P6 scene lifecycle hooks"
+          git push origin HEAD:feat/rune-ball-p6-1-session-loop
