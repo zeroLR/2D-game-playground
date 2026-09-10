@@ -1,0 +1,53 @@
+name: Rune Ball P8.3 followup
+
+on:
+  push:
+    branches:
+      - feat/rune-ball-p8-3-split-evolution
+
+permissions:
+  contents: write
+
+jobs:
+  followup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/rune-ball-p8-3-split-evolution
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Reset overlap ownership per Split cast
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('rune-ball/src/game/DestructionSession.ts')
+          text = path.read_text()
+          old = "    if (rune === 'split') {\n      this.activeSplitProfile = splitProfile;\n      this.splitCastQualified = false;\n    }"
+          new = "    if (rune === 'split') {\n      this.activeSplitProfile = splitProfile;\n      this.activeSplitOverlaps.clear();\n      this.splitCastQualified = false;\n    }"
+          if old not in text:
+              raise SystemExit('Split activation ownership target missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Install
+        working-directory: rune-ball
+        run: npm ci
+      - name: Test
+        working-directory: rune-ball
+        run: npm test
+      - name: Build
+        working-directory: rune-ball
+        run: npm run build
+      - name: Commit clean followup
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-rune-ball-p8-3-followup.yml
+          git add rune-ball/src/game/DestructionSession.ts
+          git commit -m 'fix(rune-ball): reset Split overlap ownership per cast'
+          git push origin HEAD:feat/rune-ball-p8-3-split-evolution
