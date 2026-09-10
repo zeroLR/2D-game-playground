@@ -1,0 +1,78 @@
+name: Rune Ball P7.2 patch
+
+on:
+  push:
+    branches:
+      - feat/rune-ball-p7-2-vortex-evolution
+    paths:
+      - .github/workflows/rune-ball-p7-2-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/rune-ball-p7-2-vortex-evolution
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch scene boundary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('rune-ball/src/presentation/DestructionScene.ts')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one match, found {text.count(old)} for: {old[:80]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import type { TargetState } from '../game/TargetSystem';\n",
+              "import type { TargetState } from '../game/TargetSystem';\nimport type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';\n",
+          )
+
+          replace_once(
+              "export interface DestructionSceneCallbacks {\n  onPlayerAction?: () => void;\n  onGameplayEvent?: (event: DestructionEvent) => void;\n}\n",
+              "export interface DestructionSceneCallbacks {\n  onPlayerAction?: () => void;\n  onGameplayEvent?: (event: DestructionEvent) => void;\n  vortexEvolutionPath?: VortexEvolutionPath;\n}\n",
+          )
+
+          replace_once(
+              "    this.session = new DestructionSession(this.arenaBounds);\n",
+              "    this.session = new DestructionSession(this.arenaBounds, {\n      vortexEvolutionPath: callbacks.vortexEvolutionPath,\n    });\n",
+          )
+
+          replace_once(
+              "  releaseVortexAscension(): boolean {\n    if (!this.inputEnabled) return false;\n    const center = this.session.snapshot.ball.position;\n    const events = this.session.activateVortexAscension(center);\n    if (!events.some((event) => event.type === 'ascension-activated')) return false;\n    for (const event of events) this.handleGameplayEvent(event);\n    this.clearPointer();\n    return true;\n  }\n\n",
+              "",
+          )
+
+          replace_once(
+              "      case 'ascension-activated':\n        this.pushCapped(\n          this.runeConfirmations,\n          { rune: 'vortex', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * 1.8, success: true },\n          MAX_RUNE_CONFIRMATIONS,\n        );\n        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());\n        this.audio.playRune('vortex');\n        break;\n      case 'ascension-pulse':\n        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());\n        this.audio.playChain(Math.max(1, event.targets.length));\n        break;\n",
+              "      case 'vortex-evolution-progress':\n        break;\n      case 'vortex-evolved':\n        this.pushCapped(\n          this.runeConfirmations,\n          { rune: 'vortex', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * (event.stage === 2 ? 2 : 1.45), success: true },\n          MAX_RUNE_CONFIRMATIONS,\n        );\n        this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());\n        this.audio.playRune('vortex');\n        break;\n      case 'vortex-collapse':\n        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());\n        this.audio.playChain(Math.max(1, event.targets.length));\n        break;\n",
+          )
+
+          path.write_text(text)
+          PY
+      - name: Validate Rune Ball
+        working-directory: rune-ball
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rune-ball/src/presentation/DestructionScene.ts
+          git rm .github/workflows/rune-ball-p7-2-patch.yml
+          git commit -m "feat(rune-ball): wire vortex evolution into scene"
+          git push origin HEAD:feat/rune-ball-p7-2-vortex-evolution
