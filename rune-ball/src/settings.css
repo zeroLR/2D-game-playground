@@ -1,0 +1,169 @@
+.runtime-settings {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.runtime-settings button {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.runtime-settings-launcher {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 11px 10px;
+  border: 1px solid rgb(113 130 155 / 18%);
+  border-radius: 12px;
+  background: rgb(7 10 19 / 58%);
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.runtime-settings-launcher span {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgb(180 205 225 / 64%);
+}
+
+.runtime-settings-launcher span:nth-child(1)::after,
+.runtime-settings-launcher span:nth-child(2)::after,
+.runtime-settings-launcher span:nth-child(3)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border: 1px solid #6fe9ff;
+  border-radius: 50%;
+  background: #09111e;
+  transform: translate(-50%, -50%);
+}
+
+.runtime-settings-launcher span:nth-child(1)::after { left: 30%; }
+.runtime-settings-launcher span:nth-child(2)::after { left: 68%; }
+.runtime-settings-launcher span:nth-child(3)::after { left: 45%; }
+
+.runtime-settings-launcher:focus-visible,
+.runtime-settings-toggle:focus-visible,
+.runtime-settings-close:focus-visible {
+  outline: 2px solid #6fe9ff;
+  outline-offset: 3px;
+}
+
+.runtime-settings-overlay[hidden] {
+  display: none !important;
+}
+
+.runtime-settings-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
+  pointer-events: auto;
+  background: rgb(3 4 10 / 72%);
+  backdrop-filter: blur(8px);
+}
+
+.runtime-settings-panel {
+  width: min(100%, 320px);
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border: 1px solid rgb(111 233 255 / 20%);
+  border-radius: 14px;
+  background: rgb(7 9 18 / 96%);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 38%);
+}
+
+.runtime-settings-eyebrow {
+  color: #8f4dff;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.runtime-settings-panel h2 {
+  margin: 0 0 6px;
+  color: #f0fbff;
+  font-size: 20px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+}
+
+.runtime-settings-toggle {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 15px;
+  border: 1px solid rgb(113 130 155 / 18%);
+  border-radius: 10px;
+  background: rgb(10 14 27 / 92%);
+  color: #eaf6ff;
+}
+
+.runtime-settings-toggle-label,
+.runtime-settings-toggle-state,
+.runtime-settings-close {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+.runtime-settings-toggle-state {
+  min-width: 36px;
+  color: #71829b;
+  text-align: right;
+}
+
+.runtime-settings-toggle[aria-pressed="true"] {
+  border-color: rgb(111 233 255 / 36%);
+}
+
+.runtime-settings-toggle[aria-pressed="true"] .runtime-settings-toggle-state {
+  color: #6fe9ff;
+  text-shadow: 0 0 14px rgb(111 233 255 / 22%);
+}
+
+.runtime-settings-close {
+  min-height: 48px;
+  margin-top: 6px;
+  border: 1px solid rgb(143 77 255 / 34%);
+  border-radius: 10px;
+  background: transparent;
+  color: #9aaec2;
+}
+
+html[data-reduced-motion="true"] .session-start-rune-orbit,
+html[data-reduced-motion="true"] .session-start-rune-ring {
+  animation-duration: 3.6s;
+}
+
+html[data-reduced-motion="true"] .rune-causality-signature--cast,
+html[data-reduced-motion="true"] .rune-causality-signature--break,
+html[data-reduced-motion="true"] .rune-causality-chain {
+  animation-duration: 280ms;
+}
+
+@media (hover: hover) {
+  .runtime-settings-launcher:hover,
+  .runtime-settings-toggle:hover,
+  .runtime-settings-close:hover {
+    border-color: rgb(111 233 255 / 52%);
+  }
+}
