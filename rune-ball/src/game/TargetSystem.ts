@@ -24,18 +24,22 @@ export interface ChaseContext {
 }
 
 const SPAWN_ANCHORS: Point2D[] = [
-  { x: 0.20, y: 0.18 },
-  { x: 0.50, y: 0.14 },
-  { x: 0.80, y: 0.21 },
-  { x: 0.28, y: 0.38 },
-  { x: 0.72, y: 0.40 },
-  { x: 0.18, y: 0.61 },
-  { x: 0.50, y: 0.55 },
-  { x: 0.82, y: 0.63 },
-  { x: 0.31, y: 0.80 },
-  { x: 0.68, y: 0.82 },
+  // The first eight anchors form a readable perimeter ring and keep the central
+  // interaction lane open for the ball plus the Ready-state Rune prompt.
+  { x: 0.16, y: 0.16 },
+  { x: 0.84, y: 0.16 },
+  { x: 0.10, y: 0.39 },
+  { x: 0.90, y: 0.41 },
+  { x: 0.13, y: 0.64 },
+  { x: 0.87, y: 0.67 },
+  { x: 0.28, y: 0.86 },
+  { x: 0.72, y: 0.86 },
+  // Overdrive / respawn candidates fill remaining perimeter gaps without
+  // occupying the center by default. Vortex can still intentionally pull them in.
+  { x: 0.50, y: 0.11 },
   { x: 0.50, y: 0.91 },
-  { x: 0.12, y: 0.45 },
+  { x: 0.08, y: 0.52 },
+  { x: 0.92, y: 0.54 },
 ];
 
 const DEFAULT_TARGET_COUNT = 8;
@@ -256,9 +260,9 @@ export class TargetSystem {
           Math.hypot(position.x - target.position.x, position.y - target.position.y),
         );
       }
-      const separation = this.clamp(nearestTargetDistance / 96, 0, 1);
-      const nearBallPenalty = distance < 88 ? 0.8 : 0;
-      const score = alignment * 0.62 + distanceScore * 0.24 + separation * 0.14 - nearBallPenalty;
+      const separation = this.clamp(nearestTargetDistance / 118, 0, 1);
+      const nearBallPenalty = distance < 96 ? 0.8 : 0;
+      const score = alignment * 0.54 + distanceScore * 0.22 + separation * 0.24 - nearBallPenalty;
 
       if (score <= bestScore) continue;
       bestScore = score;
