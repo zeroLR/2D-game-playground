@@ -3,6 +3,12 @@ import { ComboModel, type ComboSnapshot } from './ComboModel';
 import { TargetSystem, type TargetKind, type TargetState } from './TargetSystem';
 import type { Point2D, SwipeDirection } from '../input/SwipeClassifier';
 import { FlowSystem, type FlowSnapshot } from '../progression/FlowSystem';
+import {
+  VortexEvolutionSystem,
+  type VortexEvolutionPath,
+  type VortexEvolutionSnapshot,
+  type VortexEvolutionStage,
+} from '../progression/VortexEvolutionSystem';
 import { RuneSystem, type RuneSnapshot } from '../rune/RuneSystem';
 import type { RuneKind } from '../rune/RuneTypes';
 
@@ -15,8 +21,9 @@ export type DestructionEvent =
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
-  | { type: 'ascension-activated'; rune: 'vortex'; ascension: 'singularity'; center: Point2D; duration: number }
-  | { type: 'ascension-pulse'; rune: 'vortex'; ascension: 'singularity'; center: Point2D; targets: Point2D[] }
+  | { type: 'vortex-evolution-progress'; path: VortexEvolutionPath; stage: VortexEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
+  | { type: 'vortex-evolved'; path: VortexEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
+  | { type: 'vortex-collapse'; center: Point2D; targets: Point2D[] }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
   | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] }
   | { type: 'overdrive-enter'; duration: number }
@@ -28,21 +35,39 @@ export interface DestructionSnapshot {
   combo: ComboSnapshot;
   runes: RuneSnapshot;
   flow: FlowSnapshot;
+  vortexEvolution: VortexEvolutionSnapshot;
   splitEchoes: Point2D[];
+}
+
+export interface DestructionSessionOptions {
+  vortexEvolutionPath?: VortexEvolutionPath;
+}
+
+interface VortexCastProfile {
+  mode: 'pull' | 'orbit';
+  radius: number;
+  durationSeconds: number;
+  pullPerSecond: number;
+  orbitPerSecond: number;
+  inwardPerSecond: number;
+  collapseRadius: number;
 }
 
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
-const VORTEX_RADIUS = 210;
-const VORTEX_PULL_PER_SECOND = 2.15;
+const BASE_VORTEX_PROFILE: VortexCastProfile = {
+  mode: 'pull',
+  radius: 210,
+  durationSeconds: 0.65,
+  pullPerSecond: 2.15,
+  orbitPerSecond: 0,
+  inwardPerSecond: 0,
+  collapseRadius: 0,
+};
 const SPLIT_ECHO_OFFSET = 42;
 const SPLIT_ECHO_RADIUS = 13;
 const CHAIN_RADIUS = 155;
 const CHAIN_TARGET_LIMIT = 3;
-const SINGULARITY_DURATION_SECONDS = 1.35;
-const SINGULARITY_RADIUS = 300;
-const SINGULARITY_PULL_PER_SECOND = 4.8;
-const SINGULARITY_PULSE_RADIUS = 145;
 
 export class DestructionSession {
   private readonly ball: BallModel;
@@ -50,14 +75,15 @@ export class DestructionSession {
   private readonly combo = new ComboModel();
   private readonly runes = new RuneSystem();
   private readonly flow = new FlowSystem();
+  private readonly vortexEvolution: VortexEvolutionSystem;
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
-  private singularityCenter: Point2D | null = null;
-  private singularitySecondsRemaining = 0;
+  private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
 
-  constructor(bounds: ArenaBounds) {
+  constructor(bounds: ArenaBounds, options: DestructionSessionOptions = {}) {
     this.ball = new BallModel(bounds);
     this.targets = new TargetSystem(bounds, BASE_TARGET_COUNT);
+    this.vortexEvolution = new VortexEvolutionSystem(options.vortexEvolutionPath ?? 'gravity-well');
   }
 
   get snapshot(): DestructionSnapshot {
@@ -69,6 +95,7 @@ export class DestructionSession {
       combo: this.combo.snapshot,
       runes,
       flow: this.flow.snapshot,
+      vortexEvolution: this.vortexEvolution.snapshot,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball) : [],
     };
   }
@@ -78,8 +105,6 @@ export class DestructionSession {
     this.targets.setBounds(bounds);
     this.activeOverlaps.clear();
     this.activeSplitOverlaps.clear();
-    this.singularityCenter = null;
-    this.singularitySecondsRemaining = 0;
   }
 
   applyDirectionalRedirect(direction: SwipeDirection): void {
@@ -88,27 +113,49 @@ export class DestructionSession {
 
   activateRune(rune: RuneKind, center: Point2D): DestructionEvent[] {
     const events: DestructionEvent[] = [];
-    const result = this.runes.activate(rune, center);
+    const vortexProfile = rune === 'vortex' ? this.vortexProfileForCurrentStage() : BASE_VORTEX_PROFILE;
+    const result = this.runes.activate(
+      rune,
+      center,
+      rune === 'vortex' ? { vortexDurationSeconds: vortexProfile.durationSeconds } : {},
+    );
     if (!result.success) {
       return [{ type: 'rune-failed', rune, reason: result.reason, center: { ...center } }];
     }
 
+    if (rune === 'vortex') this.activeVortexProfile = vortexProfile;
     events.push({ type: 'rune-activated', rune, center: { ...center } });
+
+    if (rune === 'vortex') {
+      const qualified = this.targets.collidingTargetIds(center, vortexProfile.radius).length > 0;
+      if (qualified) {
+        const advance = this.vortexEvolution.registerQualifiedUse();
+        const evolution = advance.snapshot;
+        const progressEvent: DestructionEvent = {
+          type: 'vortex-evolution-progress',
+          path: evolution.path,
+          stage: evolution.stage,
+          stageName: evolution.stageName,
+          qualifiedUses: evolution.qualifiedUses,
+          nextThreshold: evolution.nextThreshold,
+        };
+        events.push(progressEvent);
+        if (advance.evolved && evolution.stage > 0) {
+          events.push({
+            type: 'vortex-evolved',
+            path: evolution.path,
+            stage: evolution.stage,
+            stageName: evolution.stageName,
+            qualifiedUses: evolution.qualifiedUses,
+            nextThreshold: evolution.nextThreshold,
+            center: { ...center },
+          });
+        }
+      }
+    }
+
     if (this.flow.registerRune()) this.enterOverdrive(events);
     return events;
-  }
-
-  activateVortexAscension(center: Point2D): DestructionEvent[] {
-    if (this.singularitySecondsRemaining > 0) return [];
-    this.singularityCenter = { ...center };
-    this.singularitySecondsRemaining = SINGULARITY_DURATION_SECONDS;
-    return [{
-      type: 'ascension-activated',
-      rune: 'vortex',
-      ascension: 'singularity',
-      center: { ...center },
-      duration: SINGULARITY_DURATION_SECONDS,
-    }];
   }
 
   interpolatedBallPosition(alpha: number): Point2D {
@@ -121,19 +168,16 @@ export class DestructionSession {
       this.syncOverdriveState(false);
       events.push({ type: 'overdrive-exit' });
     }
-    this.runes.update(dtSeconds);
 
-    let singularityPulseCenter: Point2D | null = null;
-    if (this.singularityCenter && this.singularitySecondsRemaining > 0) {
-      const dt = Math.max(0, dtSeconds);
-      this.targets.applyVortex(
-        this.singularityCenter,
-        SINGULARITY_RADIUS,
-        dt * SINGULARITY_PULL_PER_SECOND,
-      );
-      this.singularitySecondsRemaining = Math.max(0, this.singularitySecondsRemaining - dt);
-      if (this.singularitySecondsRemaining <= 0) singularityPulseCenter = { ...this.singularityCenter };
-    }
+    const vortexBeforeUpdate = this.runes.snapshot;
+    this.runes.update(dtSeconds);
+    const runeState = this.runes.snapshot;
+    const collapseCenter = vortexBeforeUpdate.vortexCenter
+      && vortexBeforeUpdate.vortexStrength > 0
+      && !runeState.vortexCenter
+      && this.activeVortexProfile.collapseRadius > 0
+      ? { ...vortexBeforeUpdate.vortexCenter }
+      : null;
 
     const ballUpdate = this.ball.update(dtSeconds);
     let assisted = false;
@@ -150,13 +194,22 @@ export class DestructionSession {
       }
     }
 
-    const runeState = this.runes.snapshot;
     if (runeState.vortexCenter && runeState.vortexStrength > 0) {
-      this.targets.applyVortex(
-        runeState.vortexCenter,
-        VORTEX_RADIUS,
-        Math.max(0, dtSeconds) * VORTEX_PULL_PER_SECOND * runeState.vortexStrength,
-      );
+      const dt = Math.max(0, dtSeconds);
+      if (this.activeVortexProfile.mode === 'orbit') {
+        this.targets.applyOrbit(
+          runeState.vortexCenter,
+          this.activeVortexProfile.radius,
+          dt * this.activeVortexProfile.orbitPerSecond * runeState.vortexStrength,
+          dt * this.activeVortexProfile.inwardPerSecond * runeState.vortexStrength,
+        );
+      } else {
+        this.targets.applyVortex(
+          runeState.vortexCenter,
+          this.activeVortexProfile.radius,
+          dt * this.activeVortexProfile.pullPerSecond * runeState.vortexStrength,
+        );
+      }
     }
 
     const chaseBall = this.ball.snapshot;
@@ -176,24 +229,18 @@ export class DestructionSession {
     if (this.combo.update(dtSeconds, this.flow.snapshot.overdriveActive)) events.push({ type: 'combo-reset' });
 
     const damagedThisStep = new Set<number>();
-    if (singularityPulseCenter) {
-      const targetIds = this.targets.collidingTargetIds(singularityPulseCenter, SINGULARITY_PULSE_RADIUS);
+    if (collapseCenter) {
+      const targetIds = this.targets.collidingTargetIds(collapseCenter, this.activeVortexProfile.collapseRadius);
       const positionsById = new Map(this.targets.snapshot.map((target) => [target.id, target.position]));
       const pulseTargets = targetIds
         .map((id) => positionsById.get(id))
         .filter((position): position is Point2D => Boolean(position))
         .map((position) => ({ ...position }));
-      events.push({
-        type: 'ascension-pulse',
-        rune: 'vortex',
-        ascension: 'singularity',
-        center: { ...singularityPulseCenter },
-        targets: pulseTargets,
-      });
+      events.push({ type: 'vortex-collapse', center: { ...collapseCenter }, targets: pulseTargets });
       for (const targetId of targetIds) {
         this.resolveTargetHit(targetId, 'singularity', false, events, damagedThisStep);
       }
-      this.singularityCenter = null;
+      this.activeVortexProfile = BASE_VORTEX_PROFILE;
     }
 
     const ball = this.ball.snapshot;
@@ -243,12 +290,12 @@ export class DestructionSession {
       : source === 'singularity'
         ? 'vortex'
         : source === 'chain'
-        ? 'chain'
-        : canTriggerChain && runeStateAtImpact.chainReady
           ? 'chain'
-          : runeStateAtImpact.vortexStrength > 0
-            ? 'vortex'
-            : null;
+          : canTriggerChain && runeStateAtImpact.chainReady
+            ? 'chain'
+            : runeStateAtImpact.vortexStrength > 0
+              ? 'vortex'
+              : null;
 
     damagedThisStep.add(targetId);
     this.runes.registerImpact(hit.destroyed);
@@ -308,6 +355,55 @@ export class DestructionSession {
     }
 
     return hit.destroyed;
+  }
+
+  private vortexProfileForCurrentStage(): VortexCastProfile {
+    const evolution = this.vortexEvolution.snapshot;
+    if (evolution.stage === 0) return BASE_VORTEX_PROFILE;
+
+    if (evolution.path === 'gravity-well') {
+      if (evolution.stage === 1) {
+        return {
+          mode: 'pull',
+          radius: 255,
+          durationSeconds: 0.78,
+          pullPerSecond: 3.1,
+          orbitPerSecond: 0,
+          inwardPerSecond: 0,
+          collapseRadius: 0,
+        };
+      }
+      return {
+        mode: 'pull',
+        radius: 290,
+        durationSeconds: 0.96,
+        pullPerSecond: 4.0,
+        orbitPerSecond: 0,
+        inwardPerSecond: 0,
+        collapseRadius: 138,
+      };
+    }
+
+    if (evolution.stage === 1) {
+      return {
+        mode: 'orbit',
+        radius: 245,
+        durationSeconds: 0.88,
+        pullPerSecond: 0,
+        orbitPerSecond: 1.05,
+        inwardPerSecond: 0.48,
+        collapseRadius: 0,
+      };
+    }
+    return {
+      mode: 'orbit',
+      radius: 282,
+      durationSeconds: 1.18,
+      pullPerSecond: 0,
+      orbitPerSecond: 1.48,
+      inwardPerSecond: 0.62,
+      collapseRadius: 0,
+    };
   }
 
   private enterOverdrive(events: DestructionEvent[]): void {
