@@ -1,10 +1,13 @@
 import type { DestructionEvent } from '../game/DestructionSession';
+import {
+  VORTEX_TIER_ONE_THRESHOLD,
+  getVortexPathDefinition,
+} from '../progression/RuneEvolutionCatalog';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 
-const PATH_FINAL: Record<VortexEvolutionPath, string> = {
-  'gravity-well': 'SINGULARITY',
-  orbit: 'EVENT HORIZON',
-};
+function finalStageName(path: VortexEvolutionPath): string {
+  return getVortexPathDefinition(path).tierTwo.name;
+}
 
 export class VortexEvolutionStatus {
   private readonly root: HTMLElement;
@@ -33,7 +36,7 @@ export class VortexEvolutionStatus {
 
     const progress = document.createElement('span');
     progress.className = 'vortex-evolution-progress';
-    progress.textContent = `0/3 → ${PATH_FINAL[path]}`;
+    progress.textContent = `0/${VORTEX_TIER_ONE_THRESHOLD} → ${finalStageName(path)}`;
 
     copy.append(stage, progress);
     root.append(glyph, copy);
@@ -47,7 +50,7 @@ export class VortexEvolutionStatus {
   reset(path: VortexEvolutionPath): void {
     this.path = path;
     this.stage.textContent = 'VORTEX';
-    this.progress.textContent = `0/3 → ${PATH_FINAL[path]}`;
+    this.progress.textContent = `0/${VORTEX_TIER_ONE_THRESHOLD} → ${finalStageName(path)}`;
     this.root.dataset.stage = '0';
     this.root.classList.remove('is-evolving');
     if (this.flashTimer !== null) window.clearTimeout(this.flashTimer);
@@ -61,7 +64,7 @@ export class VortexEvolutionStatus {
       this.root.dataset.stage = String(event.stage);
       this.progress.textContent = event.nextThreshold === null
         ? 'MAX EVOLUTION'
-        : `${event.qualifiedUses}/${event.nextThreshold} → ${PATH_FINAL[event.path]}`;
+        : `${event.qualifiedUses}/${event.nextThreshold} → ${finalStageName(event.path)}`;
       return;
     }
 
@@ -71,7 +74,7 @@ export class VortexEvolutionStatus {
     this.root.dataset.stage = String(event.stage);
     this.progress.textContent = event.nextThreshold === null
       ? 'MAX EVOLUTION'
-      : `${event.qualifiedUses}/${event.nextThreshold} → ${PATH_FINAL[event.path]}`;
+      : `${event.qualifiedUses}/${event.nextThreshold} → ${finalStageName(event.path)}`;
     this.flashEvolution();
   }
 
