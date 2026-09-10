@@ -1,131 +1,5 @@
-.vortex-build-picker[hidden],
 .vortex-evolution-status[hidden] {
   display: none;
-}
-
-.vortex-build-picker {
-  position: absolute;
-  inset: 0;
-  z-index: 18;
-  display: grid;
-  place-items: center;
-  padding:
-    max(18px, env(safe-area-inset-top))
-    max(16px, env(safe-area-inset-right))
-    max(18px, env(safe-area-inset-bottom))
-    max(16px, env(safe-area-inset-left));
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-}
-
-.vortex-build-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgb(3 5 12 / 72%);
-  backdrop-filter: blur(9px);
-}
-
-.vortex-build-panel {
-  position: relative;
-  width: min(100%, 352px);
-  display: grid;
-  gap: 14px;
-  padding: 20px;
-  border: 1px solid rgb(111 233 255 / 18%);
-  border-radius: 22px;
-  background: rgb(8 11 23 / 90%);
-  box-shadow: 0 20px 64px rgb(0 0 0 / 42%);
-}
-
-.vortex-build-eyebrow {
-  color: #8f9ab0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-}
-
-.vortex-build-title {
-  color: #eefaff;
-  font-size: 21px;
-  font-weight: 700;
-  line-height: 1.18;
-}
-
-.vortex-build-options {
-  display: grid;
-  gap: 10px;
-}
-
-.vortex-build-option {
-  min-height: 108px;
-  display: grid;
-  gap: 5px;
-  padding: 13px 14px;
-  border: 1px solid rgb(143 77 255 / 22%);
-  border-radius: 15px;
-  background: rgb(15 19 35 / 78%);
-  color: #dcecff;
-  text-align: left;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    transform 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.vortex-build-option strong {
-  color: #f0fbff;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
-
-.vortex-build-option[aria-pressed="true"] {
-  border-color: rgb(111 233 255 / 70%);
-  background: rgb(17 30 48 / 94%);
-  box-shadow: 0 0 0 1px rgb(215 86 255 / 16%), 0 0 24px rgb(111 233 255 / 10%);
-}
-
-.vortex-build-option:focus-visible,
-.vortex-build-start:focus-visible {
-  outline: 2px solid #6fe9ff;
-  outline-offset: 3px;
-}
-
-.vortex-build-option:active,
-.vortex-build-start:active {
-  transform: scale(0.985);
-}
-
-.vortex-build-branch {
-  color: #6fe9ff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.vortex-build-summary {
-  color: #aebbd0;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.vortex-build-thresholds {
-  margin-top: 2px;
-  color: #71829b;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-}
-
-.vortex-build-start {
-  min-height: 48px;
-  border: 0;
-  border-radius: 14px;
-  background: #dff9ff;
-  color: #07101c;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
 }
 
 .vortex-evolution-status {
@@ -211,19 +85,20 @@
     opacity: 0.72;
     transform: translateX(-50%) scale(0.98);
   }
+
   28% {
     opacity: 1;
     transform: translateX(-50%) scale(1.045);
     border-color: rgb(111 233 255 / 88%);
     box-shadow: 0 0 34px rgb(111 233 255 / 24%);
   }
+
   100% {
     transform: translateX(-50%) scale(1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vortex-build-option,
   .vortex-evolution-status {
     transition: none;
   }
@@ -233,7 +108,6 @@
   }
 }
 
-html[data-reduced-motion="true"] .vortex-build-option,
 html[data-reduced-motion="true"] .vortex-evolution-status {
   transition: none;
 }
@@ -243,12 +117,6 @@ html[data-reduced-motion="true"] .vortex-evolution-status.is-evolving {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .vortex-build-backdrop {
-    backdrop-filter: none;
-    background: rgb(3 5 12 / 90%);
-  }
-
-  .vortex-build-panel,
   .vortex-evolution-status {
     backdrop-filter: none;
     background: rgb(7 10 20 / 96%);
@@ -256,7 +124,6 @@ html[data-reduced-motion="true"] .vortex-evolution-status.is-evolving {
 }
 
 @media (prefers-contrast: more) {
-  .vortex-build-panel,
   .vortex-evolution-status {
     border-color: rgb(207 239 255 / 58%);
     background: rgb(4 7 14 / 98%);
