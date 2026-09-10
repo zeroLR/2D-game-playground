@@ -6,6 +6,8 @@ export class AscensionCard {
   private readonly meter: HTMLElement;
   private readonly state: HTMLElement;
   private readonly onRelease: () => boolean;
+  private ready = false;
+  private runtimeEnabled = true;
 
   constructor(host: HTMLElement, onRelease: () => boolean) {
     this.onRelease = onRelease;
@@ -32,7 +34,7 @@ export class AscensionCard {
 
     const state = document.createElement('span');
     state.className = 'ascension-card-state';
-    state.textContent = 'ASCENDING';
+    state.textContent = '0%';
 
     copy.append(name, state);
 
@@ -44,7 +46,7 @@ export class AscensionCard {
     host.append(root);
 
     button.addEventListener('click', () => {
-      if (button.getAttribute('aria-disabled') === 'true') return;
+      if (!this.ready || !this.runtimeEnabled) return;
       this.onRelease();
     });
 
@@ -56,15 +58,26 @@ export class AscensionCard {
 
   render(snapshot: AscensionSnapshot): void {
     const ratio = Math.min(1, Math.max(0, snapshot.energy / snapshot.maxEnergy));
+    this.ready = snapshot.ready;
     this.root.style.setProperty('--ascension-progress', `${ratio * 100}%`);
     this.button.dataset.state = snapshot.ready ? 'ready' : 'charging';
-    this.button.setAttribute('aria-disabled', String(!snapshot.ready));
-    this.button.tabIndex = snapshot.ready ? 0 : -1;
     this.state.textContent = snapshot.ready ? 'SINGULARITY READY' : `${Math.round(ratio * 100)}%`;
     this.meter.setAttribute('aria-hidden', 'true');
+    this.syncInteraction();
+  }
+
+  setRuntimeEnabled(enabled: boolean): void {
+    this.runtimeEnabled = enabled;
+    this.syncInteraction();
   }
 
   destroy(): void {
     this.root.remove();
+  }
+
+  private syncInteraction(): void {
+    const interactive = this.ready && this.runtimeEnabled;
+    this.button.setAttribute('aria-disabled', String(!interactive));
+    this.button.tabIndex = interactive ? 0 : -1;
   }
 }
