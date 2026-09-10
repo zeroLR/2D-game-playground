@@ -142,11 +142,7 @@ export class RuneTreePanel {
     baseNode.dataset.node = 'vortex-base';
     baseNode.setAttribute('aria-pressed', String(this.selectedNode.kind === 'base'));
     baseNode.setAttribute('aria-label', 'Base Vortex');
-    const baseGlyph = document.createElement('span');
-    baseGlyph.className = 'rune-tree-node-base-glyph';
-    baseGlyph.textContent = base.glyph;
-    baseGlyph.setAttribute('aria-hidden', 'true');
-    baseNode.append(baseGlyph);
+    baseNode.append(this.makeBaseEffect('vortex'));
     baseNode.addEventListener('click', () => {
       this.selectedNode = { kind: 'base' };
       this.syncNodeSelection();
@@ -224,11 +220,7 @@ export class RuneTreePanel {
 
     const baseNode = document.createElement('div');
     baseNode.className = 'rune-tree-node rune-tree-base-node rune-tree-future-base';
-    const baseGlyph = document.createElement('span');
-    baseGlyph.className = 'rune-tree-node-base-glyph';
-    baseGlyph.textContent = definition.glyph;
-    baseGlyph.setAttribute('aria-hidden', 'true');
-    baseNode.append(baseGlyph);
+    baseNode.append(this.makeBaseEffect(this.selectedRune));
 
     const branches = document.createElement('div');
     branches.className = 'rune-tree-branch-grid rune-tree-future-branches';
@@ -246,6 +238,20 @@ export class RuneTreePanel {
 
     graph.append(baseNode, branches);
     this.treeMount.append(graph);
+  }
+
+
+  private makeBaseEffect(runeId: RuneTreeId): HTMLElement {
+    const effect = document.createElement('span');
+    effect.className = `rune-tree-base-effect rune-tree-base-effect--${runeId}`;
+    effect.setAttribute('aria-hidden', 'true');
+
+    for (const part of ['core', 'accent-a', 'accent-b']) {
+      const element = document.createElement('span');
+      element.className = `rune-tree-base-effect-${part}`;
+      effect.append(element);
+    }
+    return effect;
   }
 
   private renderDetail(): void {

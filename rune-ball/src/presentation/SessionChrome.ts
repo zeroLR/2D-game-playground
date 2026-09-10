@@ -1,4 +1,5 @@
 import type { SessionSnapshot, SessionStats } from '../game/SessionDirector';
+import { calculateArenaLayout } from './ArenaLayout';
 
 export interface SessionChromeCallbacks {
   onRetry(): void;
@@ -181,6 +182,11 @@ export class SessionChrome {
     }
 
     if (snapshot.phase === 'results') this.showResults(snapshot.stats);
+  }
+
+  setViewport(width: number, height: number): void {
+    const layout = calculateArenaLayout(width, height);
+    this.root.style.setProperty('--session-telemetry-y', `${layout.telemetryY}px`);
   }
 
   setVisible(visible: boolean): void {

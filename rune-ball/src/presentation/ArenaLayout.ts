@@ -2,6 +2,7 @@ import type { ArenaBounds } from '../game/BallModel';
 
 export interface ArenaLayout {
   bounds: ArenaBounds;
+  telemetryY: number;
   scoreY: number;
   flowBarY: number;
   runeBarY: number;
@@ -35,9 +36,12 @@ export function calculateArenaLayout(width: number, height: number): ArenaLayout
     bottom: centerY + arenaHeight / 2,
   };
 
+  const telemetryY = Math.max(64, bounds.top - 32);
+
   return {
     bounds,
-    scoreY: Math.max(58, bounds.top - 32),
+    telemetryY,
+    scoreY: telemetryY,
     flowBarY: bounds.top - 12,
     runeBarY: bounds.bottom + 10,
     runeGuideY: bounds.bottom + 34,

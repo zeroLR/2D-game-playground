@@ -397,3 +397,30 @@
     background: rgb(23 39 64 / 96%);
   }
 }
+
+
+/* P8.2.2 — one calm telemetry row above the collision frame. */
+.session-hud {
+  top: var(--session-telemetry-y, 64px);
+  gap: 1px;
+  min-width: 88px;
+  transform: translate(-50%, -50%);
+}
+
+.session-phase {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+}
+
+.session-timer {
+  font-size: 21px;
+  letter-spacing: 0.07em;
+}
+
+.session-hint {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  margin-top: 0;
+  transform: translateX(-50%);
+}
