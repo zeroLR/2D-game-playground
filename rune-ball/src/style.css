@@ -30,81 +30,56 @@ body {
 }
 
 .game-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
 }
 
-.preload-screen,
+.stage-loading-screen[hidden] {
+  display: none !important;
+}
+
+.stage-loading-screen,
 .bootstrap-error {
   position: absolute;
   inset: 0;
   display: grid;
   place-content: center;
-  padding: 32px;
+  padding:
+    max(32px, env(safe-area-inset-top))
+    max(28px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom))
+    max(28px, env(safe-area-inset-left));
   background:
-    radial-gradient(circle at 50% 38%, rgb(101 72 168 / 16%) 0, rgb(7 9 18 / 0%) 44%),
+    radial-gradient(circle at 50% 42%, rgb(101 72 168 / 14%) 0, rgb(7 9 18 / 0%) 44%),
     #070912;
 }
 
-.preload-frame {
-  width: min(100%, 320px);
+.stage-loading-screen {
+  z-index: 20;
+}
+
+.stage-loading-frame {
+  width: min(76vw, 300px);
   display: grid;
-  gap: 14px;
+  gap: 22px;
+  justify-items: stretch;
 }
 
-.preload-eyebrow,
-.preload-status,
-.preload-percent,
-.preload-hint {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.preload-eyebrow {
-  color: #71829b;
-  font-size: 10px;
-}
-
-.preload-title {
+.stage-loading-title {
   margin: 0;
   color: #f0fbff;
-  font-size: clamp(30px, 9vw, 42px);
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  line-height: 1;
+  font-size: clamp(25px, 7vw, 34px);
+  font-weight: 740;
+  letter-spacing: 0.055em;
+  line-height: 1.05;
+  text-align: center;
 }
 
-.preload-subtitle {
-  margin: -4px 0 10px;
-  color: #97a9bf;
-  font-size: 13px;
-}
-
-.preload-progress-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.preload-status,
-.preload-percent {
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.preload-status {
-  color: #8f4dff;
-}
-
-.preload-percent {
-  color: #6fe9ff;
-}
-
-.preload-track {
+.stage-loading-track {
   position: relative;
   height: 3px;
   overflow: hidden;
@@ -112,7 +87,7 @@ body {
   background: rgb(113 130 155 / 20%);
 }
 
-.preload-fill {
+.stage-loading-fill {
   position: absolute;
   inset: 0;
   transform: scaleX(0);
@@ -123,47 +98,8 @@ body {
   transition: transform 120ms linear;
 }
 
-.preload-enter {
-  min-height: 48px;
-  margin-top: 14px;
-  border: 1px solid rgb(111 233 255 / 38%);
-  border-radius: 10px;
-  background: rgb(10 16 32 / 82%);
-  color: #eaf6ff;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  transition:
-    border-color 140ms ease,
-    background 140ms ease,
-    opacity 140ms ease;
-}
-
-.preload-enter:disabled {
-  cursor: default;
-  opacity: 0.38;
-}
-
-.preload-screen[data-state="ready"] .preload-enter:not(:disabled) {
-  border-color: rgb(111 233 255 / 72%);
-  background: rgb(18 31 53 / 88%);
-}
-
-.preload-screen[data-state="warming"] .preload-status {
-  color: #d756ff;
-}
-
-.preload-hint {
-  color: #526176;
-  font-size: 9px;
-  line-height: 1.55;
-  text-transform: none;
-  letter-spacing: 0.05em;
-}
-
 .bootstrap-error {
+  z-index: 30;
   gap: 10px;
   text-align: center;
 }
@@ -180,10 +116,13 @@ body {
   line-height: 1.55;
 }
 
-@media (hover: hover) {
-  .preload-enter:not(:disabled):hover {
-    border-color: rgb(111 233 255 / 88%);
-    background: rgb(23 39 64 / 94%);
+html[data-reduced-motion="true"] .stage-loading-fill {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-loading-fill {
+    transition: none;
   }
 }
 
