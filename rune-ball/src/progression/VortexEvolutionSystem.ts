@@ -1,5 +1,13 @@
-export type VortexEvolutionPath = 'gravity-well' | 'orbit';
-export type VortexEvolutionStage = 0 | 1 | 2;
+import {
+  VORTEX_TIER_ONE_THRESHOLD,
+  VORTEX_TIER_TWO_THRESHOLD,
+  getVortexEvolutionStageName,
+  type VortexEvolutionPath,
+  type VortexEvolutionStage,
+} from './RuneEvolutionCatalog';
+
+export type { VortexEvolutionPath } from './RuneEvolutionCatalog';
+export type { VortexEvolutionStage } from './RuneEvolutionCatalog';
 
 export interface VortexEvolutionSnapshot {
   path: VortexEvolutionPath;
@@ -15,9 +23,6 @@ export interface VortexEvolutionAdvance {
   evolved: boolean;
 }
 
-const TIER_ONE_THRESHOLD = 3;
-const TIER_TWO_THRESHOLD = 6;
-
 export class VortexEvolutionSystem {
   private readonly path: VortexEvolutionPath;
   private qualifiedUses = 0;
@@ -29,11 +34,11 @@ export class VortexEvolutionSystem {
 
   get snapshot(): VortexEvolutionSnapshot {
     const nextThreshold = this.stage === 0
-      ? TIER_ONE_THRESHOLD
+      ? VORTEX_TIER_ONE_THRESHOLD
       : this.stage === 1
-        ? TIER_TWO_THRESHOLD
+        ? VORTEX_TIER_TWO_THRESHOLD
         : null;
-    const previousThreshold = this.stage === 0 ? 0 : TIER_ONE_THRESHOLD;
+    const previousThreshold = this.stage === 0 ? 0 : VORTEX_TIER_ONE_THRESHOLD;
     const progressToNext = nextThreshold === null
       ? 1
       : Math.min(1, Math.max(0, (this.qualifiedUses - previousThreshold) / (nextThreshold - previousThreshold)));
@@ -44,27 +49,21 @@ export class VortexEvolutionSystem {
       qualifiedUses: this.qualifiedUses,
       nextThreshold,
       progressToNext,
-      stageName: this.stageName(),
+      stageName: getVortexEvolutionStageName(this.path, this.stage),
     };
   }
 
   registerQualifiedUse(): VortexEvolutionAdvance {
     if (this.stage === 2) return { snapshot: this.snapshot, evolved: false };
 
-    this.qualifiedUses = Math.min(TIER_TWO_THRESHOLD, this.qualifiedUses + 1);
+    this.qualifiedUses = Math.min(VORTEX_TIER_TWO_THRESHOLD, this.qualifiedUses + 1);
     const previousStage = this.stage;
-    if (this.qualifiedUses >= TIER_TWO_THRESHOLD) this.stage = 2;
-    else if (this.qualifiedUses >= TIER_ONE_THRESHOLD) this.stage = 1;
+    if (this.qualifiedUses >= VORTEX_TIER_TWO_THRESHOLD) this.stage = 2;
+    else if (this.qualifiedUses >= VORTEX_TIER_ONE_THRESHOLD) this.stage = 1;
 
     return {
       snapshot: this.snapshot,
       evolved: this.stage !== previousStage,
     };
-  }
-
-  private stageName(): string {
-    if (this.stage === 0) return 'VORTEX';
-    if (this.path === 'gravity-well') return this.stage === 1 ? 'GRAVITY WELL' : 'SINGULARITY';
-    return this.stage === 1 ? 'ORBIT' : 'EVENT HORIZON';
   }
 }
