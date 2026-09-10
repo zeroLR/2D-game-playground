@@ -1,8 +1,11 @@
 import { AudioDirector } from './audio/AudioDirector';
 import { createRenderer } from './bootstrap/create-renderer';
 import { PreloadScreen } from './bootstrap/PreloadScreen';
+import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
+import { SessionDirector } from './game/SessionDirector';
 import { DestructionScene } from './presentation/DestructionScene';
+import { SessionChrome } from './presentation/SessionChrome';
 import './style.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -39,24 +42,29 @@ function preloadLabel(asset: string): string {
 async function bootstrap(): Promise<void> {
   host.dataset.bootstrapState = 'starting';
   host.setAttribute('aria-busy', 'true');
-  console.info('[Rune Ball] P5.4 buffered SFX bootstrap starting.');
+  console.info('[Rune Ball] P6.1 session-loop bootstrap starting.');
 
   const preloadScreen = new PreloadScreen(host);
   const audio = new AudioDirector();
+  let setRuntimePaused: ((paused: boolean) => void) | null = null;
 
-  const syncAudioVisibility = (): void => {
-    if (document.visibilityState === 'hidden') {
-      audio.pauseForBackground();
-      return;
-    }
-    audio.resumeFromBackground();
+  const syncAppVisibility = (): void => {
+    const hidden = document.visibilityState === 'hidden';
+    if (hidden) audio.pauseForBackground();
+    else audio.resumeFromBackground();
+    setRuntimePaused?.(hidden);
   };
-  const handlePageHide = (): void => audio.pauseForBackground();
+  const handlePageHide = (): void => {
+    audio.pauseForBackground();
+    setRuntimePaused?.(true);
+  };
   const handlePageShow = (): void => {
-    if (document.visibilityState === 'visible') audio.resumeFromBackground();
+    if (document.visibilityState !== 'visible') return;
+    audio.resumeFromBackground();
+    setRuntimePaused?.(false);
   };
 
-  document.addEventListener('visibilitychange', syncAudioVisibility);
+  document.addEventListener('visibilitychange', syncAppVisibility);
   window.addEventListener('pagehide', handlePageHide);
   window.addEventListener('pageshow', handlePageShow);
 
@@ -79,21 +87,71 @@ async function bootstrap(): Promise<void> {
     preloadScreen.setReady();
     host.dataset.bootstrapState = 'awaiting-entry';
     host.setAttribute('aria-busy', 'false');
-
-    // Download + SFX decode are already complete here. The Enter gesture only
-    // resumes AudioContext and starts BGM, keeping expensive work outside gameplay.
     await preloadScreen.waitForSuccessfulEnter(() => audio.unlock());
 
-    const scene = new DestructionScene(app.screen.width, app.screen.height, audio);
+    const session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
+    let scene: DestructionScene;
+    let resultHandled = false;
+
+    const onGameplayEvent = (event: DestructionEvent): void => {
+      session.registerEvent(event);
+    };
+
+    const onPlayerAction = (): void => {
+      if (session.start()) chrome.render(session.snapshot);
+    };
+
+    const createScene = (): DestructionScene => new DestructionScene(
+      app.screen.width,
+      app.screen.height,
+      audio,
+      { onPlayerAction, onGameplayEvent },
+    );
+
+    scene = createScene();
+
     const loop = new FixedStepLoop(
-      (dtSeconds) => scene.update(dtSeconds),
+      (dtSeconds) => {
+        const phase = session.snapshot.phase;
+        if (phase !== 'playing' && phase !== 'final-release') return;
+
+        scene.update(dtSeconds);
+        const transition = session.update(dtSeconds);
+        chrome.render(session.snapshot);
+
+        if (transition === 'results' && !resultHandled) {
+          resultHandled = true;
+          scene.setInputEnabled(false);
+          audio.playResultSting();
+          chrome.render(session.snapshot);
+        }
+      },
       (alpha) => scene.present(alpha),
     );
 
     host.replaceChildren(app.canvas);
     app.canvas.classList.add('game-canvas');
-    app.canvas.setAttribute('aria-label', 'Rune Ball P5.5 background-audio playtest');
+    app.canvas.setAttribute('aria-label', 'Rune Ball P6.1 session loop playtest');
     app.stage.addChild(scene);
+
+    const restartRun = (): void => {
+      app.stage.removeChild(scene);
+      scene.destroy({ children: true });
+      session.reset();
+      loop.reset();
+      resultHandled = false;
+      scene = createScene();
+      app.stage.addChild(scene);
+      chrome.render(session.snapshot);
+    };
+
+    const chrome = new SessionChrome(host, restartRun);
+    chrome.render(session.snapshot);
+
+    setRuntimePaused = (paused: boolean): void => {
+      session.setPaused(paused);
+      if (!paused) loop.reset();
+    };
 
     app.ticker.add((ticker) => {
       loop.tick(ticker.deltaMS);
@@ -110,7 +168,7 @@ async function bootstrap(): Promise<void> {
     host.dataset.bootstrapState = 'ready';
     delete host.dataset.bootstrapError;
     host.setAttribute('aria-busy', 'false');
-    console.info('[Rune Ball] P5.5 ready. Audio pauses while the page is backgrounded.');
+    console.info('[Rune Ball] P6.1 ready. First valid action starts the authored 75-second run.');
   } catch (error) {
     showBootstrapFailure(
       error,
