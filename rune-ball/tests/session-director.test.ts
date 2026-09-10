@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { SessionDirector } from '../src/game/SessionDirector';
+import type { RuneKind } from '../src/rune/RuneTypes';
 
-function breakEvent(combo: number, scoreAdded = 100, source: 'ball' | 'split' | 'chain' = 'ball') {
+function breakEvent(
+  combo: number,
+  scoreAdded = 100,
+  source: 'ball' | 'split' | 'chain' = 'ball',
+  runeInfluence: RuneKind | null = source === 'ball' ? null : source,
+) {
   return {
     type: 'target-break' as const,
     targetId: combo,
@@ -10,6 +16,7 @@ function breakEvent(combo: number, scoreAdded = 100, source: 'ball' | 'split' | 
     combo,
     scoreAdded,
     source,
+    runeInfluence,
   };
 }
 
@@ -76,6 +83,13 @@ describe('SessionDirector', () => {
     expect(stats.chainLinks).toBe(2);
     expect(stats.overdriveReached).toBe(true);
     expect(stats.overdriveBreaks).toBe(1);
+  });
+
+  it('counts a ball break as Rune-authored when Vortex influenced it', () => {
+    const director = new SessionDirector();
+    director.start();
+    director.registerEvent(breakEvent(2, 100, 'ball', 'vortex'));
+    expect(director.snapshot.stats.runeBreaks).toBe(1);
   });
 
   it('resets into a clean replayable run', () => {
