@@ -2,11 +2,12 @@ import { DEFAULT_STAGE_ID, STAGES, getStage, type StageId } from '../content/Sta
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 
 export type ProductScreen = 'home' | 'journey' | 'runes' | 'stage-detail';
+export type AppScreen = ProductScreen | 'loading' | 'run';
 
 export interface GameShellCallbacks {
   onStartStage(stageId: StageId): void;
   onVortexPathChange(path: VortexEvolutionPath): void;
-  onScreenChange(screen: ProductScreen | 'run'): void;
+  onScreenChange(screen: AppScreen): void;
 }
 
 const PATH_COPY: Record<VortexEvolutionPath, { title: string; tierOne: string; tierTwo: string; summary: string }> = {
@@ -96,6 +97,11 @@ export class GameShell {
     if (objective) objective.textContent = stage.objective;
     if (number) number.textContent = `STAGE ${stage.number.toString().padStart(2, '0')}`;
     this.show('stage-detail');
+  }
+
+  hideForLoading(): void {
+    this.root.hidden = true;
+    this.callbacks.onScreenChange('loading');
   }
 
   hideForRun(): void {
@@ -306,7 +312,6 @@ export class GameShell {
     start.className = 'game-shell-primary stage-detail-start';
     start.textContent = 'START RUN';
     start.addEventListener('click', () => {
-      this.hideForRun();
       this.callbacks.onStartStage(this.selectedStage);
     });
 
