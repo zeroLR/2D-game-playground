@@ -140,7 +140,7 @@ export class DestructionSession {
           nextThreshold: evolution.nextThreshold,
         };
         events.push(progressEvent);
-        if (advance.evolved && evolution.stage > 0) {
+        if (advance.evolved && (evolution.stage === 1 || evolution.stage === 2)) {
           events.push({
             type: 'vortex-evolved',
             path: evolution.path,
