@@ -5,7 +5,7 @@ import { DestructionSession, type DestructionEvent } from '../game/DestructionSe
 import type { TargetState } from '../game/TargetSystem';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 import type { SplitEvolutionPath, SplitEvolutionStage } from '../progression/SplitEvolutionSystem';
-import { getSplitVisualProfile } from './SplitVisualIdentity';
+import { SplitRuntimeSvg } from './SplitRuntimeSvg';
 import { classifyGesturePath } from '../input/GestureRecognizer';
 import { PointerPathSampler } from '../input/PointerPathSampler';
 import type { Point2D } from '../input/SwipeClassifier';
@@ -103,6 +103,7 @@ export class DestructionScene extends Container {
   private readonly breakRings = new Graphics();
   private readonly trail = new Graphics();
   private readonly runeFx = new Graphics();
+  private readonly splitRuntimeSvg = new SplitRuntimeSvg();
   private readonly overdriveFx = new Graphics();
   private readonly impactPool = new ImpactPool();
   private readonly ballGlow = new Graphics().circle(0, 0, 38).fill({ color: COLORS.violet, alpha: 0.18 });
@@ -233,6 +234,7 @@ export class DestructionScene extends Container {
       this.breakRings,
       this.trail,
       this.runeFx,
+      this.splitRuntimeSvg,
       this.impactPool,
       this.overdriveFx,
       this.ballGlow,
@@ -356,12 +358,19 @@ export class DestructionScene extends Container {
     this.drawWallFlash();
     this.drawReboundBeats();
     this.drawBreakRings(overdrive);
-    this.drawRuneEffects(
-      snapshot.ball.position,
+    this.splitRuntimeSvg.present(
+      position,
       snapshot.ball.velocity,
-      snapshot.splitEchoes,
+      snapshot.splitEchoes.length > 0,
       snapshot.splitEvolution.path,
       snapshot.splitEvolution.stage,
+      this.presentationTime,
+      this.reducedMotion,
+      overdrive,
+    );
+    this.drawRuneEffects(
+      snapshot.ball.position,
+      snapshot.splitEchoes,
       snapshot.runes.vortexCenter,
       snapshot.runes.vortexStrength,
       snapshot.runes.chainReady,
@@ -798,10 +807,7 @@ export class DestructionScene extends Container {
 
   private drawRuneEffects(
     ballPosition: Point2D,
-    ballVelocity: Point2D,
     splitEchoes: Point2D[],
-    splitPath: SplitEvolutionPath,
-    splitStage: SplitEvolutionStage,
     vortexCenter: Point2D | null,
     vortexStrength: number,
     chainReady: boolean,
@@ -829,7 +835,7 @@ export class DestructionScene extends Container {
       }
     }
 
-    this.drawSplitIdentity(ballPosition, ballVelocity, splitEchoes, splitPath, splitStage, overdrive);
+    this.drawSplitCollisionHints(ballPosition, splitEchoes, overdrive);
 
     if (chainReady) {
       const pulse = 0.5 + Math.sin(this.presentationTime * 9) * 0.5;
@@ -889,123 +895,29 @@ export class DestructionScene extends Container {
     }
   }
 
-  private drawSplitIdentity(
+  private drawSplitCollisionHints(
     ballPosition: Point2D,
-    ballVelocity: Point2D,
     splitEchoes: Point2D[],
-    splitPath: SplitEvolutionPath,
-    splitStage: SplitEvolutionStage,
     overdrive: boolean,
   ): void {
     if (splitEchoes.length === 0) return;
+    const lineAlpha = overdrive ? 0.14 : 0.075;
+    const markAlpha = overdrive ? 0.30 : 0.16;
 
-    const visual = getSplitVisualProfile(splitPath, splitStage);
-    if (visual.style === 'echoes') {
-      for (const echo of splitEchoes) {
-        this.runeFx
-          .moveTo(ballPosition.x, ballPosition.y)
-          .lineTo(echo.x, echo.y)
-          .stroke({ color: overdrive ? COLORS.white : COLORS.violet, width: overdrive ? 2.5 : 1.5, alpha: overdrive ? 0.56 : 0.32 });
-        this.runeFx.circle(echo.x, echo.y, overdrive ? 15 : 12).fill({ color: COLORS.violet, alpha: overdrive ? 0.26 : 0.16 });
-        this.runeFx.circle(echo.x, echo.y, overdrive ? 9 : 7).stroke({ color: COLORS.cyan, width: overdrive ? 3.2 : 2.5, alpha: 0.82 });
-        this.runeFx.circle(echo.x, echo.y, 2.5).fill({ color: COLORS.white, alpha: 0.9 });
-      }
-      return;
+    for (const echo of splitEchoes) {
+      this.runeFx
+        .moveTo(ballPosition.x, ballPosition.y)
+        .lineTo(echo.x, echo.y)
+        .stroke({ color: COLORS.violet, width: 1, alpha: lineAlpha });
+      this.runeFx
+        .poly([
+          echo.x, echo.y - 3.5,
+          echo.x + 3.5, echo.y,
+          echo.x, echo.y + 3.5,
+          echo.x - 3.5, echo.y,
+        ])
+        .stroke({ color: COLORS.cyan, width: 1.2, alpha: markAlpha });
     }
-
-    const speed = Math.hypot(ballVelocity.x, ballVelocity.y);
-    if (!(speed > 0)) return;
-    const forward = { x: ballVelocity.x / speed, y: ballVelocity.y / speed };
-    const normal = { x: -forward.y, y: forward.x };
-
-    const point = (forwardOffset: number, lateralOffset: number): Point2D => ({
-      x: ballPosition.x + forward.x * forwardOffset + normal.x * lateralOffset,
-      y: ballPosition.y + forward.y * forwardOffset + normal.y * lateralOffset,
-    });
-
-    if (visual.style === 'prism-wings') {
-      const pulse = this.reducedMotion ? 0 : Math.sin(this.presentationTime * 8) * 0.025;
-      const span = visual.wingSpan * (1 + pulse);
-      const chord = visual.wingChord;
-      const fillAlpha = overdrive ? 0.25 : 0.14;
-      const strokeAlpha = overdrive ? 0.86 : 0.62;
-
-      for (const side of [-1, 1] as const) {
-        const root = point(8, side * 18);
-        const leading = point(chord * 0.58, side * span * 0.48);
-        const tip = point(-chord * 0.10, side * span);
-        const trailing = point(-chord * 0.56, side * span * 0.42);
-
-        this.runeFx
-          .poly([
-            root.x, root.y,
-            leading.x, leading.y,
-            tip.x, tip.y,
-            trailing.x, trailing.y,
-          ])
-          .fill({ color: overdrive ? COLORS.white : COLORS.violet, alpha: fillAlpha })
-          .stroke({ color: overdrive ? COLORS.white : COLORS.cyan, width: overdrive ? 3 : 2, alpha: strokeAlpha });
-
-        for (let layer = 1; layer <= visual.wingLayers; layer += 1) {
-          const ratio = layer / (visual.wingLayers + 1);
-          const ribStart = point(5 - chord * ratio * 0.18, side * (18 + span * ratio * 0.22));
-          const ribEnd = point(chord * (0.48 - ratio * 0.34), side * span * (0.48 + ratio * 0.45));
-          this.runeFx
-            .moveTo(ribStart.x, ribStart.y)
-            .lineTo(ribEnd.x, ribEnd.y)
-            .stroke({ color: layer % 2 === 0 ? COLORS.magenta : COLORS.cyan, width: overdrive ? 2.2 : 1.4, alpha: overdrive ? 0.64 : 0.38 });
-        }
-      }
-
-      for (const echo of splitEchoes) {
-        this.runeFx
-          .poly([echo.x, echo.y - 3.5, echo.x + 3.5, echo.y, echo.x, echo.y + 3.5, echo.x - 3.5, echo.y])
-          .fill({ color: COLORS.white, alpha: overdrive ? 0.72 : 0.42 });
-      }
-      return;
-    }
-
-    const farthestEcho = Math.max(
-      0,
-      ...splitEchoes.map((echo) => (echo.x - ballPosition.x) * forward.x + (echo.y - ballPosition.y) * forward.y),
-    );
-    const tipDistance = farthestEcho + visual.lanceExtraLength;
-    const shaftEnd = Math.max(34, tipDistance - 24);
-    const halfWidth = visual.lanceHalfWidth;
-    const baseLeft = point(12, halfWidth);
-    const shoulderLeft = point(shaftEnd, halfWidth);
-    const tip = point(tipDistance, 0);
-    const shoulderRight = point(shaftEnd, -halfWidth);
-    const baseRight = point(12, -halfWidth);
-
-    this.runeFx
-      .poly([
-        baseLeft.x, baseLeft.y,
-        shoulderLeft.x, shoulderLeft.y,
-        tip.x, tip.y,
-        shoulderRight.x, shoulderRight.y,
-        baseRight.x, baseRight.y,
-      ])
-      .fill({ color: overdrive ? COLORS.white : COLORS.violet, alpha: overdrive ? 0.30 : 0.18 })
-      .stroke({ color: overdrive ? COLORS.white : COLORS.cyan, width: overdrive ? 3.6 : 2.4, alpha: overdrive ? 0.92 : 0.76 });
-
-    const spineStart = point(16, 0);
-    this.runeFx
-      .moveTo(spineStart.x, spineStart.y)
-      .lineTo(tip.x, tip.y)
-      .stroke({ color: COLORS.white, width: overdrive ? 3 : 1.8, alpha: overdrive ? 0.86 : 0.62 });
-
-    const guardCenter = point(20, 0);
-    const guardRadius = halfWidth * 2.4;
-    this.runeFx
-      .moveTo(guardCenter.x + normal.x * guardRadius, guardCenter.y + normal.y * guardRadius)
-      .lineTo(guardCenter.x - normal.x * guardRadius, guardCenter.y - normal.y * guardRadius)
-      .stroke({ color: COLORS.magenta, width: overdrive ? 3 : 2, alpha: overdrive ? 0.72 : 0.46 });
-
-    const spearBase = point(shaftEnd - 2, 0);
-    this.runeFx
-      .circle(spearBase.x, spearBase.y, overdrive ? 5 : 3.5)
-      .fill({ color: COLORS.white, alpha: overdrive ? 0.84 : 0.58 });
   }
 
   private drawOverdriveBeats(): void {
