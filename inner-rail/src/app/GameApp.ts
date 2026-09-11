@@ -7,6 +7,15 @@ import { cameraRelativeGravityToWorld, type WorldGravityDirection } from '../phy
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
+import {
+  ballInertiaToLinearDamping,
+  DEFAULT_PROTOTYPE_TUNING,
+  loadPrototypeTuning,
+  sanitizePrototypeTuning,
+  savePrototypeTuning,
+  type PrototypeTuningValues,
+} from '../tuning/PrototypeTuning';
+import { PrototypeTuningPanel } from '../tuning/PrototypeTuningPanel';
 import { PrototypeOverlay } from '../ui/PrototypeOverlay';
 
 const SENSOR_SAMPLE_TIMEOUT_MS = 1800;
@@ -22,6 +31,7 @@ export class GameApp {
   private readonly overlay: PrototypeOverlay;
   private readonly scene: GameScene;
   private readonly telemetry: PrototypeTelemetry;
+  private readonly tuningPanel: PrototypeTuningPanel;
 
   private activeSource: TiltSource | null = null;
   private sensorTimeoutId: number | null = null;
@@ -32,6 +42,7 @@ export class GameApp {
   private syntheticKeyboard = { left: false, right: false, forward: false, back: false };
   private viewportOrientation: ViewportOrientation;
   private worldGravityDirection: WorldGravityDirection = { x: 0, y: -1, z: 0 };
+  private tuning: PrototypeTuningValues = loadPrototypeTuning();
 
   constructor(root: HTMLElement) {
     this.overlay = new PrototypeOverlay(root, {
@@ -44,7 +55,14 @@ export class GameApp {
     });
     this.scene = new GameScene(this.overlay.sceneRoot);
     this.telemetry = new PrototypeTelemetry(this.overlay.telemetryRoot);
-    this.overlay.setDebugVisible(new URLSearchParams(location.search).get('debug') === '1');
+    this.tuningPanel = new PrototypeTuningPanel(this.overlay.tuningRoot, this.tuning, {
+      onChange: (values) => this.applyTuning(values),
+      onReset: () => this.resetTuning(),
+    });
+    this.applyTuning(this.tuning, false);
+
+    const debugVisible = new URLSearchParams(location.search).get('debug') === '1';
+    this.overlay.setDebugVisible(debugVisible);
     this.viewportOrientation = this.readViewportOrientation();
     this.camera.reset(this.physics.getBallState());
     this.resizeScene();
@@ -135,6 +153,23 @@ export class GameApp {
 
   private recenter(): void {
     this.tiltInput.recenter();
+  }
+
+  private applyTuning(values: PrototypeTuningValues, persist = true): void {
+    this.tuning = sanitizePrototypeTuning(values);
+    this.camera.setTuning({
+      baseFovDeg: this.tuning.cameraFovDeg,
+      yawResponsePerSecond: this.tuning.cameraYawResponsePerSecond,
+    });
+    this.physics.setBallLinearDamping(ballInertiaToLinearDamping(this.tuning.ballInertia));
+    this.tiltInput.setSensitivityMultiplier(this.tuning.tiltSensitivity);
+    if (persist) savePrototypeTuning(this.tuning);
+  }
+
+  private resetTuning(): void {
+    this.tuning = { ...DEFAULT_PROTOTYPE_TUNING };
+    this.tuningPanel.setValues(this.tuning);
+    this.applyTuning(this.tuning);
   }
 
   private resetSimulation(): void {

@@ -59,6 +59,10 @@ export class PhysicsWorld {
     this.world.gravity.set(0, -PHYSICS_CONFIG.gravityMagnitude, 0);
   }
 
+  setBallLinearDamping(value: number): void {
+    this.ball.linearDamping = Math.min(0.99, Math.max(0, value));
+  }
+
   step(deltaSeconds: number): void {
     const safeDelta = Math.min(Math.max(deltaSeconds, 0), 0.1);
     this.world.step(PHYSICS_CONFIG.fixedTimeStep, safeDelta, PHYSICS_CONFIG.maxSubSteps);

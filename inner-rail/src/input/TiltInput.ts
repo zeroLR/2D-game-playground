@@ -42,6 +42,7 @@ export class TiltInput {
   private source: TiltSourceKind | null = null;
   private raw: RawOrientationTelemetry | null = null;
   private lastSampleAtMs: number | null = null;
+  private sensitivityMultiplier = 1;
 
   constructor(config: Partial<TiltInputConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -52,14 +53,12 @@ export class TiltInput {
     this.current = { x: sample.screenXDeg, y: sample.screenYDeg };
     this.raw = sample.raw ?? null;
     this.lastSampleAtMs = sample.timestampMs;
+    this.refreshTarget();
+  }
 
-    if (!this.neutral) return;
-
-    const relative = relativeTilt(this.current, this.neutral);
-    this.target = {
-      x: applyAxisResponse(relative.x, this.config.deadZoneDeg, this.config.saturationDeg),
-      y: applyAxisResponse(relative.y, this.config.deadZoneDeg, this.config.saturationDeg),
-    };
+  setSensitivityMultiplier(multiplier: number): void {
+    this.sensitivityMultiplier = Math.min(2, Math.max(0.5, multiplier));
+    this.refreshTarget();
   }
 
   update(nowMs: number): void {
@@ -100,6 +99,19 @@ export class TiltInput {
       gravityDirection: normalizedTiltToGravityDirection(this.filtered, this.config.saturationDeg),
       raw: this.raw ? { ...this.raw } : null,
       lastSampleAtMs: this.lastSampleAtMs,
+    };
+  }
+
+  private refreshTarget(): void {
+    if (!this.neutral) return;
+    const relative = relativeTilt(this.current, this.neutral);
+    const effectiveSaturationDeg = Math.max(
+      this.config.deadZoneDeg + 0.001,
+      this.config.saturationDeg / this.sensitivityMultiplier,
+    );
+    this.target = {
+      x: applyAxisResponse(relative.x, this.config.deadZoneDeg, effectiveSaturationDeg),
+      y: applyAxisResponse(relative.y, this.config.deadZoneDeg, effectiveSaturationDeg),
     };
   }
 }

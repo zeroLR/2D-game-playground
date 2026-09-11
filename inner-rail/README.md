@@ -27,6 +27,8 @@ Portrait and landscape remain equal test modes. They use the same input response
 - runtime **RESTART** and **RECENTER** actions;
 - rotating between portrait and landscape pauses the sandbox and requires a fresh neutral pose;
 - `?debug=1` telemetry for input, world gravity, ball state, grounded approximation, speed, camera yaw/pitch/FOV, and recovery count;
+- `?debug=1` live tuning panel for camera FOV, camera follow response, ball inertia, and tilt sensitivity;
+- tuning values persist locally on the device so repeated phone tests can keep the last configuration;
 - pure tests for orientation, camera-relative gravity, and camera angle damping.
 
 ## Controls
@@ -42,12 +44,22 @@ Portrait and landscape remain equal test modes. They use the same input response
 7. Use **RECENTER** if your natural holding pose changes; use **RESTART** to reset the sandbox.
 8. Rotate the phone and recalibrate to compare portrait and landscape under the same simulation rules.
 
+### Debug tuning
+
+Append `?debug=1` and open **TUNE / P0.2 FEEL**. Changes apply while the sandbox is running and are stored locally.
+
+- **Camera zoom / FOV** — lower values produce a tighter view; higher values expose more peripheral space.
+- **Camera follow** — lower values add more heading-follow inertia; higher values make the stabilized view turn toward travel direction faster.
+- **Ball inertia** — higher values reduce linear damping so momentum carries longer.
+- **Tilt sensitivity** — higher values reach the same maximum gravity deflection with less physical device tilt.
+- **RESET DEFAULTS** restores the original P0.2 baseline.
+
 ### Desktop / development
 
 - Start **DESKTOP TILT TEST**.
 - Calibrate once.
 - WASD / arrow keys or the drag pad feed the same `TiltInput` abstraction.
-- Append `?debug=1` to expose the tuning telemetry.
+- Append `?debug=1` to expose telemetry and live tuning controls.
 
 ## P0.2 phone gate
 

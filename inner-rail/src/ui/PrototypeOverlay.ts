@@ -18,6 +18,7 @@ export type OverlayState =
 export class PrototypeOverlay {
   readonly sceneRoot: HTMLElement;
   readonly telemetryRoot: HTMLElement;
+  readonly tuningRoot: HTMLElement;
 
   private readonly shell: HTMLElement;
   private readonly stateRoot: HTMLElement;
@@ -60,6 +61,7 @@ export class PrototypeOverlay {
           <button type="button" class="button button--secondary" data-recenter>RECENTER</button>
         </nav>
         <pre class="telemetry" data-telemetry hidden></pre>
+        <aside class="tuning-root" data-tuning-root hidden aria-label="Prototype tuning"></aside>
       </main>
     `;
 
@@ -72,6 +74,7 @@ export class PrototypeOverlay {
     this.vectorLabel = this.requireElement('[data-vector-label]');
     this.syntheticPad = this.requireElement('[data-synthetic-pad]');
     this.telemetryRoot = this.requireElement('[data-telemetry]');
+    this.tuningRoot = this.requireElement('[data-tuning-root]');
 
     this.requireElement<HTMLButtonElement>('[data-restart]').addEventListener('click', () => callbacks.onRestart());
     this.requireElement<HTMLButtonElement>('[data-recenter]').addEventListener('click', () => callbacks.onRecenter());
@@ -81,6 +84,7 @@ export class PrototypeOverlay {
   setDebugVisible(visible: boolean): void {
     this.debugVisible = visible;
     this.telemetryRoot.hidden = !visible;
+    this.tuningRoot.hidden = !visible;
     this.vectorStage.hidden = this.active && !visible;
   }
 
