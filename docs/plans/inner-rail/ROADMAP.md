@@ -9,7 +9,8 @@ Every slice ends in an observable gameplay gate. P0 implementation is complete o
 ```mermaid
 flowchart LR
     S[P0 Spec] --> P01[P0.1 Scaffold + Tilt Harness]
-    P01 --> P02[P0.2 Ball Physics + Stable Camera]
+    P01 --> P011[P0.1.1 Orientation-Agnostic Harness]
+    P011 --> P02[P0.2 Ball Physics + Stable Camera]
     P02 --> P03[P0.3 Validation Track]
     P03 --> P04[P0.4 Phone Feel Gate]
     P04 --> P1[P1 Physical Puzzle Vocabulary]
@@ -27,32 +28,52 @@ flowchart LR
 
 ## P0.1 — Repository Scaffold + Tilt Input Harness
 
+**Status:** complete.
+
 **Objective:** create the deployable `inner-rail/` project and prove that device orientation can be permissioned, calibrated, normalized, and observed reliably.
 
 ### Deliverables
 
-- [ ] `inner-rail/` Vite + strict TypeScript project
-- [ ] Three.js + cannon-es dependencies and committed lockfile
-- [ ] landscape-first full-screen shell
-- [ ] explicit bootstrap failure state
-- [ ] device-orientation permission flow
-- [ ] neutral calibration / recenter
-- [ ] screen-orientation correction
-- [ ] dead-zone / clamp / smoothing pipeline
-- [ ] desktop synthetic tilt source using the same `TiltInput` contract
-- [ ] dev telemetry overlay
-- [ ] unit tests for orientation math
-- [ ] complete CI / GitHub Pages registration for the new game
+- [x] `inner-rail/` Vite + strict TypeScript project
+- [x] Three.js + cannon-es dependencies and committed lockfile
+- [x] full-screen mobile harness
+- [x] explicit bootstrap failure state
+- [x] device-orientation permission flow
+- [x] neutral calibration / recenter
+- [x] screen-orientation correction
+- [x] dead-zone / clamp / smoothing pipeline
+- [x] desktop synthetic tilt source using the same `TiltInput` contract
+- [x] dev telemetry overlay
+- [x] unit tests for orientation math
+- [x] complete CI / GitHub Pages registration for the new game
+
+---
+
+## P0.1.1 — Orientation-Agnostic Harness
+
+**Objective:** remove the premature landscape product assumption and make portrait/landscape an explicit real-device comparison before P0.2 locks presentation.
+
+### Deliverables
+
+- [x] remove portrait gameplay blocker
+- [x] responsive portrait and landscape harness layouts
+- [x] visible current-orientation test label
+- [x] preserve one shared `TiltInput` contract across both orientations
+- [x] invalidate neutral calibration when the viewport changes orientation
+- [x] require a fresh neutral pose after portrait/landscape rotation
+- [x] expose viewport orientation in debug telemetry
 
 ### Gate
 
-On an actual phone, tilting/recentering changes a visualized gravity vector consistently in landscape; portrait shows a clear rotate-device state; denied/unavailable sensors never leave a blank or inert screen.
+On a real phone, both portrait and landscape must reach the same calibrated gravity-vector test without hidden input differences. Rotating the viewport must return the harness to calibration rather than carrying a stale neutral pose across coordinate systems.
+
+P0.1.1 does **not** choose the winning orientation. It only makes the comparison valid.
 
 ---
 
 ## P0.2 — Ball Physics + Stabilized First-Person Camera
 
-**Objective:** establish the physical sensation before building a level.
+**Objective:** establish the physical sensation before building a level, while comparing portrait and landscape using the exact same physics/camera rules.
 
 ### Deliverables
 
@@ -68,10 +89,11 @@ On an actual phone, tilting/recentering changes a visualized gravity vector cons
 - [ ] low-speed heading stability
 - [ ] restart + recenter controls
 - [ ] optional reduced-motion suppression of nonessential camera feedback
+- [ ] portrait/landscape A/B notes for control precision, holding comfort, forward readability, and first-person presence
 
 ### Phone gate
 
-From the sandbox alone, the player can intentionally:
+From the same sandbox in both orientations, the player can intentionally:
 
 1. accelerate forward;
 2. turn left/right;
@@ -79,7 +101,14 @@ From the sandbox alone, the player can intentionally:
 4. brake to near-stop;
 5. hit a wall and recover orientation.
 
-If the camera is uncomfortable or braking feels like direct steering, remain in P0.2.
+Record which orientation better supports:
+
+- fine two-axis force control;
+- comfortable physical posture;
+- forward track readability;
+- the fantasy of being inside the ball.
+
+Do not lock the final product orientation until this comparison exists. If the camera is uncomfortable or braking feels like direct steering, remain in P0.2.
 
 ---
 
@@ -117,6 +146,7 @@ A competent player can complete the track through force/momentum control alone, 
 - [ ] tune global ball friction/damping/restitution
 - [ ] tune camera yaw/pitch/FOV behavior
 - [ ] minimal impact/motion feedback only where it improves physical readability
+- [ ] lock primary phone orientation from accumulated P0 evidence
 - [ ] execute the P0 5-player validation protocol
 - [ ] record observations against the P0 acceptance thresholds
 
@@ -196,4 +226,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate next executable slice is **P0.1 — Repository Scaffold + Tilt Input Harness**.
+The immediate next executable slice is **P0.2 — Ball Physics + Stabilized First-Person Camera**, retaining portrait/landscape comparison until P0 evidence supports an orientation lock.
