@@ -26,6 +26,11 @@ export function shortestAngleDelta(fromDeg: number, toDeg: number): number {
  * DeviceOrientation beta/gamma are expressed in the device's natural axes.
  * Rotate those axes into the current screen frame so screen-left/right and
  * screen-forward/back remain stable across portrait/landscape orientation.
+ *
+ * DeviceOrientation's lateral sign is opposite to the gameplay contract on
+ * the tested phone: physically tilting screen-left produced positive screen X.
+ * Mirror only the corrected screen X axis so the player-facing invariant is:
+ * left tilt -> left gravity, right tilt -> right gravity.
  */
 export function correctForScreenOrientation(
   betaDeg: number,
@@ -37,10 +42,12 @@ export function correctForScreenOrientation(
   const sin = Math.sin(radians);
   const deviceX = gammaDeg;
   const deviceY = betaDeg;
+  const rotatedX = deviceX * cos - deviceY * sin;
+  const rotatedY = deviceX * sin + deviceY * cos;
 
   return {
-    x: deviceX * cos - deviceY * sin,
-    y: deviceX * sin + deviceY * cos,
+    x: -rotatedX,
+    y: rotatedY,
   };
 }
 

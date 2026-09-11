@@ -20,20 +20,22 @@ function assertEqual<T>(actual: T, expected: T): void {
 assertEqual(normalizeDegrees(270), -90);
 assertEqual(shortestAngleDelta(170, -170), 20);
 
+// Screen X is intentionally mirrored after orientation correction so the
+// player-facing contract remains physical: left tilt -> left gravity.
 const portrait = correctForScreenOrientation(10, 4, 0);
-assertClose(portrait.x, 4);
+assertClose(portrait.x, -4);
 assertClose(portrait.y, 10);
 
 const landscapeRight = correctForScreenOrientation(10, 4, 90);
-assertClose(landscapeRight.x, 10);
+assertClose(landscapeRight.x, -10);
 assertClose(landscapeRight.y, -4);
 
 const landscapeLeft = correctForScreenOrientation(10, 4, -90);
-assertClose(landscapeLeft.x, -10);
+assertClose(landscapeLeft.x, 10);
 assertClose(landscapeLeft.y, 4);
 
 const upsideDown = correctForScreenOrientation(10, 4, 180);
-assertClose(upsideDown.x, -4);
+assertClose(upsideDown.x, 4);
 assertClose(upsideDown.y, -10);
 
 const relative = relativeTilt({ x: -175, y: 20 }, { x: 175, y: 8 });
@@ -46,6 +48,8 @@ assertClose(applyAxisResponse(-25, 1.5, 25), -1);
 
 const gravity = normalizedTiltToGravityDirection({ x: 0.7, y: -0.45 });
 assertClose(Math.hypot(gravity.x, gravity.y, gravity.z), 1);
+if (gravity.x <= 0) throw new Error('Positive corrected screen X must produce rightward gravity.');
+if (gravity.z <= 0) throw new Error('Negative corrected screen Y must preserve the existing forward/back mapping.');
 if (gravity.y >= 0) throw new Error('Gravity must retain a downward component.');
 
 console.log('Inner Rail orientation math tests passed.');
