@@ -1,9 +1,10 @@
-import { strict as assert } from 'node:assert';
 import { cameraRelativeGravityToWorld } from './gravityMath.js';
 
 const EPS = 1e-9;
 const near = (actual: number, expected: number): void => {
-  assert.ok(Math.abs(actual - expected) <= EPS, `${actual} != ${expected}`);
+  if (Math.abs(actual - expected) > EPS) {
+    throw new Error(`Expected ${actual} to be within ${EPS} of ${expected}`);
+  }
 };
 
 {
@@ -34,4 +35,4 @@ const near = (actual: number, expected: number): void => {
   near(result.z, -0.6);
 }
 
-console.log('gravityMath tests passed');
+console.log('Inner Rail gravity math tests passed.');
