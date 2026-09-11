@@ -4,6 +4,10 @@ function fixed(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toFixed(2);
 }
 
+function viewportOrientation(): 'portrait' | 'landscape' {
+  return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+}
+
 export class PrototypeTelemetry {
   constructor(private readonly root: HTMLElement) {}
 
@@ -11,6 +15,7 @@ export class PrototypeTelemetry {
     const raw = snapshot.raw;
     this.root.textContent = [
       `source      ${snapshot.source ?? 'none'}`,
+      `viewport    ${viewportOrientation()}  ${window.innerWidth}×${window.innerHeight}`,
       `screen deg  x ${fixed(snapshot.screenTiltDeg.x)}  y ${fixed(snapshot.screenTiltDeg.y)}`,
       `neutral     x ${fixed(snapshot.neutral?.x)}  y ${fixed(snapshot.neutral?.y)}`,
       `relative    x ${fixed(snapshot.relativeTiltDeg.x)}  y ${fixed(snapshot.relativeTiltDeg.y)}`,
