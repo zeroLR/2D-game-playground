@@ -51,6 +51,8 @@ flowchart LR
 
 ## P0.1.1 — Orientation-Agnostic Harness
 
+**Status:** complete; real-device portrait/landscape input mapping accepted.
+
 **Objective:** remove the premature landscape product assumption and make portrait/landscape an explicit real-device comparison before P0.2 locks presentation.
 
 ### Deliverables
@@ -73,22 +75,27 @@ P0.1.1 does **not** choose the winning orientation. It only makes the comparison
 
 ## P0.2 — Ball Physics + Stabilized First-Person Camera
 
+**Status:** implementation complete; real-phone movement/camera gate pending.
+
 **Objective:** establish the physical sensation before building a level, while comparing portrait and landscape using the exact same physics/camera rules.
 
 ### Deliverables
 
-- [ ] cannon-es world + dynamic sphere
-- [ ] tilt-driven effective gravity
-- [ ] one broad sandbox plane with walls
-- [ ] global friction/restitution/damping config
-- [ ] stable fixed-step physics update
-- [ ] camera follows ball translation
-- [ ] camera roll fixed independent of sphere rotation
-- [ ] damped velocity/heading-based yaw
-- [ ] conservative pitch behavior
-- [ ] low-speed heading stability
-- [ ] restart + recenter controls
-- [ ] optional reduced-motion suppression of nonessential camera feedback
+- [x] cannon-es world + dynamic sphere
+- [x] tilt-driven camera-relative effective gravity
+- [x] one broad sandbox plane with walls
+- [x] global friction/restitution/damping config
+- [x] stable fixed-step physics update
+- [x] camera follows ball translation
+- [x] camera roll fixed independent of sphere rotation
+- [x] damped velocity/heading-based yaw
+- [x] conservative pitch behavior
+- [x] low-speed heading stability
+- [x] restart + recenter controls
+- [x] reduced-motion suppression of nonessential camera feedback
+- [x] first-person inner-shell rotation cue independent of camera roll
+- [x] debug telemetry for ball, world gravity, and camera state
+- [x] pure tests for camera-relative gravity and camera angle damping
 - [ ] portrait/landscape A/B notes for control precision, holding comfort, forward readability, and first-person presence
 
 ### Phone gate
@@ -99,7 +106,8 @@ From the same sandbox in both orientations, the player can intentionally:
 2. turn left/right;
 3. reverse direction;
 4. brake to near-stop;
-5. hit a wall and recover orientation.
+5. hit a wall and recover orientation;
+6. perceive sphere rotation without the camera horizon inheriting roll.
 
 Record which orientation better supports:
 
@@ -226,4 +234,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate next executable slice is **P0.2 — Ball Physics + Stabilized First-Person Camera**, retaining portrait/landscape comparison until P0 evidence supports an orientation lock.
+The immediate next gate is **P0.2 real-phone movement + camera validation**. P0.3 should not begin until that sandbox feel is accepted.
