@@ -59,13 +59,23 @@ button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 
   z-index: 5;
 }
 
-.eyebrow, .kicker, .vector-caption, .synthetic-pad > span {
+.eyebrow, .kicker, .vector-caption, .synthetic-pad > span, .orientation-chip {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .eyebrow { color: var(--muted); font-size: 11px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 14px rgba(184, 234, 223, 0.65); }
+.orientation-chip {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(8, 15, 18, 0.62);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.orientation-chip--portrait { display: none; }
 
 .vector-stage {
   position: absolute;
@@ -175,23 +185,6 @@ button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 
   z-index: 9;
 }
 
-.rotate-blocker {
-  display: none;
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  text-align: center;
-  background: #070b0e;
-}
-.rotate-blocker strong { font-size: 16px; letter-spacing: 0.12em; }
-.rotate-blocker span { color: var(--muted); font-size: 13px; }
-.rotate-device { width: 64px; height: 38px; border: 2px solid var(--accent); border-radius: 8px; transform: rotate(-8deg); box-shadow: 0 0 22px rgba(184, 234, 223, 0.12); }
-
 .bootstrap-error { min-height: 100%; display: grid; place-content: center; gap: var(--space-3); max-width: 520px; margin: auto; padding: var(--space-5); }
 .bootstrap-error span { color: var(--danger); font: 11px ui-monospace, monospace; letter-spacing: 0.12em; }
 .bootstrap-error h1, .bootstrap-error p { margin: 0; }
@@ -199,7 +192,47 @@ button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 
 .bootstrap-error button { min-height: 46px; margin-top: var(--space-3); }
 
 @media (orientation: portrait) and (max-width: 900px) {
-  .rotate-blocker { display: flex; }
+  .orientation-chip--portrait { display: inline-flex; }
+  .orientation-chip--landscape { display: none; }
+  .prototype-header {
+    right: max(var(--space-4), env(safe-area-inset-right));
+    gap: var(--space-2);
+  }
+  .eyebrow { font-size: 9px; }
+  .vector-stage {
+    left: 50%;
+    top: 34%;
+    width: min(72vw, 36vh);
+  }
+  .state-panel {
+    left: max(var(--space-5), calc(env(safe-area-inset-left) + var(--space-3)));
+    right: max(var(--space-5), calc(env(safe-area-inset-right) + var(--space-3)));
+    top: auto;
+    bottom: max(var(--space-6), calc(env(safe-area-inset-bottom) + var(--space-4)));
+    width: auto;
+    transform: none;
+  }
+  .state-panel h1 { font-size: clamp(30px, 10vw, 46px); }
+  .state-panel p:not(.kicker) { max-width: 34ch; font-size: 14px; }
+  .action-stack { margin-top: var(--space-4); }
+  .runtime-controls {
+    top: max(58px, calc(env(safe-area-inset-top) + 44px));
+  }
+  .synthetic-pad {
+    right: max(var(--space-4), env(safe-area-inset-right));
+    bottom: max(196px, calc(env(safe-area-inset-bottom) + 180px));
+    width: 112px;
+    height: 112px;
+  }
+  .telemetry {
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    bottom: auto;
+    top: max(88px, calc(env(safe-area-inset-top) + 72px));
+    max-height: 180px;
+    overflow: hidden;
+    font-size: 9px;
+  }
 }
 
 @media (max-height: 520px) {

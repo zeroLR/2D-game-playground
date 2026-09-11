@@ -50,14 +50,28 @@ P0 intentionally contains only one controllable rule set. The depth must come fr
 ### Primary target
 
 - Mobile web.
-- **Landscape-first** for a wider forward field of view and two-axis tilt control.
-- Portrait should show a single clear rotate-device state rather than compressing gameplay.
+- Portrait and landscape both use the same P0 control contract until real-device physics/camera testing provides evidence to choose a primary orientation.
+- P0.1/P0.2 must not change gravity mapping, physics tuning, or camera rules merely to make one orientation look better.
 - Desktop exists for development/smoke testing, not as the P0 product target.
+
+### Orientation decision rule
+
+Portrait and landscape represent different product emphases, so the primary orientation is a **gameplay decision**, not a layout preference.
+
+Evaluate both against the same sandbox for:
+
+- two-axis tilt precision and correction stability;
+- comfortable physical holding posture;
+- forward track readability and anticipation distance;
+- first-person presence / the feeling of being inside the ball.
+
+The prototype may ultimately choose one primary orientation, but not before P0.2 supplies comparable real-phone evidence.
 
 ### Session shape
 
 - One tap to enter the prototype and request motion permission where required.
 - Neutral calibration immediately before play.
+- Switching between portrait and landscape invalidates the old neutral pose and requires fresh calibration.
 - One authored run lasting roughly **60–90 seconds** for a competent player.
 - Instant restart/recenter available without leaving gameplay.
 
@@ -98,6 +112,7 @@ flowchart LR
 - Keep total effective gravity magnitude approximately constant while changing its direction.
 - Initial tuning target: useful control within roughly **±20–30°** of device tilt.
 - Sensor smoothing must reduce noise without making corrections feel delayed.
+- Portrait and landscape must feed the same normalized control abstraction; orientation-specific hidden assists are not allowed during P0 comparison.
 
 ### Permission / fallback
 
@@ -152,6 +167,7 @@ The camera lives near the ball center and follows translation, but its orientati
 - **Pitch:** restrained and may respond to slope/trajectory, but must remain within a conservative comfort range.
 - Very low speed must not cause yaw hunting from noisy velocity vectors.
 - Airborne movement must preserve a stable view instead of trying to point exactly along every ballistic change.
+- Portrait and landscape must use the same stabilization logic during P0.2 comparison.
 
 ### Motion feedback
 
@@ -265,10 +281,12 @@ Gameplay occupies the viewport. Persistent UI only exists where the player conti
 ### Visible states
 
 1. **Start / motion permission** — one dominant action.
-2. **Rotate device** — shown only when portrait blocks the intended experience.
-3. **Calibration** — concise physical instruction and neutral-pose confirmation.
+2. **Calibration** — concise physical instruction and neutral-pose confirmation.
+3. **Orientation transition** — portrait/landscape remains playable, but a viewport orientation change returns to calibration before force input resumes.
 4. **Gameplay** — restart/recenter only; no permanent speedometer required.
 5. **Sensor unavailable/denied** — clear recovery/fallback state.
+
+There is no portrait `ROTATE DEVICE` blocker during P0 orientation evaluation.
 
 ### Information hierarchy
 
@@ -280,7 +298,7 @@ Prefer world feedback over HUD:
 - checkpoint/recovery state is spatially visible;
 - optional debug telemetry is hidden behind a dev flag.
 
-Touch targets should remain comfortably at or above 44 CSS px and respect mobile safe areas.
+Touch targets should remain comfortably at or above 44 CSS px and respect mobile safe areas in both portrait and landscape.
 
 ---
 
@@ -350,6 +368,7 @@ P0 needs enough instrumentation to tune by evidence without turning debug UI int
 
 Development telemetry should expose at least:
 
+- viewport orientation and dimensions;
 - raw + filtered tilt;
 - calibrated neutral orientation;
 - effective gravity vector;
@@ -370,6 +389,8 @@ P0 passes only after **real-phone playtesting**. Bundle success is not enough.
 ### Functional gate
 
 - Motion permission/calibration works on supported mobile browsers.
+- Portrait and landscape can both reach the same calibrated input/physics path during P0 comparison.
+- Switching viewport orientation invalidates the stale neutral pose and requires recalibration.
 - Recenter works during a run.
 - The same input abstraction works with desktop synthetic tilt for development.
 - The complete track can be finished without scripted assists.
@@ -386,6 +407,8 @@ For a small external test (target **5 players**, no explanation beyond the start
 - no more than **1/5** reports that the camera is the primary reason they cannot continue the short session;
 - players can describe the control in terms equivalent to **tilting / gravity / momentum**, not "moving a joystick with the phone".
 
+Before locking the product orientation, compare portrait and landscape with the same physics/camera build and record which better supports control precision, posture comfort, forward readability, and first-person presence.
+
 ### Product decision
 
 ```mermaid
@@ -396,7 +419,9 @@ flowchart TD
     D -- No --> E[Fix stabilization / motion feedback]
     D -- Yes --> F{Momentum creates deliberate decisions?}
     F -- No --> G[Retune physics + track geometry]
-    F -- Yes --> H[P0 PASS → begin P1 mechanic expansion]
+    F -- Yes --> H{Orientation evidence clear?}
+    H -- No --> I[Continue portrait / landscape comparison]
+    H -- Yes --> J[P0 PASS → lock primary orientation + begin P1]
 ```
 
 Do not solve a failed P0 gate by adding more obstacles, rewards, tutorials, or progression.
@@ -417,4 +442,4 @@ Candidates only after the baseline passes:
 - rolling/impact audio system and richer haptics;
 - progression and level structure.
 
-The next implementation slice after this spec is accepted is **P0.1 — Repository Scaffold + Tilt Input Harness**.
+The next implementation slice is **P0.2 — Ball Physics + Stabilized First-Person Camera**, retaining portrait/landscape A/B testing until real-device evidence supports locking the primary orientation.

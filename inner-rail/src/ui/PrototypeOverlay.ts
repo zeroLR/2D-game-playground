@@ -27,8 +27,10 @@ export class PrototypeOverlay {
       <main class="prototype-shell">
         <div class="ambient-grid" aria-hidden="true"></div>
         <header class="prototype-header">
-          <span class="eyebrow">INNER RAIL / P0.1</span>
+          <span class="eyebrow">INNER RAIL / P0.1.1</span>
           <span class="status-dot" aria-hidden="true"></span>
+          <span class="orientation-chip orientation-chip--portrait">PORTRAIT TEST</span>
+          <span class="orientation-chip orientation-chip--landscape">LANDSCAPE TEST</span>
         </header>
         <section class="vector-stage" aria-label="Tilt force visualization">
           <div class="vector-ring vector-ring--outer"></div>
@@ -49,11 +51,6 @@ export class PrototypeOverlay {
           <button type="button" class="button button--secondary" data-recenter>RECENTER</button>
         </nav>
         <pre class="telemetry" data-telemetry hidden></pre>
-        <div class="rotate-blocker" role="status">
-          <div class="rotate-device" aria-hidden="true"></div>
-          <strong>ROTATE DEVICE</strong>
-          <span>Inner Rail is tuned for landscape play.</span>
-        </div>
       </main>
     `;
 
@@ -83,7 +80,7 @@ export class PrototypeOverlay {
       this.stateRoot.innerHTML = `
         <p class="kicker">FIRST-PERSON KINETIC PUZZLE</p>
         <h1>Feel the field.</h1>
-        <p>Hold the device comfortably. Tilt becomes force; returning to neutral only removes force.</p>
+        <p>Portrait and landscape are both test modes. Hold the device naturally; tilt becomes force, not direct movement.</p>
         <div class="action-stack">
           <button type="button" class="button button--primary" data-primary>${primary}</button>
           <button type="button" class="button button--ghost" data-secondary ${secondaryDisabled ? 'disabled' : ''}>${secondary}</button>
@@ -114,7 +111,7 @@ export class PrototypeOverlay {
       this.stateRoot.innerHTML = `
         <p class="kicker">${state.sourceLabel.toUpperCase()} / NEUTRAL POSE</p>
         <h1>Hold naturally.</h1>
-        <p>This pose becomes zero force. You can recenter again at any time.</p>
+        <p>This pose becomes zero force. If you rotate between portrait and landscape, set neutral again before comparing the feel.</p>
         <button type="button" class="button button--primary" data-calibrate>SET NEUTRAL</button>
       `;
       this.requireElement<HTMLButtonElement>('[data-calibrate]', this.stateRoot).addEventListener('click', () => this.callbacks.onCalibrate());
@@ -125,7 +122,7 @@ export class PrototypeOverlay {
       this.stateRoot.innerHTML = `
         <p class="kicker">INPUT HARNESS ACTIVE</p>
         <h1>Tilt the field.</h1>
-        <p>${state.synthetic ? 'Drag the pad or use WASD / arrow keys.' : 'Lean the phone left/right and forward/back. The vector should stay screen-relative.'}</p>
+        <p>${state.synthetic ? 'Drag the pad or use WASD / arrow keys.' : 'Lean the phone left/right and forward/back. Rotate the phone whenever you want to compare orientation; the harness will ask for a fresh neutral pose.'}</p>
       `;
       return;
     }
