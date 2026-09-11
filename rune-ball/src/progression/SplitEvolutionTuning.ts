@@ -33,10 +33,10 @@ export function getSplitCastProfile(
         durationSeconds: 1.35,
         hitRadius: 13,
         offsets: [
-{ forward: 14, lateral: 42 },
-{ forward: 14, lateral: -42 },
-{ forward: -6, lateral: 78 },
-{ forward: -6, lateral: -78 },
+          { forward: 14, lateral: 42 },
+          { forward: 14, lateral: -42 },
+          { forward: -6, lateral: 78 },
+          { forward: -6, lateral: -78 },
         ],
       };
     }
@@ -56,7 +56,7 @@ export function getSplitCastProfile(
 
   if (stage === 1) {
     return {
-      durationSeconds: 1.35,
+      durationSeconds: 1.6,
       hitRadius: 13,
       offsets: [
         { forward: 42, lateral: 12 },
@@ -66,7 +66,7 @@ export function getSplitCastProfile(
   }
 
   return {
-    durationSeconds: 1.5,
+    durationSeconds: 1.85,
     hitRadius: 13,
     offsets: [
       { forward: 34, lateral: 10 },
