@@ -1,4 +1,4 @@
-import type { GravityDirection } from '../input/orientationMath';
+import type { GravityDirection } from '../input/orientationMath.js';
 
 export interface WorldGravityDirection {
   x: number;
