@@ -1,0 +1,31 @@
+name: inner-rail CI
+
+on:
+  pull_request:
+    paths:
+      - "inner-rail/**"
+      - "docs/plans/inner-rail/**"
+      - ".github/workflows/inner-rail.yml"
+      - ".github/workflows/game-pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "inner-rail/**"
+      - "docs/plans/inner-rail/**"
+      - ".github/workflows/inner-rail.yml"
+      - ".github/workflows/game-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  game:
+    uses: ./.github/workflows/game-pages.yml
+    with:
+      game: inner-rail
+      install-command: npm ci
+      run-tests: true
+      deploy: ${{ github.event_name != 'pull_request' }}

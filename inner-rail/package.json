@@ -1,0 +1,21 @@
+{
+  "name": "inner-rail",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "tsc --noEmit && npm run test:orientation",
+    "test:orientation": "rm -rf .test-dist && tsc src/input/orientationMath.test.ts --outDir .test-dist --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck && node .test-dist/orientationMath.test.js && rm -rf .test-dist"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.179.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  }
+}
