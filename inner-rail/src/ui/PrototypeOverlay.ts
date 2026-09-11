@@ -2,6 +2,7 @@ export interface OverlayCallbacks {
   onStartDevice(): void;
   onStartSynthetic(): void;
   onCalibrate(): void;
+  onRestart(): void;
   onRecenter(): void;
   onSyntheticTilt(x: number, y: number): void;
 }
@@ -15,24 +16,31 @@ export type OverlayState =
   | { kind: 'error'; title: string; detail: string };
 
 export class PrototypeOverlay {
+  readonly sceneRoot: HTMLElement;
   readonly telemetryRoot: HTMLElement;
+
+  private readonly shell: HTMLElement;
   private readonly stateRoot: HTMLElement;
   private readonly controlsRoot: HTMLElement;
+  private readonly vectorStage: HTMLElement;
   private readonly vectorNeedle: HTMLElement;
   private readonly vectorLabel: HTMLElement;
   private readonly syntheticPad: HTMLElement;
+  private debugVisible = false;
+  private active = false;
 
   constructor(private readonly root: HTMLElement, private readonly callbacks: OverlayCallbacks) {
     this.root.innerHTML = `
-      <main class="prototype-shell">
+      <main class="prototype-shell" data-mode="start">
+        <div class="scene-root" data-scene-root aria-hidden="true"></div>
         <div class="ambient-grid" aria-hidden="true"></div>
         <header class="prototype-header">
-          <span class="eyebrow">INNER RAIL / P0.1.1</span>
+          <span class="eyebrow">INNER RAIL / P0.2</span>
           <span class="status-dot" aria-hidden="true"></span>
           <span class="orientation-chip orientation-chip--portrait">PORTRAIT TEST</span>
           <span class="orientation-chip orientation-chip--landscape">LANDSCAPE TEST</span>
         </header>
-        <section class="vector-stage" aria-label="Tilt force visualization">
+        <section class="vector-stage" data-vector-stage aria-label="Tilt force visualization">
           <div class="vector-ring vector-ring--outer"></div>
           <div class="vector-ring vector-ring--inner"></div>
           <div class="vector-axis vector-axis--x"></div>
@@ -47,40 +55,51 @@ export class PrototypeOverlay {
           <div class="synthetic-knob"></div>
           <span>DRAG TO TILT · WASD / ARROWS</span>
         </section>
-        <nav class="runtime-controls" data-controls hidden>
+        <nav class="runtime-controls" data-controls hidden aria-label="Prototype controls">
+          <button type="button" class="button button--ghost" data-restart>RESTART</button>
           <button type="button" class="button button--secondary" data-recenter>RECENTER</button>
         </nav>
         <pre class="telemetry" data-telemetry hidden></pre>
       </main>
     `;
 
+    this.shell = this.requireElement('.prototype-shell');
+    this.sceneRoot = this.requireElement('[data-scene-root]');
     this.stateRoot = this.requireElement('[data-state]');
     this.controlsRoot = this.requireElement('[data-controls]');
+    this.vectorStage = this.requireElement('[data-vector-stage]');
     this.vectorNeedle = this.requireElement('[data-vector-needle]');
     this.vectorLabel = this.requireElement('[data-vector-label]');
     this.syntheticPad = this.requireElement('[data-synthetic-pad]');
     this.telemetryRoot = this.requireElement('[data-telemetry]');
 
+    this.requireElement<HTMLButtonElement>('[data-restart]').addEventListener('click', () => callbacks.onRestart());
     this.requireElement<HTMLButtonElement>('[data-recenter]').addEventListener('click', () => callbacks.onRecenter());
     this.bindSyntheticPad();
   }
 
   setDebugVisible(visible: boolean): void {
+    this.debugVisible = visible;
     this.telemetryRoot.hidden = !visible;
+    this.vectorStage.hidden = this.active && !visible;
   }
 
   renderState(state: OverlayState): void {
-    this.controlsRoot.hidden = state.kind !== 'active';
-    this.syntheticPad.hidden = !(state.kind === 'active' && state.synthetic);
+    this.active = state.kind === 'active';
+    this.shell.dataset.mode = state.kind;
+    this.controlsRoot.hidden = !this.active;
+    this.syntheticPad.hidden = !(this.active && state.kind === 'active' && state.synthetic);
+    this.stateRoot.hidden = this.active;
+    this.vectorStage.hidden = this.active && !this.debugVisible;
 
     if (state.kind === 'start') {
       const primary = state.preferSynthetic ? 'DESKTOP TILT TEST' : 'ENABLE MOTION';
       const secondary = state.preferSynthetic ? 'TRY DEVICE SENSOR' : 'USE SYNTHETIC INPUT';
       const secondaryDisabled = !state.deviceSupported && state.preferSynthetic;
       this.stateRoot.innerHTML = `
-        <p class="kicker">FIRST-PERSON KINETIC PUZZLE</p>
-        <h1>Feel the field.</h1>
-        <p>Portrait and landscape are both test modes. Hold the device naturally; tilt becomes force, not direct movement.</p>
+        <p class="kicker">PHYSICS + CAMERA SANDBOX</p>
+        <h1>Become the ball.</h1>
+        <p>Portrait and landscape use the same physics. Tilt changes gravity; momentum keeps carrying you after the phone returns to neutral.</p>
         <div class="action-stack">
           <button type="button" class="button button--primary" data-primary>${primary}</button>
           <button type="button" class="button button--ghost" data-secondary ${secondaryDisabled ? 'disabled' : ''}>${secondary}</button>
@@ -111,19 +130,15 @@ export class PrototypeOverlay {
       this.stateRoot.innerHTML = `
         <p class="kicker">${state.sourceLabel.toUpperCase()} / NEUTRAL POSE</p>
         <h1>Hold naturally.</h1>
-        <p>This pose becomes zero force. If you rotate between portrait and landscape, set neutral again before comparing the feel.</p>
-        <button type="button" class="button button--primary" data-calibrate>SET NEUTRAL</button>
+        <p>This pose becomes zero horizontal force. Rotating between portrait and landscape asks for a fresh neutral pose so the comparison stays valid.</p>
+        <button type="button" class="button button--primary" data-calibrate>SET NEUTRAL & START</button>
       `;
       this.requireElement<HTMLButtonElement>('[data-calibrate]', this.stateRoot).addEventListener('click', () => this.callbacks.onCalibrate());
       return;
     }
 
     if (state.kind === 'active') {
-      this.stateRoot.innerHTML = `
-        <p class="kicker">INPUT HARNESS ACTIVE</p>
-        <h1>Tilt the field.</h1>
-        <p>${state.synthetic ? 'Drag the pad or use WASD / arrow keys.' : 'Lean the phone left/right and forward/back. Rotate the phone whenever you want to compare orientation; the harness will ask for a fresh neutral pose.'}</p>
-      `;
+      this.stateRoot.innerHTML = '';
       return;
     }
 

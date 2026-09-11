@@ -1,7 +1,11 @@
+import { FirstPersonCamera } from '../camera/FirstPersonCamera';
 import { DeviceOrientationSource } from '../input/DeviceOrientationSource';
 import { SyntheticTiltSource } from '../input/SyntheticTiltSource';
 import { TiltInput } from '../input/TiltInput';
 import type { TiltSource } from '../input/types';
+import { cameraRelativeGravityToWorld, type WorldGravityDirection } from '../physics/gravityMath';
+import { PhysicsWorld } from '../physics/PhysicsWorld';
+import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
 import { PrototypeOverlay } from '../ui/PrototypeOverlay';
 
@@ -13,27 +17,39 @@ export class GameApp {
   private readonly tiltInput = new TiltInput();
   private readonly deviceSource = new DeviceOrientationSource();
   private readonly syntheticSource = new SyntheticTiltSource();
+  private readonly physics = new PhysicsWorld();
+  private readonly camera = new FirstPersonCamera();
   private readonly overlay: PrototypeOverlay;
+  private readonly scene: GameScene;
   private readonly telemetry: PrototypeTelemetry;
+
   private activeSource: TiltSource | null = null;
   private sensorTimeoutId: number | null = null;
   private animationFrameId: number | null = null;
+  private lastFrameAtMs: number | null = null;
+  private gameplayActive = false;
+  private fallResetCount = 0;
   private syntheticKeyboard = { left: false, right: false, forward: false, back: false };
   private viewportOrientation: ViewportOrientation;
+  private worldGravityDirection: WorldGravityDirection = { x: 0, y: -1, z: 0 };
 
   constructor(root: HTMLElement) {
     this.overlay = new PrototypeOverlay(root, {
       onStartDevice: () => void this.startDevice(),
       onStartSynthetic: () => void this.startSynthetic(),
       onCalibrate: () => this.calibrate(),
+      onRestart: () => this.restart(),
       onRecenter: () => this.recenter(),
       onSyntheticTilt: (x, y) => this.syntheticSource.setNormalized(x, y),
     });
+    this.scene = new GameScene(this.overlay.sceneRoot);
     this.telemetry = new PrototypeTelemetry(this.overlay.telemetryRoot);
     this.overlay.setDebugVisible(new URLSearchParams(location.search).get('debug') === '1');
     this.viewportOrientation = this.readViewportOrientation();
+    this.camera.reset(this.physics.getBallState());
+    this.resizeScene();
     this.bindKeyboard();
-    window.addEventListener('resize', this.handleViewportOrientationChange);
+    window.addEventListener('resize', this.handleViewportResize);
   }
 
   start(): void {
@@ -50,11 +66,13 @@ export class GameApp {
     this.activeSource?.stop();
     if (this.sensorTimeoutId !== null) window.clearTimeout(this.sensorTimeoutId);
     if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
-    window.removeEventListener('resize', this.handleViewportOrientationChange);
+    window.removeEventListener('resize', this.handleViewportResize);
+    this.scene.destroy();
   }
 
   private async startDevice(): Promise<void> {
     this.stopActiveSource();
+    this.pauseGameplay();
     this.tiltInput.clearCalibration();
     this.viewportOrientation = this.readViewportOrientation();
     this.overlay.renderState({ kind: 'requesting' });
@@ -86,7 +104,7 @@ export class GameApp {
         this.overlay.renderState({
           kind: 'error',
           title: 'No motion samples received.',
-          detail: 'The browser exposed the API but did not deliver orientation data. You can still verify the input pipeline with synthetic controls.',
+          detail: 'The browser exposed the API but did not deliver orientation data. You can still verify the full physics loop with synthetic controls.',
         });
       }
     }, SENSOR_SAMPLE_TIMEOUT_MS);
@@ -94,6 +112,7 @@ export class GameApp {
 
   private async startSynthetic(): Promise<void> {
     this.stopActiveSource();
+    this.pauseGameplay();
     this.tiltInput.clearCalibration();
     this.viewportOrientation = this.readViewportOrientation();
     const result = await this.syntheticSource.start((sample) => this.tiltInput.ingest(sample));
@@ -104,11 +123,31 @@ export class GameApp {
 
   private calibrate(): void {
     if (!this.tiltInput.recenter()) return;
+    this.resetSimulation();
+    this.gameplayActive = true;
     this.overlay.renderState({ kind: 'active', synthetic: this.activeSource?.kind === 'synthetic' });
+  }
+
+  private restart(): void {
+    if (!this.gameplayActive) return;
+    this.resetSimulation();
   }
 
   private recenter(): void {
     this.tiltInput.recenter();
+  }
+
+  private resetSimulation(): void {
+    this.physics.resetBall();
+    this.physics.setVerticalGravity();
+    this.worldGravityDirection = { x: 0, y: -1, z: 0 };
+    this.camera.reset(this.physics.getBallState());
+  }
+
+  private pauseGameplay(): void {
+    this.gameplayActive = false;
+    this.physics.setVerticalGravity();
+    this.worldGravityDirection = { x: 0, y: -1, z: 0 };
   }
 
   private stopActiveSource(): void {
@@ -124,13 +163,20 @@ export class GameApp {
     return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
   }
 
-  private handleViewportOrientationChange = (): void => {
+  private resizeScene(): void {
+    this.scene.resize(window.innerWidth, window.innerHeight);
+    this.camera.resize(window.innerWidth, window.innerHeight);
+  }
+
+  private handleViewportResize = (): void => {
+    this.resizeScene();
     const nextOrientation = this.readViewportOrientation();
     if (nextOrientation === this.viewportOrientation) return;
 
     this.viewportOrientation = nextOrientation;
     if (!this.activeSource || !this.tiltInput.snapshot().neutral) return;
 
+    this.pauseGameplay();
     this.tiltInput.clearCalibration();
     const sourceLabel = `${this.activeSource.kind === 'device' ? 'device sensor' : 'synthetic input'} / ${nextOrientation}`;
     this.overlay.renderState({ kind: 'calibration', sourceLabel });
@@ -180,10 +226,39 @@ export class GameApp {
   }
 
   private tick = (): void => {
-    this.tiltInput.update(performance.now());
-    const snapshot = this.tiltInput.snapshot();
-    this.overlay.renderVector(snapshot.normalized.x, snapshot.normalized.y);
-    this.telemetry.render(snapshot);
+    const nowMs = performance.now();
+    const deltaSeconds = this.lastFrameAtMs === null ? 1 / 60 : Math.min(0.1, Math.max(0, (nowMs - this.lastFrameAtMs) / 1000));
+    this.lastFrameAtMs = nowMs;
+
+    this.tiltInput.update(nowMs);
+    const tiltSnapshot = this.tiltInput.snapshot();
+
+    if (this.gameplayActive) {
+      this.worldGravityDirection = cameraRelativeGravityToWorld(
+        tiltSnapshot.gravityDirection,
+        this.camera.currentYawRad,
+      );
+      this.physics.setGravityDirection(this.worldGravityDirection);
+      this.physics.step(deltaSeconds);
+
+      if (this.physics.isOutOfBounds()) {
+        this.fallResetCount += 1;
+        this.resetSimulation();
+      }
+
+      this.camera.update(this.physics.getBallState(), deltaSeconds);
+    }
+
+    const ballState = this.physics.getBallState();
+    this.overlay.renderVector(tiltSnapshot.normalized.x, tiltSnapshot.normalized.y);
+    this.telemetry.render(tiltSnapshot, {
+      ball: ballState,
+      camera: this.camera.telemetry(),
+      worldGravity: this.worldGravityDirection,
+      fallResetCount: this.fallResetCount,
+      gameplayActive: this.gameplayActive,
+    });
+    this.scene.render(this.camera.camera, ballState);
     this.animationFrameId = requestAnimationFrame(this.tick);
   };
 }
