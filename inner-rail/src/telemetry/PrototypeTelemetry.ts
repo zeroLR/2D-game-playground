@@ -2,6 +2,7 @@ import type { CameraTelemetry } from '../camera/FirstPersonCamera';
 import type { TiltSnapshot } from '../input/TiltInput';
 import type { WorldGravityDirection } from '../physics/gravityMath';
 import type { BallState } from '../physics/PhysicsWorld';
+import type { TrackProgressSnapshot } from '../track/TrackProgress';
 
 function fixed(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toFixed(2);
@@ -14,6 +15,7 @@ function viewportOrientation(): 'portrait' | 'landscape' {
 export interface RuntimeTelemetry {
   ball: BallState;
   camera: CameraTelemetry;
+  track: TrackProgressSnapshot;
   worldGravity: WorldGravityDirection;
   fallResetCount: number;
   gameplayActive: boolean;
@@ -28,6 +30,8 @@ export class PrototypeTelemetry {
       `mode        ${runtime.gameplayActive ? 'physics active' : 'paused'}`,
       `source      ${snapshot.source ?? 'none'}`,
       `viewport    ${viewportOrientation()}  ${window.innerWidth}×${window.innerHeight}`,
+      `section     ${runtime.track.sectionLabel}`,
+      `checkpoint  ${runtime.track.checkpointId}  goal ${Math.round(runtime.track.goalHoldProgress * 100)}%${runtime.track.complete ? ' COMPLETE' : ''}`,
       `screen deg  x ${fixed(snapshot.screenTiltDeg.x)}  y ${fixed(snapshot.screenTiltDeg.y)}`,
       `neutral     x ${fixed(snapshot.neutral?.x)}  y ${fixed(snapshot.neutral?.y)}`,
       `relative    x ${fixed(snapshot.relativeTiltDeg.x)}  y ${fixed(snapshot.relativeTiltDeg.y)}`,

@@ -51,7 +51,7 @@ export class FirstPersonCamera {
   private readonly reducedMotion: boolean;
 
   constructor() {
-    this.camera = new THREE.PerspectiveCamera(this.baseFovDeg, 1, 0.05, 120);
+    this.camera = new THREE.PerspectiveCamera(this.baseFovDeg, 1, 0.05, 140);
     this.camera.up.set(0, 1, 0);
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -73,9 +73,9 @@ export class FirstPersonCamera {
     this.camera.updateProjectionMatrix();
   }
 
-  reset(ballState: BallState): void {
-    this.yawRad = 0;
-    this.targetYawRad = 0;
+  reset(ballState: BallState, yawRad = 0): void {
+    this.yawRad = yawRad;
+    this.targetYawRad = yawRad;
     this.pitchRad = 0;
     this.headingErrorRad = 0;
     this.headingState = 'low-speed';
