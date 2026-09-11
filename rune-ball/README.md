@@ -4,7 +4,7 @@ Mobile-first neon occult arcade game prototype built with PixiJS, Vite, and stri
 
 ## Current milestone
 
-**P8.3 — Split Evolution Gate**
+**P8.3.1 — Split Visual Identity Pass**
 
 P0–P6 established the mobile arena loop, Rune gestures, Flow / Overdrive, VFX/audio, 75-second sessions, Results / Retry, accessibility controls, persisted settings, and background-aware lifecycle behavior. P7.2 replaced the temporary tap-Ascension experiment with automatic Rune Evolution: the player configures a Vortex path and qualified uses evolve it at runtime.
 
@@ -48,6 +48,8 @@ P8.3 authors the second complete Rune evolution tree:
 - **Lance** collapses echoes onto the forward travel axis for deliberate reach and precision pressure.
 - Split evolves only when an active echo actually hits a target; empty casts do not advance the tree.
 - One compact Rune Evolution Status follows the most recently progressed authored Rune, avoiding a second persistent HUD row.
+
+P8.3.1 keeps the validated Split collision model but strengthens silhouette identity: evolved Prism renders as widening prism wings instead of extra balls, while Lance renders as one continuous forward spear. Lance T1/T2 duration is extended to 1.60s / 1.85s without changing damage, hit radius, or evolution thresholds.
 
 ### Product shell contract
 
