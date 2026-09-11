@@ -38,6 +38,7 @@ export class PrototypeTelemetry {
       `velocity    x ${fixed(runtime.ball.velocity.x)}  y ${fixed(runtime.ball.velocity.y)}  z ${fixed(runtime.ball.velocity.z)}`,
       `speed       ${fixed(runtime.ball.speed)}  grounded ${runtime.ball.grounded ? 'yes' : 'no'}`,
       `camera yaw  ${fixed(runtime.camera.yawRad)} → ${fixed(runtime.camera.targetYawRad)}  pitch ${fixed(runtime.camera.pitchRad)}`,
+      `heading     ${runtime.camera.headingState}  err ${fixed(runtime.camera.headingErrorRad)}  commit ${Math.round(runtime.camera.headingCommitProgress * 100)}%`,
       `camera fov  ${fixed(runtime.camera.fovDeg)}°  resets ${runtime.fallResetCount}`,
       `raw beta    ${fixed(raw?.betaDeg)}  gamma ${fixed(raw?.gammaDeg)}  screen ${fixed(raw?.screenAngleDeg)}`,
     ].join('\n');
