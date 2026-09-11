@@ -7,6 +7,8 @@ import { PrototypeOverlay } from '../ui/PrototypeOverlay';
 
 const SENSOR_SAMPLE_TIMEOUT_MS = 1800;
 
+type ViewportOrientation = 'portrait' | 'landscape';
+
 export class GameApp {
   private readonly tiltInput = new TiltInput();
   private readonly deviceSource = new DeviceOrientationSource();
@@ -17,6 +19,7 @@ export class GameApp {
   private sensorTimeoutId: number | null = null;
   private animationFrameId: number | null = null;
   private syntheticKeyboard = { left: false, right: false, forward: false, back: false };
+  private viewportOrientation: ViewportOrientation;
 
   constructor(root: HTMLElement) {
     this.overlay = new PrototypeOverlay(root, {
@@ -28,7 +31,9 @@ export class GameApp {
     });
     this.telemetry = new PrototypeTelemetry(this.overlay.telemetryRoot);
     this.overlay.setDebugVisible(new URLSearchParams(location.search).get('debug') === '1');
+    this.viewportOrientation = this.readViewportOrientation();
     this.bindKeyboard();
+    window.addEventListener('resize', this.handleViewportOrientationChange);
   }
 
   start(): void {
@@ -45,18 +50,20 @@ export class GameApp {
     this.activeSource?.stop();
     if (this.sensorTimeoutId !== null) window.clearTimeout(this.sensorTimeoutId);
     if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
+    window.removeEventListener('resize', this.handleViewportOrientationChange);
   }
 
   private async startDevice(): Promise<void> {
     this.stopActiveSource();
     this.tiltInput.clearCalibration();
+    this.viewportOrientation = this.readViewportOrientation();
     this.overlay.renderState({ kind: 'requesting' });
     const result = await this.deviceSource.start((sample) => {
       this.tiltInput.ingest(sample);
       if (this.sensorTimeoutId !== null) {
         window.clearTimeout(this.sensorTimeoutId);
         this.sensorTimeoutId = null;
-        this.overlay.renderState({ kind: 'calibration', sourceLabel: 'device sensor' });
+        this.overlay.renderState({ kind: 'calibration', sourceLabel: `device sensor / ${this.viewportOrientation}` });
       }
     });
 
@@ -88,10 +95,11 @@ export class GameApp {
   private async startSynthetic(): Promise<void> {
     this.stopActiveSource();
     this.tiltInput.clearCalibration();
+    this.viewportOrientation = this.readViewportOrientation();
     const result = await this.syntheticSource.start((sample) => this.tiltInput.ingest(sample));
     if (result.status !== 'started') return;
     this.activeSource = this.syntheticSource;
-    this.overlay.renderState({ kind: 'calibration', sourceLabel: 'synthetic input' });
+    this.overlay.renderState({ kind: 'calibration', sourceLabel: `synthetic input / ${this.viewportOrientation}` });
   }
 
   private calibrate(): void {
@@ -111,6 +119,22 @@ export class GameApp {
     this.activeSource?.stop();
     this.activeSource = null;
   }
+
+  private readViewportOrientation(): ViewportOrientation {
+    return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+  }
+
+  private handleViewportOrientationChange = (): void => {
+    const nextOrientation = this.readViewportOrientation();
+    if (nextOrientation === this.viewportOrientation) return;
+
+    this.viewportOrientation = nextOrientation;
+    if (!this.activeSource || !this.tiltInput.snapshot().neutral) return;
+
+    this.tiltInput.clearCalibration();
+    const sourceLabel = `${this.activeSource.kind === 'device' ? 'device sensor' : 'synthetic input'} / ${nextOrientation}`;
+    this.overlay.renderState({ kind: 'calibration', sourceLabel });
+  };
 
   private bindKeyboard(): void {
     const keyToField = (key: string): keyof typeof this.syntheticKeyboard | null => {
