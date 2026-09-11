@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { BallState } from '../physics/PhysicsWorld';
 import { PHYSICS_CONFIG } from '../physics/physicsConfig';
+import type { TrackProgressSnapshot } from '../track/TrackProgress';
+import { VALIDATION_TRACK, type TrackPiece, type ValidationTrackDefinition } from '../track/TestTrack';
 
 export class GameScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -8,8 +10,28 @@ export class GameScene {
   private readonly scene = new THREE.Scene();
   private readonly shell: THREE.Mesh;
   private readonly reducedMotion: boolean;
+  private readonly goalMaterial = new THREE.MeshStandardMaterial({
+    color: 0x28544d,
+    roughness: 0.38,
+    metalness: 0.36,
+    emissive: 0x173f38,
+    emissiveIntensity: 0.85,
+  });
+  private readonly goalBeaconMaterial = new THREE.MeshStandardMaterial({
+    color: 0xb8eadf,
+    roughness: 0.3,
+    metalness: 0.18,
+    emissive: 0x5bc4ae,
+    emissiveIntensity: 1.5,
+    transparent: true,
+    opacity: 0.84,
+  });
+  private readonly checkpointMarkers: THREE.Mesh[] = [];
 
-  constructor(private readonly root: HTMLElement) {
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly track: ValidationTrackDefinition = VALIDATION_TRACK,
+  ) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -17,17 +39,31 @@ export class GameScene {
     this.root.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(0x071015);
-    this.scene.fog = new THREE.Fog(0x071015, 28, 76);
+    this.scene.fog = new THREE.Fog(0x071015, 30, 88);
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this.addLighting();
-    this.addSandboxGeometry();
+    this.addTrackGeometry();
+    this.addCheckpointMarkers();
+    this.addGoalBeacon();
     this.shell = this.createInnerShell();
     this.scene.add(this.shell);
   }
 
   resize(width: number, height: number): void {
     this.renderer.setSize(width, height, false);
+  }
+
+  setTrackProgress(progress: TrackProgressSnapshot): void {
+    const goalEnergy = progress.complete ? 3.2 : 0.85 + progress.goalHoldProgress * 1.8;
+    this.goalMaterial.emissiveIntensity = goalEnergy;
+    this.goalBeaconMaterial.emissiveIntensity = progress.complete ? 4.2 : 1.5 + progress.goalHoldProgress * 2.2;
+    this.goalBeaconMaterial.opacity = progress.complete ? 1 : 0.84;
+
+    for (let index = 0; index < this.checkpointMarkers.length; index += 1) {
+      const material = this.checkpointMarkers[index].material as THREE.MeshBasicMaterial;
+      material.opacity = index <= progress.checkpointIndex ? 0.62 : 0.18;
+    }
   }
 
   render(camera: THREE.Camera, ballState: BallState): void {
@@ -48,86 +84,80 @@ export class GameScene {
   }
 
   private addLighting(): void {
-    const hemisphere = new THREE.HemisphereLight(0xcde8e5, 0x071015, 1.25);
+    const hemisphere = new THREE.HemisphereLight(0xcde8e5, 0x071015, 1.35);
     this.scene.add(hemisphere);
 
-    const key = new THREE.DirectionalLight(0xe6fff8, 2.1);
-    key.position.set(-8, 18, -10);
+    const key = new THREE.DirectionalLight(0xe6fff8, 2.25);
+    key.position.set(-10, 20, -12);
     this.scene.add(key);
 
-    const fill = new THREE.DirectionalLight(0x6aa9b4, 0.8);
-    fill.position.set(10, 8, 18);
+    const fill = new THREE.DirectionalLight(0x6aa9b4, 0.9);
+    fill.position.set(18, 10, 26);
     this.scene.add(fill);
   }
 
-  private addSandboxGeometry(): void {
-    const floorMaterial = new THREE.MeshStandardMaterial({
-      color: 0x13252b,
-      roughness: 0.82,
-      metalness: 0.18,
-    });
-    const wallMaterial = new THREE.MeshStandardMaterial({
+  private addTrackGeometry(): void {
+    const trackMaterial = new THREE.MeshStandardMaterial({
       color: 0x17343a,
-      roughness: 0.55,
-      metalness: 0.32,
-      emissive: 0x081517,
-      emissiveIntensity: 0.45,
+      roughness: 0.62,
+      metalness: 0.3,
+      emissive: 0x071719,
+      emissiveIntensity: 0.42,
     });
-    const guideMaterial = new THREE.MeshBasicMaterial({ color: 0x92d7ca, transparent: true, opacity: 0.38 });
+    const edgeMaterial = new THREE.LineBasicMaterial({
+      color: 0x8fd2c5,
+      transparent: true,
+      opacity: 0.34,
+    });
 
-    const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        PHYSICS_CONFIG.sandboxWidth,
-        PHYSICS_CONFIG.floorThickness,
-        PHYSICS_CONFIG.sandboxLength,
-      ),
-      floorMaterial,
-    );
-    floor.position.y = -PHYSICS_CONFIG.floorThickness / 2;
-    this.scene.add(floor);
-
-    const sideWallGeometry = new THREE.BoxGeometry(
-      PHYSICS_CONFIG.wallThickness,
-      PHYSICS_CONFIG.wallHeight,
-      PHYSICS_CONFIG.sandboxLength,
-    );
-    const sideX = PHYSICS_CONFIG.sandboxWidth / 2 + PHYSICS_CONFIG.wallThickness / 2;
-    for (const x of [-sideX, sideX]) {
-      const wall = new THREE.Mesh(sideWallGeometry, wallMaterial);
-      wall.position.set(x, PHYSICS_CONFIG.wallHeight / 2, 0);
-      this.scene.add(wall);
+    for (const piece of this.track.pieces) {
+      const mesh = this.createTrackPieceMesh(piece, piece.surface === 'goal' ? this.goalMaterial : trackMaterial);
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(mesh.geometry as THREE.BoxGeometry),
+        edgeMaterial,
+      );
+      edges.renderOrder = 1;
+      mesh.add(edges);
+      this.scene.add(mesh);
     }
+  }
 
-    const endWallGeometry = new THREE.BoxGeometry(
-      PHYSICS_CONFIG.sandboxWidth,
-      PHYSICS_CONFIG.wallHeight,
-      PHYSICS_CONFIG.wallThickness,
+  private createTrackPieceMesh(piece: TrackPiece, material: THREE.Material): THREE.Mesh {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(piece.size.x, piece.size.y, piece.size.z),
+      material,
     );
-    const endZ = PHYSICS_CONFIG.sandboxLength / 2 + PHYSICS_CONFIG.wallThickness / 2;
-    for (const z of [-endZ, endZ]) {
-      const wall = new THREE.Mesh(endWallGeometry, wallMaterial);
-      wall.position.set(0, PHYSICS_CONFIG.wallHeight / 2, z);
-      this.scene.add(wall);
-    }
+    mesh.position.set(piece.position.x, piece.position.y, piece.position.z);
+    mesh.rotation.order = 'XYZ';
+    mesh.rotation.set(piece.rotation.x, piece.rotation.y, piece.rotation.z);
+    mesh.receiveShadow = false;
+    return mesh;
+  }
 
-    const edgeGeometry = new THREE.BoxGeometry(0.05, 0.025, PHYSICS_CONFIG.sandboxLength - 1);
-    for (const x of [-PHYSICS_CONFIG.sandboxWidth * 0.32, PHYSICS_CONFIG.sandboxWidth * 0.32]) {
-      const edge = new THREE.Mesh(edgeGeometry, guideMaterial);
-      edge.position.set(x, 0.018, 0);
-      this.scene.add(edge);
-    }
-
-    const markerGeometry = new THREE.BoxGeometry(PHYSICS_CONFIG.sandboxWidth * 0.56, 0.028, 0.06);
-    for (let z = -20; z <= 20; z += 4) {
-      const marker = new THREE.Mesh(markerGeometry, guideMaterial);
-      marker.position.set(0, 0.02, z);
+  private addCheckpointMarkers(): void {
+    const geometry = new THREE.BoxGeometry(2.0, 0.025, 0.12);
+    for (const checkpoint of this.track.checkpoints) {
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xb8eadf,
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false,
+      });
+      const marker = new THREE.Mesh(geometry, material);
+      marker.position.set(checkpoint.pose.position.x, 0.035, checkpoint.pose.position.z);
+      marker.rotation.y = checkpoint.pose.cameraYawRad;
+      this.checkpointMarkers.push(marker);
       this.scene.add(marker);
     }
+  }
 
-    const beaconGeometry = new THREE.BoxGeometry(2.4, 0.035, 0.24);
-    const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0xdffcf5, transparent: true, opacity: 0.82 });
-    const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
-    beacon.position.set(0, 0.025, 18);
+  private addGoalBeacon(): void {
+    const beacon = new THREE.Mesh(
+      new THREE.TorusGeometry(1.65, 0.075, 10, 36),
+      this.goalBeaconMaterial,
+    );
+    beacon.position.set(this.track.goal.center.x, 1.75, this.track.goal.center.z);
+    beacon.rotation.y = Math.PI / 2;
     this.scene.add(beacon);
   }
 

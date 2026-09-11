@@ -1,6 +1,8 @@
 import * as CANNON from 'cannon-es';
-import { PHYSICS_CONFIG } from './physicsConfig';
+import type { TrackPose, ValidationTrackDefinition } from '../track/TestTrack';
+import { VALIDATION_TRACK } from '../track/TestTrack';
 import type { WorldGravityDirection } from './gravityMath';
+import { PHYSICS_CONFIG } from './physicsConfig';
 
 export interface BallState {
   position: { x: number; y: number; z: number };
@@ -17,7 +19,7 @@ export class PhysicsWorld {
   private readonly trackMaterial = new CANNON.Material('track');
   private readonly ballMaterial = new CANNON.Material('ball');
 
-  constructor() {
+  constructor(private readonly track: ValidationTrackDefinition = VALIDATION_TRACK) {
     this.world = new CANNON.World({
       gravity: new CANNON.Vec3(0, -PHYSICS_CONFIG.gravityMagnitude, 0),
     });
@@ -32,16 +34,16 @@ export class PhysicsWorld {
     this.world.defaultContactMaterial.friction = PHYSICS_CONFIG.contactFriction;
     this.world.defaultContactMaterial.restitution = PHYSICS_CONFIG.contactRestitution;
 
-    this.createSandbox();
+    this.createTrack();
 
     this.ball = new CANNON.Body({
       mass: PHYSICS_CONFIG.ballMass,
       material: this.ballMaterial,
       shape: new CANNON.Sphere(PHYSICS_CONFIG.ballRadius),
       position: new CANNON.Vec3(
-        PHYSICS_CONFIG.spawn.x,
-        PHYSICS_CONFIG.spawn.y,
-        PHYSICS_CONFIG.spawn.z,
+        this.track.start.position.x,
+        this.track.start.position.y,
+        this.track.start.position.z,
       ),
     });
     this.ball.linearDamping = PHYSICS_CONFIG.ballLinearDamping;
@@ -69,8 +71,8 @@ export class PhysicsWorld {
     this.applySafetySpeedLimit();
   }
 
-  resetBall(): void {
-    this.ball.position.set(PHYSICS_CONFIG.spawn.x, PHYSICS_CONFIG.spawn.y, PHYSICS_CONFIG.spawn.z);
+  resetBall(pose: TrackPose = this.track.start): void {
+    this.ball.position.set(pose.position.x, pose.position.y, pose.position.z);
     this.ball.velocity.set(0, 0, 0);
     this.ball.angularVelocity.set(0, 0, 0);
     this.ball.quaternion.set(0, 0, 0, 1);
@@ -81,79 +83,45 @@ export class PhysicsWorld {
 
   isOutOfBounds(): boolean {
     const { position } = this.ball;
+    const bounds = this.track.bounds;
     return (
-      position.y < -4 ||
-      Math.abs(position.x) > PHYSICS_CONFIG.sandboxWidth ||
-      Math.abs(position.z) > PHYSICS_CONFIG.sandboxLength
+      position.x < bounds.minX ||
+      position.x > bounds.maxX ||
+      position.y < bounds.minY ||
+      position.y > bounds.maxY ||
+      position.z < bounds.minZ ||
+      position.z > bounds.maxZ
     );
   }
 
   getBallState(): BallState {
     const { position, velocity, quaternion } = this.ball;
-    const speed = velocity.length();
-    const floorContactY = PHYSICS_CONFIG.ballRadius + 0.12;
     return {
       position: { x: position.x, y: position.y, z: position.z },
       velocity: { x: velocity.x, y: velocity.y, z: velocity.z },
       quaternion: { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w },
-      speed,
-      grounded: position.y <= floorContactY && Math.abs(velocity.y) < 1.25,
+      speed: velocity.length(),
+      grounded: this.world.contacts.some((contact) => contact.bi === this.ball || contact.bj === this.ball),
     };
   }
 
-  private createSandbox(): void {
-    const floor = new CANNON.Body({
-      mass: 0,
-      material: this.trackMaterial,
-      shape: new CANNON.Box(
-        new CANNON.Vec3(
-          PHYSICS_CONFIG.sandboxWidth / 2,
-          PHYSICS_CONFIG.floorThickness / 2,
-          PHYSICS_CONFIG.sandboxLength / 2,
+  private createTrack(): void {
+    for (const piece of this.track.pieces) {
+      const body = new CANNON.Body({
+        mass: 0,
+        material: this.trackMaterial,
+        shape: new CANNON.Box(
+          new CANNON.Vec3(piece.size.x / 2, piece.size.y / 2, piece.size.z / 2),
         ),
-      ),
-      position: new CANNON.Vec3(0, -PHYSICS_CONFIG.floorThickness / 2, 0),
-    });
-    this.world.addBody(floor);
-
-    const halfWallHeight = PHYSICS_CONFIG.wallHeight / 2;
-    const halfWallThickness = PHYSICS_CONFIG.wallThickness / 2;
-    const sideShape = new CANNON.Box(
-      new CANNON.Vec3(
-        halfWallThickness,
-        halfWallHeight,
-        PHYSICS_CONFIG.sandboxLength / 2,
-      ),
-    );
-    const endShape = new CANNON.Box(
-      new CANNON.Vec3(
-        PHYSICS_CONFIG.sandboxWidth / 2,
-        halfWallHeight,
-        halfWallThickness,
-      ),
-    );
-
-    const sideX = PHYSICS_CONFIG.sandboxWidth / 2 + halfWallThickness;
-    const endZ = PHYSICS_CONFIG.sandboxLength / 2 + halfWallThickness;
-
-    for (const x of [-sideX, sideX]) {
-      const wall = new CANNON.Body({
-        mass: 0,
-        material: this.trackMaterial,
-        shape: sideShape,
-        position: new CANNON.Vec3(x, halfWallHeight, 0),
+        position: new CANNON.Vec3(piece.position.x, piece.position.y, piece.position.z),
       });
-      this.world.addBody(wall);
-    }
-
-    for (const z of [-endZ, endZ]) {
-      const wall = new CANNON.Body({
-        mass: 0,
-        material: this.trackMaterial,
-        shape: endShape,
-        position: new CANNON.Vec3(0, halfWallHeight, z),
-      });
-      this.world.addBody(wall);
+      body.quaternion.setFromEuler(
+        piece.rotation.x,
+        piece.rotation.y,
+        piece.rotation.z,
+        'XYZ',
+      );
+      this.world.addBody(body);
     }
   }
 

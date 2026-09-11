@@ -7,6 +7,8 @@ import { cameraRelativeGravityToWorld, type WorldGravityDirection } from '../phy
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
+import { TrackProgress } from '../track/TrackProgress';
+import { VALIDATION_TRACK } from '../track/TestTrack';
 import {
   ballInertiaToLinearDamping,
   DEFAULT_PROTOTYPE_TUNING,
@@ -26,7 +28,8 @@ export class GameApp {
   private readonly tiltInput = new TiltInput();
   private readonly deviceSource = new DeviceOrientationSource();
   private readonly syntheticSource = new SyntheticTiltSource();
-  private readonly physics = new PhysicsWorld();
+  private readonly physics = new PhysicsWorld(VALIDATION_TRACK);
+  private readonly trackProgress = new TrackProgress(VALIDATION_TRACK);
   private readonly camera = new FirstPersonCamera();
   private readonly overlay: PrototypeOverlay;
   private readonly scene: GameScene;
@@ -53,7 +56,7 @@ export class GameApp {
       onRecenter: () => this.recenter(),
       onSyntheticTilt: (x, y) => this.syntheticSource.setNormalized(x, y),
     });
-    this.scene = new GameScene(this.overlay.sceneRoot);
+    this.scene = new GameScene(this.overlay.sceneRoot, VALIDATION_TRACK);
     this.telemetry = new PrototypeTelemetry(this.overlay.telemetryRoot);
     this.tuningPanel = new PrototypeTuningPanel(this.overlay.tuningRoot, this.tuning, {
       onChange: (values) => this.applyTuning(values),
@@ -64,7 +67,8 @@ export class GameApp {
     const debugVisible = new URLSearchParams(location.search).get('debug') === '1';
     this.overlay.setDebugVisible(debugVisible);
     this.viewportOrientation = this.readViewportOrientation();
-    this.camera.reset(this.physics.getBallState());
+    this.camera.reset(this.physics.getBallState(), VALIDATION_TRACK.start.cameraYawRad);
+    this.scene.setTrackProgress(this.trackProgress.snapshot(VALIDATION_TRACK.start.position));
     this.resizeScene();
     this.bindKeyboard();
     window.addEventListener('resize', this.handleViewportResize);
@@ -173,10 +177,19 @@ export class GameApp {
   }
 
   private resetSimulation(): void {
-    this.physics.resetBall();
+    this.trackProgress.reset();
+    this.resetToPose(VALIDATION_TRACK.start);
+  }
+
+  private recoverToCheckpoint(): void {
+    this.resetToPose(this.trackProgress.recoveryPose());
+  }
+
+  private resetToPose(pose: typeof VALIDATION_TRACK.start): void {
+    this.physics.resetBall(pose);
     this.physics.setVerticalGravity();
     this.worldGravityDirection = { x: 0, y: -1, z: 0 };
-    this.camera.reset(this.physics.getBallState());
+    this.camera.reset(this.physics.getBallState(), pose.cameraYawRad);
   }
 
   private pauseGameplay(): void {
@@ -276,23 +289,29 @@ export class GameApp {
       this.physics.setGravityDirection(this.worldGravityDirection);
       this.physics.step(deltaSeconds);
 
+      const steppedBallState = this.physics.getBallState();
+      this.trackProgress.update(steppedBallState.position, steppedBallState.speed, deltaSeconds);
+
       if (this.physics.isOutOfBounds()) {
         this.fallResetCount += 1;
-        this.resetSimulation();
+        this.recoverToCheckpoint();
+      } else {
+        this.camera.update(steppedBallState, deltaSeconds);
       }
-
-      this.camera.update(this.physics.getBallState(), deltaSeconds);
     }
 
     const ballState = this.physics.getBallState();
+    const trackSnapshot = this.trackProgress.snapshot(ballState.position);
     this.overlay.renderVector(tiltSnapshot.normalized.x, tiltSnapshot.normalized.y);
     this.telemetry.render(tiltSnapshot, {
       ball: ballState,
       camera: this.camera.telemetry(),
+      track: trackSnapshot,
       worldGravity: this.worldGravityDirection,
       fallResetCount: this.fallResetCount,
       gameplayActive: this.gameplayActive,
     });
+    this.scene.setTrackProgress(trackSnapshot);
     this.scene.render(this.camera.camera, ballState);
     this.animationFrameId = requestAnimationFrame(this.tick);
   };
