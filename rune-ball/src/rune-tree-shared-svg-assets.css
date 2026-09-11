@@ -1,0 +1,20 @@
+/* P8.3.3 — Split Tree and runtime share the exact same SVG source assets. */
+.rune-tree-base-effect--split {
+  background-image: url('./assets/runes/split-base.svg') !important;
+}
+
+.rune-tree-node-sigil--prism.rune-tree-node-sigil--tier-1 {
+  background-image: url('./assets/runes/prism-t1.svg') !important;
+}
+
+.rune-tree-node-sigil--prism.rune-tree-node-sigil--tier-2 {
+  background-image: url('./assets/runes/prism-t2.svg') !important;
+}
+
+.rune-tree-node-sigil--lance.rune-tree-node-sigil--tier-1 {
+  background-image: url('./assets/runes/lance-t1.svg') !important;
+}
+
+.rune-tree-node-sigil--lance.rune-tree-node-sigil--tier-2 {
+  background-image: url('./assets/runes/lance-t2.svg') !important;
+}
