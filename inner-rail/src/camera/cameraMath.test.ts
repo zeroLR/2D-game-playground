@@ -1,8 +1,9 @@
-import { strict as assert } from 'node:assert';
 import { dampAngle, shortestAngleDeltaRad, velocityHeadingRad } from './cameraMath.js';
 
 const near = (actual: number, expected: number, epsilon = 1e-6): void => {
-  assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} != ${expected}`);
+  if (Math.abs(actual - expected) > epsilon) {
+    throw new Error(`Expected ${actual} to be within ${epsilon} of ${expected}`);
+  }
 };
 
 near(velocityHeadingRad(0, 1), 0);
@@ -13,7 +14,9 @@ near(shortestAngleDeltaRad((170 * Math.PI) / 180, (-170 * Math.PI) / 180), (20 *
   const current = (170 * Math.PI) / 180;
   const target = (-170 * Math.PI) / 180;
   const next = dampAngle(current, target, 6, 1 / 60);
-  assert.ok(shortestAngleDeltaRad(current, next) > 0, 'camera should take the short path across ±π');
+  if (shortestAngleDeltaRad(current, next) <= 0) {
+    throw new Error('Camera should take the short path across ±π.');
+  }
 }
 
-console.log('cameraMath tests passed');
+console.log('Inner Rail camera math tests passed.');
