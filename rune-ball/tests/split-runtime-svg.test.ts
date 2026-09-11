@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSplitRuntimeGlyphSpec, getSplitRuntimeSvgSource } from '../src/presentation/SplitRuntimeSvg';
+import { getSplitRuntimeGlyphSpec, getSplitRuntimeSvgSource } from '../src/presentation/SplitRuntimeSvgSpec';
 
 describe('Split runtime SVG alignment', () => {
   it('maps base and authored stages to the matching shared SVG glyphs', () => {
