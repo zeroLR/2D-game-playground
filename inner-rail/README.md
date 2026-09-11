@@ -4,59 +4,72 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P0.1.1 — Orientation-Agnostic Tilt Harness**
+**P0.2 — Ball Physics + Stabilized First-Person Camera**
 
-This slice keeps the P0 input contract independent of portrait/landscape so P0.2 can compare both on real hardware before the product commits to one presentation:
+P0.2 turns the proven input harness into the first playable physical loop:
 
-`Device orientation → screen correction → neutral calibration → dead zone / saturation → smoothing → normalized gravity direction`
+`Device tilt → camera-relative gravity → cannon-es sphere → momentum → stabilized first-person camera`
+
+Portrait and landscape remain equal test modes. They use the same input response, ball physics, camera behavior, FOV policy, and sandbox geometry so the eventual orientation decision is based on real gameplay evidence rather than layout preference.
 
 ### Included
 
-- device-orientation permission flow, including iOS-style `requestPermission()` support;
-- explicit first-sample timeout and denied/unavailable recovery state;
-- neutral calibration and persistent `RECENTER` action;
-- screen-orientation correction in pure/testable math;
-- 1.5° dead zone, 25° saturation target, exponential smoothing;
-- desktop synthetic tilt using the same `TiltInput` abstraction;
-- responsive portrait and landscape harness layouts with no orientation blocker;
-- automatic return to neutral calibration when the viewport rotates between portrait and landscape;
-- visible portrait/landscape test-mode label;
-- `?debug=1` telemetry for viewport orientation plus raw/corrected/calibrated/filtered input and gravity preview;
-- visible bootstrap failure UI rather than an inert mount point.
-
-Three.js and cannon-es are installed to preserve the agreed P0 technical stack, but the P0.1 family deliberately does not instantiate the renderer or physics world. P0.2 owns that integration.
+- cannon-es dynamic sphere with one global material/handling configuration;
+- camera-relative effective gravity with approximately constant gravity magnitude;
+- broad enclosed sandbox for acceleration, braking, turning, reversing, and wall recovery;
+- fixed-step physics with a safety-only maximum speed bound;
+- Three.js first-person renderer positioned inside the sphere;
+- camera translation follows the ball while camera roll is independent of rigid-body spin;
+- damped velocity-heading yaw with a low-speed hold threshold;
+- conservative airborne pitch and subtle speed-based FOV expansion;
+- `prefers-reduced-motion` removes nonessential shell/pitch/FOV motion;
+- faint rotating inner-shell reference so physical ball rotation can be perceived while the horizon remains stable;
+- runtime **RESTART** and **RECENTER** actions;
+- rotating between portrait and landscape pauses the sandbox and requires a fresh neutral pose;
+- `?debug=1` telemetry for input, world gravity, ball state, grounded approximation, speed, camera yaw/pitch/FOV, and recovery count;
+- pure tests for orientation, camera-relative gravity, and camera angle damping.
 
 ## Controls
 
 ### Phone
 
-1. Open in either portrait or landscape.
+1. Open in portrait or landscape.
 2. Tap **ENABLE MOTION**.
-3. Hold the phone in a comfortable neutral pose and tap **SET NEUTRAL**.
-4. Tilt left/right and forward/back; the field vector should respond in screen coordinates.
-5. Rotate the device whenever you want to compare portrait and landscape. The harness will require a fresh neutral pose after the orientation changes.
-6. Tap **RECENTER** whenever the physical holding pose changes.
+3. Hold the phone comfortably and tap **SET NEUTRAL & START**.
+4. Tilt forward to accelerate; return to neutral to coast.
+5. Tilt against motion to brake or reverse.
+6. Tilt left/right while moving to redirect the gravity field and curve the trajectory.
+7. Use **RECENTER** if your natural holding pose changes; use **RESTART** to reset the sandbox.
+8. Rotate the phone and recalibrate to compare portrait and landscape under the same simulation rules.
 
 ### Desktop / development
 
 - Start **DESKTOP TILT TEST**.
 - Calibrate once.
-- Drag the synthetic pad or use WASD / arrow keys.
-- Append `?debug=1` to expose input telemetry.
+- WASD / arrow keys or the drag pad feed the same `TiltInput` abstraction.
+- Append `?debug=1` to expose the tuning telemetry.
 
-## P0.1.1 phone gate
+## P0.2 phone gate
 
-CI verifies the implementation, but the orientation decision remains a real-device gameplay question.
+The sandbox must be sufficient to prove the physical sensation before P0.3 adds authored track geometry.
 
-Test the same tilt tasks in both portrait and landscape and compare:
+On a real phone, in both portrait and landscape, verify that you can intentionally:
 
-- directional correctness and fine-control stability;
-- comfort of the physical holding pose;
-- readability of forward space for the upcoming first-person camera;
-- whether recenter after rotation reliably restores neutral control;
-- denied/unavailable/no-sample sensor recovery.
+1. accelerate forward;
+2. turn left/right without the camera feeling like direct steering;
+3. reverse direction;
+4. brake to near-stop by tilting against momentum;
+5. hit a wall and recover orientation;
+6. understand that the sphere is rotating while the camera horizon does not inherit that roll.
 
-Do not choose the final product orientation from layout preference alone. P0.2 should evaluate both with the same ball physics and stabilized camera.
+Also compare portrait vs landscape on:
+
+- fine-control precision;
+- physical holding comfort;
+- visibility of forward space;
+- first-person presence / sense of being inside the ball.
+
+If camera comfort or force semantics are weak, remain in P0.2. Do not hide those issues with track gimmicks or tutorials.
 
 ## Commands
 
@@ -68,4 +81,4 @@ npm run build
 
 ## Next slice
 
-**P0.2 — Ball Physics + Stabilized First-Person Camera**, with portrait/landscape A/B testing retained until the phone feel evidence is strong enough to lock the product orientation.
+**P0.3 — 60–90 Second Validation Track** only after the P0.2 real-phone movement/camera gate is accepted. The final primary orientation may remain open until the phone comparison produces a clear winner.
