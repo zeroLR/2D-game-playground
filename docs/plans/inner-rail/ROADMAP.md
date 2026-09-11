@@ -75,7 +75,7 @@ P0.1.1 does **not** choose the winning orientation. It only makes the comparison
 
 ## P0.2 — Ball Physics + Stabilized First-Person Camera
 
-**Status:** implementation complete; real-phone movement/camera gate pending.
+**Status:** implementation complete; real-device direction mapping accepted, with final feel/orientation tuning deferred to P0.4.
 
 **Objective:** establish the physical sensation before building a level, while comparing portrait and landscape using the exact same physics/camera rules.
 
@@ -122,17 +122,19 @@ Do not lock the final product orientation until this comparison exists. If the c
 
 ## P0.3 — 60–90 Second Validation Track
 
+**Status:** implementation complete; real-phone course-completion / timing gate pending.
+
 **Objective:** turn the established movement model into deliberate physical decisions without adding new rules.
 
 ### Track sections
 
-- [ ] Calibration Deck
-- [ ] Wide S-Curve
-- [ ] Narrow Rail
-- [ ] Momentum Dip + Gap
-- [ ] Banked Turn
-- [ ] Goal Brake Zone
-- [ ] authored recovery checkpoints
+- [x] Calibration Deck
+- [x] Wide S-Curve
+- [x] Narrow Rail
+- [x] Momentum Dip + Gap
+- [x] Banked Turn
+- [x] Goal Brake Zone
+- [x] authored recovery checkpoints
 
 ### Design constraint
 
@@ -234,4 +236,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate next gate is **P0.2 real-phone movement + camera validation**. P0.3 should not begin until that sandbox feel is accepted.
+The immediate next gate is **P0.3 real-phone validation-track completion**. Do not enter P0.4 until the full course is completable through the shared gravity/momentum rule set and its timing/readability problems are understood.
