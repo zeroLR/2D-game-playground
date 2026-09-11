@@ -27,6 +27,7 @@ export class PrototypeOverlay {
   private readonly vectorNeedle: HTMLElement;
   private readonly vectorLabel: HTMLElement;
   private readonly syntheticPad: HTMLElement;
+  private readonly inputSourceChip: HTMLElement;
   private debugVisible = false;
   private active = false;
 
@@ -40,6 +41,7 @@ export class PrototypeOverlay {
           <span class="status-dot" aria-hidden="true"></span>
           <span class="orientation-chip orientation-chip--portrait">PORTRAIT TEST</span>
           <span class="orientation-chip orientation-chip--landscape">LANDSCAPE TEST</span>
+          <span class="input-source-chip" data-input-source hidden></span>
         </header>
         <section class="vector-stage" data-vector-stage aria-label="Tilt force visualization">
           <div class="vector-ring vector-ring--outer"></div>
@@ -54,7 +56,7 @@ export class PrototypeOverlay {
         <section class="synthetic-pad" data-synthetic-pad hidden aria-label="Synthetic tilt control">
           <div class="synthetic-crosshair"></div>
           <div class="synthetic-knob"></div>
-          <span>DRAG TO TILT · WASD / ARROWS</span>
+          <span>SYNTHETIC INPUT · DEVICE TILT OFF</span>
         </section>
         <nav class="runtime-controls" data-controls hidden aria-label="Prototype controls">
           <button type="button" class="button button--ghost" data-restart>RESTART</button>
@@ -73,6 +75,7 @@ export class PrototypeOverlay {
     this.vectorNeedle = this.requireElement('[data-vector-needle]');
     this.vectorLabel = this.requireElement('[data-vector-label]');
     this.syntheticPad = this.requireElement('[data-synthetic-pad]');
+    this.inputSourceChip = this.requireElement('[data-input-source]');
     this.telemetryRoot = this.requireElement('[data-telemetry]');
     this.tuningRoot = this.requireElement('[data-tuning-root]');
 
@@ -95,6 +98,17 @@ export class PrototypeOverlay {
     this.syntheticPad.hidden = !(this.active && state.kind === 'active' && state.synthetic);
     this.stateRoot.hidden = this.active;
     this.vectorStage.hidden = this.active && !this.debugVisible;
+
+    if (state.kind === 'active') {
+      this.inputSourceChip.hidden = false;
+      this.inputSourceChip.textContent = state.synthetic ? 'SYNTHETIC INPUT' : 'DEVICE MOTION';
+      this.inputSourceChip.classList.toggle('input-source-chip--synthetic', state.synthetic);
+      this.shell.dataset.inputSource = state.synthetic ? 'synthetic' : 'device';
+    } else {
+      this.inputSourceChip.hidden = true;
+      this.inputSourceChip.classList.remove('input-source-chip--synthetic');
+      delete this.shell.dataset.inputSource;
+    }
 
     if (state.kind === 'start') {
       const primary = state.preferSynthetic ? 'DESKTOP TILT TEST' : 'ENABLE MOTION';
@@ -168,6 +182,11 @@ export class PrototypeOverlay {
 
   private bindSyntheticPad(): void {
     const knob = this.requireElement<HTMLElement>('.synthetic-knob', this.syntheticPad);
+    const setNeutral = (): void => {
+      knob.style.left = '50%';
+      knob.style.top = '50%';
+      this.callbacks.onSyntheticTilt(0, 0);
+    };
     const updateFromPointer = (event: PointerEvent): void => {
       const rect = this.syntheticPad.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -188,6 +207,7 @@ export class PrototypeOverlay {
     });
     const release = (event: PointerEvent): void => {
       if (this.syntheticPad.hasPointerCapture(event.pointerId)) this.syntheticPad.releasePointerCapture(event.pointerId);
+      setNeutral();
     };
     this.syntheticPad.addEventListener('pointerup', release);
     this.syntheticPad.addEventListener('pointercancel', release);

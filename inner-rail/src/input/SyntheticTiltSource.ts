@@ -12,6 +12,8 @@ export class SyntheticTiltSource implements TiltSource {
   }
 
   async start(listener: (sample: TiltSourceSample) => void): Promise<TiltSourceStartResult> {
+    this.x = 0;
+    this.y = 0;
     this.listener = listener;
     this.emit();
     return { status: 'started' };
@@ -24,6 +26,8 @@ export class SyntheticTiltSource implements TiltSource {
   }
 
   stop(): void {
+    this.x = 0;
+    this.y = 0;
     this.listener = null;
   }
 
