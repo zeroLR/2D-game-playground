@@ -1,10 +1,20 @@
 import * as THREE from 'three';
 import type { BallState } from '../physics/PhysicsWorld';
-import { dampAngle, velocityHeadingRad } from './cameraMath';
+import {
+  dampAngle,
+  headingFollowWeight,
+  shortestAngleDeltaRad,
+  velocityHeadingRad,
+} from './cameraMath';
 
 const DEFAULT_BASE_FOV_DEG = 76;
 const HEADING_SPEED_THRESHOLD = 0.7;
 const DEFAULT_YAW_RESPONSE_PER_SECOND = 4.2;
+const HEADING_HOLD_ANGLE_RAD = (14 * Math.PI) / 180;
+const HEADING_FULL_FOLLOW_ANGLE_RAD = (42 * Math.PI) / 180;
+const HEADING_RELEASE_ANGLE_RAD = (7 * Math.PI) / 180;
+const HEADING_COMMIT_SECONDS = 0.2;
+const FOLLOW_RESPONSE_FLOOR = 0.25;
 const PITCH_RESPONSE_PER_SECOND = 4.5;
 const MAX_PITCH_RAD = (7 * Math.PI) / 180;
 
@@ -13,9 +23,14 @@ export interface CameraTuning {
   yawResponsePerSecond: number;
 }
 
+export type CameraHeadingState = 'low-speed' | 'hold' | 'commit' | 'follow';
+
 export interface CameraTelemetry {
   yawRad: number;
   targetYawRad: number;
+  headingErrorRad: number;
+  headingState: CameraHeadingState;
+  headingCommitProgress: number;
   pitchRad: number;
   fovDeg: number;
 }
@@ -28,6 +43,11 @@ export class FirstPersonCamera {
   private pitchRad = 0;
   private baseFovDeg = DEFAULT_BASE_FOV_DEG;
   private yawResponsePerSecond = DEFAULT_YAW_RESPONSE_PER_SECOND;
+  private headingErrorRad = 0;
+  private headingState: CameraHeadingState = 'low-speed';
+  private headingCommitSeconds = 0;
+  private headingCommitSign = 0;
+  private headingFollowing = false;
   private readonly reducedMotion: boolean;
 
   constructor() {
@@ -57,16 +77,70 @@ export class FirstPersonCamera {
     this.yawRad = 0;
     this.targetYawRad = 0;
     this.pitchRad = 0;
+    this.headingErrorRad = 0;
+    this.headingState = 'low-speed';
+    this.headingCommitSeconds = 0;
+    this.headingCommitSign = 0;
+    this.headingFollowing = false;
     this.camera.fov = this.baseFovDeg;
     this.syncTransform(ballState);
   }
 
   update(ballState: BallState, deltaSeconds: number): void {
+    const dt = Math.min(Math.max(deltaSeconds, 0), 0.1);
     const horizontalSpeed = Math.hypot(ballState.velocity.x, ballState.velocity.z);
-    if (horizontalSpeed >= HEADING_SPEED_THRESHOLD) {
+
+    if (horizontalSpeed < HEADING_SPEED_THRESHOLD) {
+      this.targetYawRad = this.yawRad;
+      this.headingErrorRad = 0;
+      this.headingState = 'low-speed';
+      this.headingCommitSeconds = 0;
+      this.headingCommitSign = 0;
+      this.headingFollowing = false;
+    } else {
       this.targetYawRad = velocityHeadingRad(ballState.velocity.x, ballState.velocity.z);
+      this.headingErrorRad = shortestAngleDeltaRad(this.yawRad, this.targetYawRad);
+      const absoluteError = Math.abs(this.headingErrorRad);
+      const errorSign = Math.sign(this.headingErrorRad);
+
+      if (!this.headingFollowing) {
+        if (absoluteError <= HEADING_HOLD_ANGLE_RAD) {
+          this.headingState = 'hold';
+          this.headingCommitSeconds = 0;
+          this.headingCommitSign = 0;
+        } else {
+          if (errorSign !== this.headingCommitSign) {
+            this.headingCommitSeconds = 0;
+            this.headingCommitSign = errorSign;
+          }
+          this.headingCommitSeconds += dt;
+          this.headingState = 'commit';
+          if (this.headingCommitSeconds >= HEADING_COMMIT_SECONDS) {
+            this.headingFollowing = true;
+            this.headingState = 'follow';
+          }
+        }
+      }
+
+      if (this.headingFollowing) {
+        const followWeight = headingFollowWeight(
+          this.headingErrorRad,
+          HEADING_HOLD_ANGLE_RAD,
+          HEADING_FULL_FOLLOW_ANGLE_RAD,
+        );
+        const effectiveResponse = this.yawResponsePerSecond * Math.max(FOLLOW_RESPONSE_FLOOR, followWeight);
+        this.yawRad = dampAngle(this.yawRad, this.targetYawRad, effectiveResponse, dt);
+        this.headingErrorRad = shortestAngleDeltaRad(this.yawRad, this.targetYawRad);
+        this.headingState = 'follow';
+
+        if (Math.abs(this.headingErrorRad) <= HEADING_RELEASE_ANGLE_RAD) {
+          this.headingFollowing = false;
+          this.headingCommitSeconds = 0;
+          this.headingCommitSign = 0;
+          this.headingState = 'hold';
+        }
+      }
     }
-    this.yawRad = dampAngle(this.yawRad, this.targetYawRad, this.yawResponsePerSecond, deltaSeconds);
 
     const pitchTarget = this.reducedMotion || ballState.grounded
       ? 0
@@ -74,11 +148,11 @@ export class FirstPersonCamera {
           -MAX_PITCH_RAD,
           Math.min(MAX_PITCH_RAD, Math.atan2(ballState.velocity.y, Math.max(0.01, horizontalSpeed)) * 0.3),
         );
-    const pitchAlpha = 1 - Math.exp(-PITCH_RESPONSE_PER_SECOND * Math.min(Math.max(deltaSeconds, 0), 0.1));
+    const pitchAlpha = 1 - Math.exp(-PITCH_RESPONSE_PER_SECOND * dt);
     this.pitchRad += (pitchTarget - this.pitchRad) * pitchAlpha;
 
     const targetFov = this.reducedMotion ? this.baseFovDeg : this.baseFovDeg + Math.min(4, ballState.speed * 0.2);
-    const fovAlpha = 1 - Math.exp(-3.5 * Math.min(Math.max(deltaSeconds, 0), 0.1));
+    const fovAlpha = 1 - Math.exp(-3.5 * dt);
     this.camera.fov += (targetFov - this.camera.fov) * fovAlpha;
     this.camera.updateProjectionMatrix();
 
@@ -94,6 +168,9 @@ export class FirstPersonCamera {
     return {
       yawRad: this.yawRad,
       targetYawRad: this.targetYawRad,
+      headingErrorRad: this.headingErrorRad,
+      headingState: this.headingState,
+      headingCommitProgress: Math.min(1, this.headingCommitSeconds / HEADING_COMMIT_SECONDS),
       pitchRad: this.pitchRad,
       fovDeg: this.camera.fov,
     };

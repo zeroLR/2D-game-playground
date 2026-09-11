@@ -29,7 +29,7 @@ const CONTROLS: ControlDefinition[] = [
   {
     key: 'cameraYawResponsePerSecond',
     label: 'Camera follow',
-    hint: 'Lower = more camera inertia. Higher = tracks heading faster.',
+    hint: 'Applies after heading commit. Lower = slower catch-up; higher = faster turn-in.',
     format: (value) => `${value.toFixed(1)}×`,
   },
   {
