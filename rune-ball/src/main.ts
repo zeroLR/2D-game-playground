@@ -11,13 +11,14 @@ import {
   type RuntimePreferences,
 } from './preferences/RuntimePreferences';
 import { readPlayerProfile, writePlayerProfile, type PlayerProfile } from './profile/PlayerProfile';
+import type { SplitEvolutionPath } from './progression/SplitEvolutionSystem';
 import type { VortexEvolutionPath } from './progression/VortexEvolutionSystem';
 import { DestructionScene } from './presentation/DestructionScene';
 import { GameShell } from './presentation/GameShell';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
 import { SessionChrome } from './presentation/SessionChrome';
 import { SettingsPanel } from './presentation/SettingsPanel';
-import { VortexEvolutionStatus } from './presentation/VortexEvolutionStatus';
+import { RuneEvolutionStatus } from './presentation/RuneEvolutionStatus';
 import './style.css';
 import './session.css';
 import './settings.css';
@@ -76,6 +77,7 @@ function bootstrap(): void {
   let preferences: RuntimePreferences = readRuntimePreferences(storage, systemPrefersReducedMotion());
   let profile: PlayerProfile = readPlayerProfile(storage);
   let selectedPath: VortexEvolutionPath = profile.vortexPath;
+  let selectedSplitPath: SplitEvolutionPath = profile.splitPath;
   applyMotionPreference(preferences.reducedMotion);
 
   const audio = new AudioDirector();
@@ -84,7 +86,7 @@ function bootstrap(): void {
   let scene: DestructionScene | null = null;
   let chrome: SessionChrome | null = null;
   let causality: RuneCausalityOverlay | null = null;
-  let evolutionStatus: VortexEvolutionStatus | null = null;
+  let evolutionStatus: RuneEvolutionStatus | null = null;
   let loop: FixedStepLoop | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
@@ -156,7 +158,7 @@ function bootstrap(): void {
       currentApp.screen.width,
       currentApp.screen.height,
       audio,
-      { onGameplayEvent, vortexEvolutionPath: selectedPath },
+      { onGameplayEvent, vortexEvolutionPath: selectedPath, splitEvolutionPath: selectedSplitPath },
     );
     nextScene.setReducedMotion(preferences.reducedMotion);
     return nextScene;
@@ -182,7 +184,7 @@ function bootstrap(): void {
     resultHandled = false;
     if (runHasStarted) replaceScene();
     else runHasStarted = true;
-    evolutionStatus.reset(selectedPath);
+    evolutionStatus.reset(selectedPath, selectedSplitPath);
     evolutionStatus.setVisible(true);
     chrome.render(session.snapshot);
     chrome.setVisible(true);
@@ -225,7 +227,7 @@ function bootstrap(): void {
     scene = createScene();
     nextApp.stage.addChild(scene);
     causality = new RuneCausalityOverlay(host);
-    evolutionStatus = new VortexEvolutionStatus(host, selectedPath);
+    evolutionStatus = new RuneEvolutionStatus(host, selectedPath, selectedSplitPath);
     evolutionStatus.setVisible(false);
 
     chrome = new SessionChrome(host, {
@@ -325,7 +327,7 @@ function bootstrap(): void {
     const stage = getStage(stageId);
     host.dataset.activeStage = stageId;
     host.dataset.bootstrapState = 'stage-loading';
-    console.info(`[Rune Ball] Loading stage ${stageId} with Vortex path ${selectedPath}.`);
+    console.info(`[Rune Ball] Loading stage ${stageId} with Vortex ${selectedPath} / Split ${selectedSplitPath}.`);
 
     shell.hideForLoading();
     stageLoading = true;
@@ -357,11 +359,16 @@ function bootstrap(): void {
     })();
   };
 
-  shell = new GameShell(host, selectedPath, {
+  shell = new GameShell(host, selectedPath, selectedSplitPath, {
     onStartStage: beginStageEntry,
     onVortexPathChange: (path) => {
       selectedPath = path;
       profile = { ...profile, vortexPath: path };
+      persistProfile();
+    },
+    onSplitPathChange: (path) => {
+      selectedSplitPath = path;
+      profile = { ...profile, splitPath: path };
       persistProfile();
     },
     onScreenChange: (screen) => {

@@ -14,19 +14,22 @@ function memoryStorage(): Storage {
 }
 
 describe('PlayerProfile', () => {
-  it('defaults to the Gravity path', () => {
-    expect(readPlayerProfile(null)).toEqual({ vortexPath: 'gravity-well' });
+  it('defaults to Gravity + Prism while preserving old-profile compatibility', () => {
+    expect(readPlayerProfile(null)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism' });
+    const storage = memoryStorage();
+    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'orbit' }));
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'prism' });
   });
 
-  it('persists a selected Vortex evolution path', () => {
+  it('persists selected Vortex and Split evolution paths', () => {
     const storage = memoryStorage();
-    writePlayerProfile(storage, { vortexPath: 'orbit' });
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit' });
+    writePlayerProfile(storage, { vortexPath: 'orbit', splitPath: 'lance' });
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'lance' });
   });
 
-  it('falls back when stored profile data is invalid', () => {
+  it('falls back per-field when stored profile data is invalid', () => {
     const storage = memoryStorage();
-    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'unknown' }));
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'gravity-well' });
+    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'unknown', splitPath: 'unknown' }));
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism' });
   });
 });

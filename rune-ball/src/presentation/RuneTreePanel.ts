@@ -1,22 +1,29 @@
 import {
   RUNE_TREE_ORDER,
+  SPLIT_PATH_ORDER,
   VORTEX_PATH_ORDER,
   getRuneBaseDefinition,
+  getSplitEvolutionNode,
+  getSplitPathDefinition,
   getVortexEvolutionNode,
   getVortexPathDefinition,
   type RuneTreeId,
+  type SplitEvolutionPath,
+  type SplitEvolutionTier,
   type VortexEvolutionPath,
   type VortexEvolutionTier,
 } from '../progression/RuneEvolutionCatalog';
 import '../rune-tree.css';
 import '../rune-tree-refinement.css';
 
-type VortexNodeSelection =
-  | { kind: 'base' }
-  | { kind: 'evolution'; path: VortexEvolutionPath; tier: VortexEvolutionTier };
+type NodeSelection =
+  | { kind: 'base'; rune: RuneTreeId }
+  | { kind: 'vortex'; path: VortexEvolutionPath; tier: VortexEvolutionTier }
+  | { kind: 'split'; path: SplitEvolutionPath; tier: SplitEvolutionTier };
 
 export interface RuneTreePanelCallbacks {
   onVortexPathChange(path: VortexEvolutionPath): void;
+  onSplitPathChange(path: SplitEvolutionPath): void;
 }
 
 export class RuneTreePanel {
@@ -25,15 +32,22 @@ export class RuneTreePanel {
   private readonly treeMount: HTMLElement;
   private readonly detailMount: HTMLElement;
   private readonly callbacks: RuneTreePanelCallbacks;
-  private readonly branchRoots = new Map<VortexEvolutionPath, HTMLElement>();
+  private readonly branchRoots = new Map<string, HTMLElement>();
   private readonly nodeButtons = new Map<string, HTMLButtonElement>();
   private selectedRune: RuneTreeId = 'vortex';
-  private selectedPath: VortexEvolutionPath;
-  private selectedNode: VortexNodeSelection;
+  private selectedVortexPath: VortexEvolutionPath;
+  private selectedSplitPath: SplitEvolutionPath;
+  private selectedNode: NodeSelection;
 
-  constructor(host: HTMLElement, selectedPath: VortexEvolutionPath, callbacks: RuneTreePanelCallbacks) {
-    this.selectedPath = selectedPath;
-    this.selectedNode = { kind: 'evolution', path: selectedPath, tier: 2 };
+  constructor(
+    host: HTMLElement,
+    selectedVortexPath: VortexEvolutionPath,
+    selectedSplitPath: SplitEvolutionPath,
+    callbacks: RuneTreePanelCallbacks,
+  ) {
+    this.selectedVortexPath = selectedVortexPath;
+    this.selectedSplitPath = selectedSplitPath;
+    this.selectedNode = { kind: 'vortex', path: selectedVortexPath, tier: 2 };
     this.callbacks = callbacks;
 
     const root = document.createElement('section');
@@ -90,17 +104,23 @@ export class RuneTreePanel {
   }
 
   setVortexPath(path: VortexEvolutionPath): void {
-    const changed = path !== this.selectedPath;
-    this.selectedPath = path;
-    if (changed && this.selectedRune === 'vortex') {
-      this.selectedNode = { kind: 'evolution', path, tier: 2 };
-    }
-    this.syncVortexState();
+    const changed = path !== this.selectedVortexPath;
+    this.selectedVortexPath = path;
+    if (changed && this.selectedRune === 'vortex') this.selectedNode = { kind: 'vortex', path, tier: 2 };
+    this.syncAuthoredState();
+    this.renderDetail();
+  }
+
+  setSplitPath(path: SplitEvolutionPath): void {
+    const changed = path !== this.selectedSplitPath;
+    this.selectedSplitPath = path;
+    if (changed && this.selectedRune === 'split') this.selectedNode = { kind: 'split', path, tier: 2 };
+    this.syncAuthoredState();
     this.renderDetail();
   }
 
   showConfiguredRune(): void {
-    if (this.selectedRune !== 'vortex') this.selectRune('vortex');
+    this.renderRune();
   }
 
   destroy(): void {
@@ -110,9 +130,9 @@ export class RuneTreePanel {
   private selectRune(runeId: RuneTreeId): void {
     if (this.selectedRune === runeId) return;
     this.selectedRune = runeId;
-    if (runeId === 'vortex') {
-      this.selectedNode = { kind: 'evolution', path: this.selectedPath, tier: 2 };
-    }
+    if (runeId === 'vortex') this.selectedNode = { kind: 'vortex', path: this.selectedVortexPath, tier: 2 };
+    else if (runeId === 'split') this.selectedNode = { kind: 'split', path: this.selectedSplitPath, tier: 2 };
+    else this.selectedNode = { kind: 'base', rune: 'chain' };
     this.renderRune();
   }
 
@@ -126,69 +146,152 @@ export class RuneTreePanel {
     this.treeMount.replaceChildren();
 
     if (this.selectedRune === 'vortex') this.renderVortexTree();
+    else if (this.selectedRune === 'split') this.renderSplitTree();
     else this.renderFutureRune();
 
     this.renderDetail();
   }
 
-  private renderVortexTree(): void {
-    const base = getRuneBaseDefinition('vortex');
-    const graph = document.createElement('div');
-    graph.className = 'rune-tree-graph';
-
+  private makeBaseNode(rune: RuneTreeId): HTMLButtonElement {
     const baseNode = document.createElement('button');
     baseNode.type = 'button';
     baseNode.className = 'rune-tree-node rune-tree-base-node';
-    baseNode.dataset.node = 'vortex-base';
-    baseNode.setAttribute('aria-pressed', String(this.selectedNode.kind === 'base'));
-    baseNode.setAttribute('aria-label', 'Base Vortex');
-    baseNode.append(this.makeBaseEffect('vortex'));
+    baseNode.dataset.node = `${rune}-base`;
+    baseNode.setAttribute('aria-pressed', String(this.selectedNode.kind === 'base' && this.selectedNode.rune === rune));
+    baseNode.setAttribute('aria-label', `Base ${getRuneBaseDefinition(rune).name}`);
+    baseNode.append(this.makeBaseEffect(rune));
     baseNode.addEventListener('click', () => {
-      this.selectedNode = { kind: 'base' };
+      this.selectedNode = { kind: 'base', rune };
       this.syncNodeSelection();
       this.renderDetail();
     });
-    this.nodeButtons.set('base', baseNode);
+    this.nodeButtons.set(`${rune}:base`, baseNode);
+    return baseNode;
+  }
 
+  private renderVortexTree(): void {
+    const graph = document.createElement('div');
+    graph.className = 'rune-tree-graph';
+    const baseNode = this.makeBaseNode('vortex');
     const branches = document.createElement('div');
     branches.className = 'rune-tree-branch-grid';
 
     for (const path of VORTEX_PATH_ORDER) {
-      const pathDefinition = getVortexPathDefinition(path);
-      const branch = document.createElement('section');
-      branch.className = 'rune-tree-branch';
-      branch.dataset.path = path;
-      branch.dataset.equipped = String(path === this.selectedPath);
-
-      const pathMark = document.createElement('span');
-      pathMark.className = `rune-tree-path-mark rune-tree-path-mark--${path}`;
-      pathMark.setAttribute('aria-hidden', 'true');
-
-      const tierOne = this.makeEvolutionNode(path, 1);
-      const rail = document.createElement('span');
-      rail.className = 'rune-tree-rail';
-      rail.setAttribute('aria-hidden', 'true');
-      const tierTwo = this.makeEvolutionNode(path, 2);
-
-      branch.append(pathMark, tierOne, rail, tierTwo);
+      const branch = this.makeBranch('vortex', path, path === this.selectedVortexPath);
+      branch.append(
+        this.makePathMark(path),
+        this.makeVortexEvolutionNode(path, 1),
+        this.makeRail(),
+        this.makeVortexEvolutionNode(path, 2),
+      );
       branches.append(branch);
-      this.branchRoots.set(path, branch);
     }
 
     graph.append(baseNode, branches);
     this.treeMount.append(graph);
-    this.syncVortexState();
+    this.syncAuthoredState();
   }
 
-  private makeEvolutionNode(path: VortexEvolutionPath, tier: VortexEvolutionTier): HTMLButtonElement {
+  private renderSplitTree(): void {
+    const graph = document.createElement('div');
+    graph.className = 'rune-tree-graph';
+    const baseNode = this.makeBaseNode('split');
+    const branches = document.createElement('div');
+    branches.className = 'rune-tree-branch-grid';
+
+    for (const path of SPLIT_PATH_ORDER) {
+      const branch = this.makeBranch('split', path, path === this.selectedSplitPath);
+      branch.append(
+        this.makePathMark(path),
+        this.makeSplitEvolutionNode(path, 1),
+        this.makeRail(),
+        this.makeSplitEvolutionNode(path, 2),
+      );
+      branches.append(branch);
+    }
+
+    graph.append(baseNode, branches);
+    this.treeMount.append(graph);
+    this.syncAuthoredState();
+  }
+
+  private makeBranch(rune: 'vortex' | 'split', path: string, equipped: boolean): HTMLElement {
+    const branch = document.createElement('section');
+    branch.className = 'rune-tree-branch';
+    branch.dataset.path = path;
+    branch.dataset.equipped = String(equipped);
+    this.branchRoots.set(`${rune}:${path}`, branch);
+    return branch;
+  }
+
+  private makePathMark(path: string): HTMLElement {
+    const mark = document.createElement('span');
+    mark.className = `rune-tree-path-mark rune-tree-path-mark--${path}`;
+    mark.setAttribute('aria-hidden', 'true');
+    return mark;
+  }
+
+  private makeRail(): HTMLElement {
+    const rail = document.createElement('span');
+    rail.className = 'rune-tree-rail';
+    rail.setAttribute('aria-hidden', 'true');
+    return rail;
+  }
+
+  private makeVortexEvolutionNode(path: VortexEvolutionPath, tier: VortexEvolutionTier): HTMLButtonElement {
     const node = getVortexEvolutionNode(path, tier);
+    return this.makeEvolutionButton(
+      `vortex:${path}:${tier}`,
+      path,
+      tier,
+      node.name,
+      node.threshold,
+      'Vortex',
+      () => {
+        if (path !== this.selectedVortexPath) {
+this.selectedVortexPath = path;
+this.callbacks.onVortexPathChange(path);
+        }
+        this.selectedNode = { kind: 'vortex', path, tier };
+      },
+    );
+  }
+
+  private makeSplitEvolutionNode(path: SplitEvolutionPath, tier: SplitEvolutionTier): HTMLButtonElement {
+    const node = getSplitEvolutionNode(path, tier);
+    return this.makeEvolutionButton(
+      `split:${path}:${tier}`,
+      path,
+      tier,
+      node.name,
+      node.threshold,
+      'Split',
+      () => {
+        if (path !== this.selectedSplitPath) {
+this.selectedSplitPath = path;
+this.callbacks.onSplitPathChange(path);
+        }
+        this.selectedNode = { kind: 'split', path, tier };
+      },
+    );
+  }
+
+  private makeEvolutionButton(
+    key: string,
+    path: string,
+    tier: 1 | 2,
+    name: string,
+    threshold: number,
+    runeName: string,
+    select: () => void,
+  ): HTMLButtonElement {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'rune-tree-node rune-tree-evolution-node';
     button.dataset.path = path;
     button.dataset.tier = String(tier);
     button.setAttribute('aria-pressed', 'false');
-    button.setAttribute('aria-label', `Tier ${tier} ${node.name}. Auto evolves at ${node.threshold} qualified Vortex uses.`);
+    button.setAttribute('aria-label', `Tier ${tier} ${name}. Auto evolves at ${threshold} qualified ${runeName} uses.`);
 
     const sigil = document.createElement('span');
     sigil.className = `rune-tree-node-sigil rune-tree-node-sigil--${path} rune-tree-node-sigil--tier-${tier}`;
@@ -199,22 +302,16 @@ export class RuneTreePanel {
     button.append(sigil);
 
     button.addEventListener('click', () => {
-      if (path !== this.selectedPath) {
-        this.selectedPath = path;
-        this.callbacks.onVortexPathChange(path);
-      }
-      this.selectedNode = { kind: 'evolution', path, tier };
-      this.syncVortexState();
+      select();
+      this.syncAuthoredState();
       this.renderDetail();
     });
 
-    this.nodeButtons.set(`${path}:${tier}`, button);
+    this.nodeButtons.set(key, button);
     return button;
   }
 
   private renderFutureRune(): void {
-    const definition = getRuneBaseDefinition(this.selectedRune);
-
     const graph = document.createElement('div');
     graph.className = 'rune-tree-graph rune-tree-graph-future';
 
@@ -240,7 +337,6 @@ export class RuneTreePanel {
     this.treeMount.append(graph);
   }
 
-
   private makeBaseEffect(runeId: RuneTreeId): HTMLElement {
     const effect = document.createElement('span');
     effect.className = `rune-tree-base-effect rune-tree-base-effect--${runeId}`;
@@ -256,46 +352,54 @@ export class RuneTreePanel {
 
   private renderDetail(): void {
     this.detailMount.replaceChildren();
+    const base = getRuneBaseDefinition(this.selectedRune);
 
-    if (this.selectedRune !== 'vortex') {
-      const definition = getRuneBaseDefinition(this.selectedRune);
-      this.detailMount.append(this.makeDetailCard({
-        eyebrow: `BASE RUNE · ${definition.role}`,
-        title: definition.name,
-        description: definition.description,
-        playPattern: definition.playPattern,
-        trigger: 'EVOLUTION TREE · NOT YET AUTHORED',
-      }));
-      return;
-    }
-
-    const base = getRuneBaseDefinition('vortex');
     if (this.selectedNode.kind === 'base') {
       this.detailMount.append(this.makeDetailCard({
         eyebrow: `BASE RUNE · ${base.role}`,
         title: base.name,
         description: base.description,
         playPattern: base.playPattern,
-        trigger: 'EVOLUTION BEGINS FROM QUALIFIED VORTEX USES',
+        trigger: base.evolutionStatus === 'authored'
+? `EVOLUTION BEGINS FROM QUALIFIED ${base.name} USES`
+: 'EVOLUTION TREE · NOT YET AUTHORED',
       }));
       return;
     }
 
-    const path = getVortexPathDefinition(this.selectedNode.path);
-    const node = getVortexEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
-    const card = this.makeDetailCard({
-      eyebrow: `T${node.tier} · ${path.title} PATH`,
-      title: node.name,
-      description: node.description,
-      playPattern: node.playPattern,
-      trigger: `AUTO-EVOLVE · ${node.threshold} QUALIFIED VORTEX USES`,
-    });
+    if (this.selectedNode.kind === 'vortex') {
+      const path = getVortexPathDefinition(this.selectedNode.path);
+      const node = getVortexEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
+      this.detailMount.append(this.makeEvolutionDetail(path.title, node.tier, node.name, node.description, node.playPattern, node.threshold, 'VORTEX'));
+      return;
+    }
 
+    const path = getSplitPathDefinition(this.selectedNode.path);
+    const node = getSplitEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
+    this.detailMount.append(this.makeEvolutionDetail(path.title, node.tier, node.name, node.description, node.playPattern, node.threshold, 'SPLIT'));
+  }
+
+  private makeEvolutionDetail(
+    pathTitle: string,
+    tier: 1 | 2,
+    name: string,
+    description: string,
+    playPattern: string,
+    threshold: number,
+    runeName: string,
+  ): HTMLElement {
+    const card = this.makeDetailCard({
+      eyebrow: `T${tier} · ${pathTitle} PATH`,
+      title: name,
+      description,
+      playPattern,
+      trigger: `AUTO-EVOLVE · ${threshold} QUALIFIED ${runeName} USES`,
+    });
     const active = document.createElement('span');
     active.className = 'rune-tree-detail-active';
-    active.textContent = `${path.title} PATH ACTIVE`;
+    active.textContent = `${pathTitle} PATH ACTIVE`;
     card.append(active);
-    this.detailMount.append(card);
+    return card;
   }
 
   private makeDetailCard(copy: {
@@ -307,17 +411,13 @@ export class RuneTreePanel {
   }): HTMLElement {
     const card = document.createElement('section');
     card.className = 'rune-tree-detail';
-
     const eyebrow = document.createElement('span');
     eyebrow.className = 'rune-tree-detail-eyebrow';
     eyebrow.textContent = copy.eyebrow;
-
     const title = document.createElement('h2');
     title.textContent = copy.title;
-
     const description = document.createElement('p');
     description.textContent = copy.description;
-
     const pattern = document.createElement('div');
     pattern.className = 'rune-tree-pattern';
     const patternLabel = document.createElement('span');
@@ -325,29 +425,35 @@ export class RuneTreePanel {
     const patternValue = document.createElement('strong');
     patternValue.textContent = copy.playPattern;
     pattern.append(patternLabel, patternValue);
-
     const trigger = document.createElement('span');
     trigger.className = 'rune-tree-trigger';
     trigger.textContent = copy.trigger;
-
     card.append(eyebrow, title, description, pattern, trigger);
     return card;
   }
 
-  private syncVortexState(): void {
-    if (this.selectedRune !== 'vortex') return;
-    for (const [path, branch] of this.branchRoots) {
-      branch.dataset.equipped = String(path === this.selectedPath);
+  private syncAuthoredState(): void {
+    if (this.selectedRune === 'vortex') {
+      for (const path of VORTEX_PATH_ORDER) {
+        const branch = this.branchRoots.get(`vortex:${path}`);
+        if (branch) branch.dataset.equipped = String(path === this.selectedVortexPath);
+      }
+    } else if (this.selectedRune === 'split') {
+      for (const path of SPLIT_PATH_ORDER) {
+        const branch = this.branchRoots.get(`split:${path}`);
+        if (branch) branch.dataset.equipped = String(path === this.selectedSplitPath);
+      }
     }
     this.syncNodeSelection();
-
   }
 
   private syncNodeSelection(): void {
     for (const [key, button] of this.nodeButtons) {
       const selected = this.selectedNode.kind === 'base'
-        ? key === 'base'
-        : key === `${this.selectedNode.path}:${this.selectedNode.tier}`;
+        ? key === `${this.selectedNode.rune}:base`
+        : this.selectedNode.kind === 'vortex'
+? key === `vortex:${this.selectedNode.path}:${this.selectedNode.tier}`
+: key === `split:${this.selectedNode.path}:${this.selectedNode.tier}`;
       button.setAttribute('aria-pressed', String(selected));
     }
   }

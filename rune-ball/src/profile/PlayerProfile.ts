@@ -1,14 +1,19 @@
-import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
+import type { SplitEvolutionPath, VortexEvolutionPath } from '../progression/RuneEvolutionCatalog';
 
 export interface PlayerProfile {
   vortexPath: VortexEvolutionPath;
+  splitPath: SplitEvolutionPath;
 }
 
 const PROFILE_STORAGE_KEY = 'rune-ball:profile:v1';
-const DEFAULT_PROFILE: PlayerProfile = { vortexPath: 'gravity-well' };
+const DEFAULT_PROFILE: PlayerProfile = { vortexPath: 'gravity-well', splitPath: 'prism' };
 
 function isVortexPath(value: unknown): value is VortexEvolutionPath {
   return value === 'gravity-well' || value === 'orbit';
+}
+
+function isSplitPath(value: unknown): value is SplitEvolutionPath {
+  return value === 'prism' || value === 'lance';
 }
 
 export function readPlayerProfile(storage: Storage | null): PlayerProfile {
@@ -17,9 +22,10 @@ export function readPlayerProfile(storage: Storage | null): PlayerProfile {
   try {
     const raw = storage.getItem(PROFILE_STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PROFILE };
-    const parsed = JSON.parse(raw) as { vortexPath?: unknown };
+    const parsed = JSON.parse(raw) as { vortexPath?: unknown; splitPath?: unknown };
     return {
       vortexPath: isVortexPath(parsed.vortexPath) ? parsed.vortexPath : DEFAULT_PROFILE.vortexPath,
+      splitPath: isSplitPath(parsed.splitPath) ? parsed.splitPath : DEFAULT_PROFILE.splitPath,
     };
   } catch {
     return { ...DEFAULT_PROFILE };

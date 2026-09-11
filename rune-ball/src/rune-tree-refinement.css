@@ -453,3 +453,118 @@
   left: 16px;
   transform: rotate(142deg);
 }
+
+
+/* P8.3 — Split branch symbols describe attack geometry, not the V gesture. */
+.rune-tree-path-mark--prism::after,
+.rune-tree-path-mark--lance::after {
+  position: absolute;
+  content: '';
+}
+
+.rune-tree-path-mark--prism::after {
+  inset: 3px;
+  border: 1px solid var(--rb-cyan);
+  transform: rotate(45deg);
+}
+
+.rune-tree-path-mark--lance::after {
+  top: 2px;
+  left: 6px;
+  width: 1px;
+  height: 9px;
+  background: var(--rb-magenta);
+  box-shadow: 0 0 7px rgb(215 86 255 / 48%);
+}
+
+.rune-tree-node-sigil--prism::before,
+.rune-tree-node-sigil--prism::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 1.5px;
+  background: rgb(111 233 255 / 72%);
+  content: '';
+  transform-origin: left center;
+}
+
+.rune-tree-node-sigil--prism::before {
+  transform: translate(-1px, -1px) rotate(-31deg);
+}
+
+.rune-tree-node-sigil--prism::after {
+  transform: translate(-1px, -1px) rotate(31deg);
+}
+
+.rune-tree-node-sigil--prism .rune-tree-node-sigil-core {
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rb-white, #f0fbff);
+  box-shadow: 0 0 12px rgb(111 233 255 / 62%);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.rune-tree-node-sigil--prism.rune-tree-node-sigil--tier-2 {
+  box-shadow: inset 0 0 14px rgb(111 233 255 / 10%);
+}
+
+.rune-tree-node-sigil--prism.rune-tree-node-sigil--tier-2::before {
+  width: 39px;
+  box-shadow: 0 10px 0 -0.5px rgb(215 86 255 / 58%);
+}
+
+.rune-tree-node-sigil--prism.rune-tree-node-sigil--tier-2::after {
+  width: 39px;
+  box-shadow: 0 -10px 0 -0.5px rgb(215 86 255 / 58%);
+}
+
+.rune-tree-node-sigil--lance::before {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 2px;
+  height: 38px;
+  background: linear-gradient(to bottom, var(--rb-cyan), var(--rb-magenta));
+  box-shadow: 0 0 9px rgb(111 233 255 / 40%);
+  content: '';
+  transform: translateX(-50%);
+}
+
+.rune-tree-node-sigil--lance::after {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid var(--rb-cyan);
+  border-left: 2px solid var(--rb-cyan);
+  content: '';
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.rune-tree-node-sigil--lance .rune-tree-node-sigil-core {
+  bottom: 8px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rb-magenta);
+  box-shadow: 0 0 10px rgb(215 86 255 / 52%);
+  transform: translateX(-50%);
+}
+
+.rune-tree-node-sigil--lance.rune-tree-node-sigil--tier-2::before {
+  top: 3px;
+  height: 47px;
+  width: 3px;
+}
+
+.rune-tree-node-sigil--lance.rune-tree-node-sigil--tier-2::after {
+  top: 2px;
+  width: 13px;
+  height: 13px;
+}

@@ -23,7 +23,10 @@ export class RuneCausalityOverlay {
         this.spawnSignature(event.rune, event.center, 'cast');
         break;
       case 'vortex-evolved':
-        this.spawnEvolution(event.center, event.stage);
+        this.spawnEvolution('vortex', event.center, event.stage);
+        break;
+      case 'split-evolved':
+        this.spawnEvolution('split', event.center, event.stage);
         break;
       case 'vortex-collapse':
         this.spawnCollapse(event.center, event.targets);
@@ -70,9 +73,9 @@ export class RuneCausalityOverlay {
     this.addTransient(group, variant === 'cast' ? 720 : 560);
   }
 
-  private spawnEvolution(point: Point2D, stage: 1 | 2): void {
+  private spawnEvolution(rune: RuneKind, point: Point2D, stage: 1 | 2): void {
     const group = document.createElementNS(SVG_NS, 'g');
-    group.dataset.rune = 'vortex';
+    group.dataset.rune = rune;
     group.classList.add('rune-causality-ascension', 'rune-causality-ascension--cast');
 
     const radii = stage === 2 ? [38, 62, 88] : [34, 54, 72];
@@ -86,7 +89,7 @@ export class RuneCausalityOverlay {
     }
 
     const glyph = document.createElementNS(SVG_NS, 'path');
-    glyph.setAttribute('d', this.glyphPath('vortex', point, stage === 2 ? 34 : 27));
+    glyph.setAttribute('d', this.glyphPath(rune, point, stage === 2 ? 34 : 27));
     glyph.classList.add('rune-causality-glyph');
     group.append(glyph);
 
