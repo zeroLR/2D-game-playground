@@ -2,6 +2,7 @@ import * as CANNON from 'cannon-es';
 import type { TrackPose, ValidationTrackDefinition } from '../track/TestTrack';
 import { VALIDATION_TRACK } from '../track/TestTrack';
 import type { WorldGravityDirection } from './gravityMath';
+import { sampleMagneticRail, type MagneticRailSample } from './MagneticRail';
 import { PHYSICS_CONFIG } from './physicsConfig';
 
 export interface BallState {
@@ -10,11 +11,19 @@ export interface BallState {
   quaternion: { x: number; y: number; z: number; w: number };
   speed: number;
   grounded: boolean;
+  magnetic: MagneticRailSample;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
+
+const INACTIVE_MAGNETIC: MagneticRailSample = {
+  active: false,
+  pieceId: null,
+  strength: 0,
+  acceleration: { x: 0, y: 0, z: 0 },
+};
 
 export class PhysicsWorld {
   readonly world: CANNON.World;
@@ -23,6 +32,7 @@ export class PhysicsWorld {
   private readonly trackMaterial = new CANNON.Material('track');
   private readonly ballMaterial = new CANNON.Material('ball');
   private readonly contactMaterial: CANNON.ContactMaterial;
+  private magneticState: MagneticRailSample = INACTIVE_MAGNETIC;
 
   constructor(private readonly track: ValidationTrackDefinition = VALIDATION_TRACK) {
     this.world = new CANNON.World({
@@ -55,6 +65,10 @@ export class PhysicsWorld {
     this.ball.angularDamping = PHYSICS_CONFIG.ballAngularDamping;
     this.ball.allowSleep = false;
     this.world.addBody(this.ball);
+
+    // Apply attachment on every fixed physics sub-step. This keeps the magnetic
+    // field coherent when a rendered frame advances through multiple substeps.
+    this.world.addEventListener('preStep', () => this.applyMagneticRailForce());
   }
 
   setGravityDirection(direction: WorldGravityDirection): void {
@@ -92,6 +106,7 @@ export class PhysicsWorld {
     this.ball.quaternion.set(0, 0, 0, 1);
     this.ball.force.set(0, 0, 0);
     this.ball.torque.set(0, 0, 0);
+    this.magneticState = INACTIVE_MAGNETIC;
     this.ball.wakeUp();
   }
 
@@ -116,7 +131,27 @@ export class PhysicsWorld {
       quaternion: { x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w },
       speed: velocity.length(),
       grounded: this.world.contacts.some((contact) => contact.bi === this.ball || contact.bj === this.ball),
+      magnetic: {
+        active: this.magneticState.active,
+        pieceId: this.magneticState.pieceId,
+        strength: this.magneticState.strength,
+        acceleration: { ...this.magneticState.acceleration },
+      },
     };
+  }
+
+  private applyMagneticRailForce(): void {
+    this.magneticState = sampleMagneticRail(
+      { x: this.ball.position.x, y: this.ball.position.y, z: this.ball.position.z },
+      PHYSICS_CONFIG.ballRadius,
+      this.track.pieces,
+    );
+    if (!this.magneticState.active) return;
+
+    const mass = this.ball.mass;
+    this.ball.force.x += this.magneticState.acceleration.x * mass;
+    this.ball.force.y += this.magneticState.acceleration.y * mass;
+    this.ball.force.z += this.magneticState.acceleration.z * mass;
   }
 
   private createTrack(): void {
