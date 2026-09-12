@@ -92,4 +92,32 @@ describe('Split runtime SVG alignment', () => {
     expect(lanceT1.tipSparkEvery).toBeGreaterThan(0);
     expect(lanceT2.tipSparkEvery).toBeGreaterThan(0);
   });
+
+  it('keeps Base impact generic while evolved paths gain distinct impact identities', () => {
+    expect(getSplitRuntimeGlyphSpec('prism', 0).impact.kind).toBe('none');
+    expect(getSplitRuntimeGlyphSpec('prism', 1).impact.kind).toBe('prism-refraction');
+    expect(getSplitRuntimeGlyphSpec('prism', 2).impact.kind).toBe('prism-refraction');
+    expect(getSplitRuntimeGlyphSpec('lance', 1).impact.kind).toBe('lance-pierce');
+    expect(getSplitRuntimeGlyphSpec('lance', 2).impact.kind).toBe('lance-pierce');
+  });
+
+  it('escalates T2 impacts while preserving spread-vs-focus semantics', () => {
+    const prismT1 = getSplitRuntimeGlyphSpec('prism', 1).impact;
+    const prismT2 = getSplitRuntimeGlyphSpec('prism', 2).impact;
+    const lanceT1 = getSplitRuntimeGlyphSpec('lance', 1).impact;
+    const lanceT2 = getSplitRuntimeGlyphSpec('lance', 2).impact;
+
+    expect(prismT2.ringRadius).toBeGreaterThan(prismT1.ringRadius);
+    expect(prismT2.shardCount).toBeGreaterThan(prismT1.shardCount);
+    expect(prismT2.shardSpread).toBeGreaterThan(prismT1.shardSpread);
+
+    expect(lanceT2.streakLength).toBeGreaterThan(lanceT1.streakLength);
+    expect(lanceT2.shardSpeed).toBeGreaterThan(lanceT1.shardSpeed);
+    expect(lanceT2.secondaryAlpha).toBeGreaterThan(lanceT1.secondaryAlpha);
+
+    expect(prismT1.shardSpread).toBeGreaterThan(lanceT1.shardSpread);
+    expect(lanceT1.streakLength).toBeGreaterThan(prismT1.streakLength);
+    expect(prismT2.shardCount).toBeLessThanOrEqual(8);
+    expect(lanceT2.shardCount).toBeLessThanOrEqual(5);
+  });
 });
