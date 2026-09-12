@@ -6,6 +6,7 @@ import lanceT1Svg from '../assets/runes/lance-t1.svg?raw';
 import lanceT2Svg from '../assets/runes/lance-t2.svg?raw';
 
 export type SplitRuntimeGlyphKey = 'split-base' | 'prism-t1' | 'prism-t2' | 'lance-t1' | 'lance-t2';
+export type SplitEnergyMotionKind = 'none' | 'prism-outward' | 'lance-forward';
 
 export interface SplitMaterialProfile {
   glowEnabled: boolean;
@@ -18,12 +19,23 @@ export interface SplitMaterialProfile {
   hotScale: number;
 }
 
+export interface SplitEnergyMotionProfile {
+  kind: SplitEnergyMotionKind;
+  cycleSeconds: number;
+  primaryAlpha: number;
+  secondaryAlpha: number;
+  secondaryPhase: number;
+  travelStart: number;
+  travelEnd: number;
+}
+
 export interface SplitRuntimeGlyphSpec {
   key: SplitRuntimeGlyphKey;
   pivotX: number;
   pivotY: number;
   scale: number;
   material: SplitMaterialProfile;
+  motion: SplitEnergyMotionProfile;
 }
 
 const BASE_MATERIAL: SplitMaterialProfile = {
@@ -81,6 +93,56 @@ const LANCE_T2_MATERIAL: SplitMaterialProfile = {
   hotScale: 1.008,
 };
 
+const BASE_MOTION: SplitEnergyMotionProfile = {
+  kind: 'none',
+  cycleSeconds: 1,
+  primaryAlpha: 0,
+  secondaryAlpha: 0,
+  secondaryPhase: 0,
+  travelStart: 0,
+  travelEnd: 0,
+};
+
+const PRISM_T1_MOTION: SplitEnergyMotionProfile = {
+  kind: 'prism-outward',
+  cycleSeconds: 0.92,
+  primaryAlpha: 0.52,
+  secondaryAlpha: 0,
+  secondaryPhase: 0,
+  travelStart: 5,
+  travelEnd: 24,
+};
+
+const PRISM_T2_MOTION: SplitEnergyMotionProfile = {
+  kind: 'prism-outward',
+  cycleSeconds: 0.76,
+  primaryAlpha: 0.62,
+  secondaryAlpha: 0.34,
+  secondaryPhase: 0.46,
+  travelStart: 4,
+  travelEnd: 29,
+};
+
+const LANCE_T1_MOTION: SplitEnergyMotionProfile = {
+  kind: 'lance-forward',
+  cycleSeconds: 0.70,
+  primaryAlpha: 0.68,
+  secondaryAlpha: 0,
+  secondaryPhase: 0,
+  travelStart: 42,
+  travelEnd: 10,
+};
+
+const LANCE_T2_MOTION: SplitEnergyMotionProfile = {
+  kind: 'lance-forward',
+  cycleSeconds: 0.56,
+  primaryAlpha: 0.80,
+  secondaryAlpha: 0.38,
+  secondaryPhase: 0.38,
+  travelStart: 43,
+  travelEnd: 4,
+};
+
 const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
   'split-base': {
     key: 'split-base',
@@ -88,6 +150,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     pivotY: 32,
     scale: 1.68,
     material: BASE_MATERIAL,
+    motion: BASE_MOTION,
   },
   'prism-t1': {
     key: 'prism-t1',
@@ -95,6 +158,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     pivotY: 32,
     scale: 2.90,
     material: PRISM_T1_MATERIAL,
+    motion: PRISM_T1_MOTION,
   },
   'prism-t2': {
     key: 'prism-t2',
@@ -102,6 +166,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     pivotY: 32,
     scale: 3.47,
     material: PRISM_T2_MATERIAL,
+    motion: PRISM_T2_MOTION,
   },
   'lance-t1': {
     key: 'lance-t1',
@@ -109,6 +174,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     pivotY: 45,
     scale: 2.55,
     material: LANCE_T1_MATERIAL,
+    motion: LANCE_T1_MOTION,
   },
   'lance-t2': {
     key: 'lance-t2',
@@ -116,6 +182,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     pivotY: 46,
     scale: 3.40,
     material: LANCE_T2_MATERIAL,
+    motion: LANCE_T2_MOTION,
   },
 };
 
