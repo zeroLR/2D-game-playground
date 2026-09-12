@@ -9,6 +9,7 @@ export class GameScene {
 
   private readonly scene = new THREE.Scene();
   private readonly shell: THREE.Mesh;
+  private readonly shellMaterial: THREE.MeshBasicMaterial;
   private readonly reducedMotion: boolean;
   private readonly goalMaterial = new THREE.MeshStandardMaterial({
     color: 0x28544d,
@@ -16,6 +17,19 @@ export class GameScene {
     metalness: 0.36,
     emissive: 0x173f38,
     emissiveIntensity: 0.85,
+  });
+  private readonly magneticMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1f5c66,
+    roughness: 0.34,
+    metalness: 0.5,
+    emissive: 0x0b8f8c,
+    emissiveIntensity: 1.35,
+  });
+  private readonly magneticBandMaterial = new THREE.MeshBasicMaterial({
+    color: 0x8ff7e8,
+    transparent: true,
+    opacity: 0.82,
+    depthWrite: false,
   });
   private readonly goalBeaconMaterial = new THREE.MeshStandardMaterial({
     color: 0xb8eadf,
@@ -46,7 +60,9 @@ export class GameScene {
     this.addTrackGeometry();
     this.addCheckpointMarkers();
     this.addGoalBeacon();
-    this.shell = this.createInnerShell();
+    const shell = this.createInnerShell();
+    this.shell = shell.mesh;
+    this.shellMaterial = shell.material;
     this.scene.add(this.shell);
   }
 
@@ -75,6 +91,7 @@ export class GameScene {
       ballState.quaternion.z,
       ballState.quaternion.w,
     );
+    this.shellMaterial.opacity = 0.045 + ballState.magnetic.strength * 0.075;
     this.renderer.render(this.scene, camera);
   }
 
@@ -109,16 +126,37 @@ export class GameScene {
       transparent: true,
       opacity: 0.34,
     });
+    const magneticEdgeMaterial = new THREE.LineBasicMaterial({
+      color: 0x9ff7ec,
+      transparent: true,
+      opacity: 0.78,
+    });
 
     for (const piece of this.track.pieces) {
-      const mesh = this.createTrackPieceMesh(piece, piece.surface === 'goal' ? this.goalMaterial : trackMaterial);
+      const material = piece.surface === 'goal'
+        ? this.goalMaterial
+        : piece.surface === 'magnetic'
+          ? this.magneticMaterial
+          : trackMaterial;
+      const mesh = this.createTrackPieceMesh(piece, material);
       const edges = new THREE.LineSegments(
         new THREE.EdgesGeometry(mesh.geometry as THREE.BoxGeometry),
-        edgeMaterial,
+        piece.surface === 'magnetic' ? magneticEdgeMaterial : edgeMaterial,
       );
       edges.renderOrder = 1;
       mesh.add(edges);
+      if (piece.surface === 'magnetic') this.addMagneticBands(mesh, piece);
       this.scene.add(mesh);
+    }
+  }
+
+  private addMagneticBands(mesh: THREE.Mesh, piece: TrackPiece): void {
+    const geometry = new THREE.BoxGeometry(piece.size.x * 0.055, 0.025, piece.size.z * 0.86);
+    for (const x of [-0.26, 0, 0.26]) {
+      const band = new THREE.Mesh(geometry, this.magneticBandMaterial);
+      band.position.set(piece.size.x * x, piece.size.y / 2 + 0.025, 0);
+      band.renderOrder = 2;
+      mesh.add(band);
     }
   }
 
@@ -161,7 +199,7 @@ export class GameScene {
     this.scene.add(beacon);
   }
 
-  private createInnerShell(): THREE.Mesh {
+  private createInnerShell(): { mesh: THREE.Mesh; material: THREE.MeshBasicMaterial } {
     const geometry = new THREE.SphereGeometry(PHYSICS_CONFIG.ballRadius * 0.98, 18, 12);
     const material = new THREE.MeshBasicMaterial({
       color: 0xb9eee2,
@@ -171,6 +209,6 @@ export class GameScene {
       side: THREE.BackSide,
       depthWrite: false,
     });
-    return new THREE.Mesh(geometry, material);
+    return { mesh: new THREE.Mesh(geometry, material), material };
   }
 }
