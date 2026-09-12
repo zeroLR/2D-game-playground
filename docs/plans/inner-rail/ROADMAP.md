@@ -18,7 +18,7 @@ flowchart LR
     P11 --> P111[P1.1.1 Attachment Correction]
     P111 --> P112[P1.1.2 Transition Geometry]
     P112 --> P113[P1.1.3 Decision Gate]
-    P113 --> P12[P1.2 Moving / Rotating Rail]
+    P113 --> P12[P1.2 Moving Rail]
     P12 --> P1X[P1 Further Vocabulary]
     P1X --> P2[P2 Spatial Puzzle Levels]
     P2 --> P3[P3 Sensory / Art Vertical Slice]
@@ -125,7 +125,7 @@ The user chose to begin P1 exploration before those external checks were complet
 
 ## P1 — Physical Puzzle Vocabulary
 
-**Status:** active exploration; first vocabulary accepted.
+**Status:** active exploration; first vocabulary accepted, second vocabulary under phone validation.
 
 **Objective:** expand the core identity with the smallest set of physical rules that multiply decisions. Evaluate one vocabulary item at a time and reject mechanics that merely add spectacle, timing noise, or bespoke controls.
 
@@ -139,8 +139,6 @@ The accepted magnetic rule rebases passive down into the local magnetic surface 
 
 **Status:** accepted on real phone.
 
-Accepted phone result:
-
 - [x] magnetic attraction is clearly perceptible;
 - [x] the sphere remains attached instead of immediately dropping from steep magnetic surfaces;
 - [x] forward/back tilt remains the source of route motion;
@@ -150,23 +148,19 @@ Accepted phone result:
 
 **Status:** accepted on real phone.
 
-Accepted phone result:
-
 - [x] progressive roll geometry removes the hard near-90° collision wall;
 - [x] the player can traverse 60° / 70° / 78° using the same tilt controls;
 - [x] attachment remains stable on the 78° wall ride;
 - [x] braking / backward motion remain controllable;
 - [x] returning toward flat no longer produces a blocking seam.
 
-Full 90°+ inversion remains deferred. Technical ability to cling to a surface is not required for the base vocabulary to exceed 78°.
+Full 90°+ inversion remains deferred. It is an extension, not a requirement for the accepted base mechanic.
 
 ### P1.1.3 — Magnetic Decision Gate
 
 **Status:** **accepted on real phone**.
 
-**Goal:** prove Magnetic Rail changes planning around momentum rather than acting only as a safe wall surface.
-
-The route climbs to 78°, returns only to 60°, then deliberately ends the magnetic material before a lower ordinary catch deck. The player must prepare velocity while still attached, cross a short free-gravity release window, land on ordinary track, and brake normally.
+The route ends magnetic attachment while still banked at 60°, forcing the player to prepare momentum before a lower ordinary catch deck.
 
 Accepted phone evidence:
 
@@ -177,37 +171,47 @@ Accepted phone evidence:
 - [x] retries naturally encourage different approach-speed / braking decisions;
 - [x] Magnetic Rail functions as a planning tool rather than merely preventing falls.
 
-**Decision:** KEEP Magnetic Rail as core vocabulary. The mechanic has passed technical attachment, transition readability, and decision-depth gates.
+**Decision:** KEEP Magnetic Rail as core vocabulary.
 
-### P1.2 — Moving / Rotating Rail
+### P1.2 — Moving Rail / Prediction & Timing
 
-**Status:** next candidate.
+**Status:** implementation complete; real-phone vocabulary gate pending.
 
-**Goal:** introduce prediction and timing without adding a new player input. The surface itself changes pose; the player still only controls effective gravity and momentum.
+**Goal:** introduce prediction and timing without adding a new player input. The player still only controls effective gravity and momentum; the world now changes position on a deterministic physical cycle.
 
-#### Design contract
+#### Implemented rule
 
-- moving/rotating geometry must remain physically authored and collision-authoritative;
-- no automatic player carry beyond what follows from contact / surface motion;
-- no timing HUD is required for the first test; motion should be readable from the world;
-- first test should use one deterministic motion pattern, not procedural timing noise;
-- magnetic and moving surfaces may compose only after the moving-surface rule is understandable by itself;
-- the mechanic is kept only if it creates a decision static Magnetic Rail cannot already provide.
+- [x] one moving bridge uses an authored six-second sinusoidal cycle;
+- [x] bridge travel is 4.8 world units laterally and starts aligned with the route;
+- [x] moving surface is a Cannon kinematic body and remains collision-authoritative;
+- [x] simulation owns position / velocity and Three.js renders the current simulation state;
+- [x] ordinary friction / restitution rules apply to contact with the moving bridge;
+- [x] the crossing contains a real forward gap with no hidden static floor;
+- [x] restart resets the authored motion phase; checkpoint recovery leaves the live cycle running;
+- [x] amber world/material language communicates the moving surface without a persistent HUD;
+- [x] Magnetic Rail is intentionally absent from this test so timing is isolated;
+- [x] `?stage=p1-magnetic` preserves the accepted P1.1 regression route.
 
-#### P1.2 candidate phone gate
+#### P1.2 phone gate
 
-- [ ] player can read the motion cycle before committing;
-- [ ] waiting versus committing early creates a meaningful tradeoff;
-- [ ] braking / momentum preparation matters before stepping onto or leaving the moving surface;
+- [ ] player can read the bridge cycle before committing without a countdown;
+- [ ] waiting for alignment versus committing early creates a meaningful timing choice;
+- [ ] boarding while the surface moves produces believable physical carry/push rather than collider jitter;
+- [ ] braking / approach-speed preparation matters before crossing;
+- [ ] failure is attributable to timing / momentum judgment rather than physics instability;
+- [ ] retries naturally cause a different timing or approach-speed decision;
 - [ ] camera remains comfortable while the world moves independently of the sphere;
-- [ ] failure is attributable to timing / momentum judgment rather than collider jitter;
 - [ ] the mechanic remains understandable without a new button or persistent HUD.
+
+**KEEP** Moving Rail only if it adds a distinct prediction/timing decision that static Magnetic Rail does not already provide. Do not compose the two mechanics until this isolated gate passes.
 
 ### Later candidates — one at a time
 
 Choose only after P1.2 evidence:
 
-- 90°+ overhang / inversion using continuous or sufficiently refined magnetic geometry;
+- Moving Rail × Magnetic Rail composition;
+- rotating rail as an extension of accepted moving-surface behavior;
+- 90°+ magnetic overhang / inversion using continuous or sufficiently refined geometry;
 - stateful gate / switch;
 - alternate friction surface.
 
@@ -252,4 +256,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate gameplay direction is **P1.2 Moving / Rotating Rail**. First prove that world motion creates a distinct prediction/timing decision before composing it with accepted Magnetic Rail behavior.
+The immediate gameplay gate is **P1.2 Moving Rail on a real phone**. Prove readable timing and physically trustworthy moving-surface contact before composing it with Magnetic Rail or adding rotation.
