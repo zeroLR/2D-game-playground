@@ -40,7 +40,22 @@
   border-top: 1px solid rgba(176, 210, 220, 0.12);
 }
 
-.tuning-control { display: grid; gap: 7px; padding-top: 12px; }
+.tuning-group {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(176, 210, 220, 0.08);
+}
+
+.tuning-group:first-child { border-top: 0; }
+.tuning-group__label {
+  margin: 0;
+  color: #6f858a;
+  font: 700 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+}
+
+.tuning-control { display: grid; gap: 7px; padding-top: 10px; }
 .tuning-control__header {
   display: flex;
   align-items: baseline;
@@ -85,14 +100,15 @@
     width: auto;
   }
   .tuning-panel[open] {
-    max-height: min(62vh, 520px);
+    max-height: min(66vh, 560px);
     overflow-y: auto;
   }
 }
 
 @media (max-height: 520px) {
-  .tuning-root { width: min(280px, 42vw); }
+  .tuning-root { width: min(300px, 44vw); }
   .tuning-panel[open] { max-height: calc(100vh - 72px); overflow-y: auto; }
   .tuning-panel__body { gap: 10px; }
-  .tuning-control { padding-top: 8px; }
+  .tuning-group { padding-top: 8px; }
+  .tuning-control { padding-top: 7px; }
 }

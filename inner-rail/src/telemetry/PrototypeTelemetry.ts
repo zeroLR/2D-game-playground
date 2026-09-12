@@ -3,6 +3,7 @@ import type { TiltSnapshot } from '../input/TiltInput';
 import type { WorldGravityDirection } from '../physics/gravityMath';
 import type { BallState } from '../physics/PhysicsWorld';
 import type { TrackProgressSnapshot } from '../track/TrackProgress';
+import type { ValidationRunSnapshot, ValidationRunSummary } from '../validation/ValidationRun';
 
 function fixed(value: number | null | undefined): string {
   return value === null || value === undefined ? '—' : value.toFixed(2);
@@ -12,10 +13,18 @@ function viewportOrientation(): 'portrait' | 'landscape' {
   return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
 }
 
+function bestRunLabel(run: ValidationRunSummary | null): string {
+  if (!run) return '—';
+  return `${run.durationSeconds.toFixed(1)}s / ${run.fallCount} falls`;
+}
+
 export interface RuntimeTelemetry {
   ball: BallState;
   camera: CameraTelemetry;
   track: TrackProgressSnapshot;
+  validation: ValidationRunSnapshot;
+  bestPortrait: ValidationRunSummary | null;
+  bestLandscape: ValidationRunSummary | null;
   worldGravity: WorldGravityDirection;
   fallResetCount: number;
   gameplayActive: boolean;
@@ -30,6 +39,9 @@ export class PrototypeTelemetry {
       `mode        ${runtime.gameplayActive ? 'physics active' : 'paused'}`,
       `source      ${snapshot.source ?? 'none'}`,
       `viewport    ${viewportOrientation()}  ${window.innerWidth}×${window.innerHeight}`,
+      `validation  ${runtime.validation.active ? `${runtime.validation.elapsedSeconds.toFixed(1)}s` : 'inactive'}  falls ${runtime.validation.fallCount}`,
+      `best device portrait ${bestRunLabel(runtime.bestPortrait)}`,
+      `best device landscape ${bestRunLabel(runtime.bestLandscape)}`,
       `section     ${runtime.track.sectionLabel}`,
       `checkpoint  ${runtime.track.checkpointId}  goal ${Math.round(runtime.track.goalHoldProgress * 100)}%${runtime.track.complete ? ' COMPLETE' : ''}`,
       `screen deg  x ${fixed(snapshot.screenTiltDeg.x)}  y ${fixed(snapshot.screenTiltDeg.y)}`,

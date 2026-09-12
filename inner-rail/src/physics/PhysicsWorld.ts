@@ -12,12 +12,17 @@ export interface BallState {
   grounded: boolean;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export class PhysicsWorld {
   readonly world: CANNON.World;
   readonly ball: CANNON.Body;
 
   private readonly trackMaterial = new CANNON.Material('track');
   private readonly ballMaterial = new CANNON.Material('ball');
+  private readonly contactMaterial: CANNON.ContactMaterial;
 
   constructor(private readonly track: ValidationTrackDefinition = VALIDATION_TRACK) {
     this.world = new CANNON.World({
@@ -26,11 +31,11 @@ export class PhysicsWorld {
     this.world.allowSleep = true;
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
 
-    const contact = new CANNON.ContactMaterial(this.ballMaterial, this.trackMaterial, {
+    this.contactMaterial = new CANNON.ContactMaterial(this.ballMaterial, this.trackMaterial, {
       friction: PHYSICS_CONFIG.contactFriction,
       restitution: PHYSICS_CONFIG.contactRestitution,
     });
-    this.world.addContactMaterial(contact);
+    this.world.addContactMaterial(this.contactMaterial);
     this.world.defaultContactMaterial.friction = PHYSICS_CONFIG.contactFriction;
     this.world.defaultContactMaterial.restitution = PHYSICS_CONFIG.contactRestitution;
 
@@ -63,6 +68,15 @@ export class PhysicsWorld {
 
   setBallLinearDamping(value: number): void {
     this.ball.linearDamping = Math.min(0.99, Math.max(0, value));
+  }
+
+  setContactTuning(friction: number, restitution: number): void {
+    const nextFriction = clamp(friction, 0.15, 0.9);
+    const nextRestitution = clamp(restitution, 0, 0.25);
+    this.contactMaterial.friction = nextFriction;
+    this.contactMaterial.restitution = nextRestitution;
+    this.world.defaultContactMaterial.friction = nextFriction;
+    this.world.defaultContactMaterial.restitution = nextRestitution;
   }
 
   step(deltaSeconds: number): void {
