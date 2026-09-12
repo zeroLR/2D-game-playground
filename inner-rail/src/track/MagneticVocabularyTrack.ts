@@ -10,13 +10,15 @@ const FLAT_Y = -THICKNESS / 2;
 const TRANSITION_START_Z = -14.2;
 const TRANSITION_SPACING = 3.35;
 const TRANSITION_LENGTH = 3.8;
+const RELEASE_LANDING_X = -0.8;
+const RELEASE_LANDING_Y = -1.45;
+const RELEASE_LANDING_LENGTH = 5.8;
 
 /**
- * P1.1.2 keeps the magnetic rule unchanged and makes the authored transition
- * physically readable. The first pass jumped 25° → 55° → 85° → 115° between
- * long boxes, which created hard collision seams near vertical. This sequence
- * caps the first vocabulary gate at a steep wall ride and changes roll in
- * smaller increments with slight overlap between pieces.
+ * P1.1.3 keeps the accepted magnetic wall-ride geometry but stops the luminous
+ * surface while the route is still steep. The player must prepare momentum
+ * before attachment ends, cross a short free-gravity release window, and land
+ * on an ordinary lower catch deck.
  */
 export const MAGNETIC_TRANSITION_ROLL_DEG = [
   0,
@@ -30,12 +32,10 @@ export const MAGNETIC_TRANSITION_ROLL_DEG = [
   78,
   70,
   60,
-  48,
-  36,
-  24,
-  12,
-  0,
 ] as const;
+
+export const MAGNETIC_RELEASE_ROLL_DEG = 60;
+export const MAGNETIC_RELEASE_GAP = 1.4;
 
 const transitionPieces = MAGNETIC_TRANSITION_ROLL_DEG.map((rollDeg, index) =>
   trackBox(
@@ -53,12 +53,17 @@ const transitionPieces = MAGNETIC_TRANSITION_ROLL_DEG.map((rollDeg, index) =>
   ),
 );
 
-const transitionEndZ = TRANSITION_START_Z + (MAGNETIC_TRANSITION_ROLL_DEG.length - 1) * TRANSITION_SPACING;
+const releasePiece = transitionPieces[transitionPieces.length - 1];
+const releaseEndZ = releasePiece.position.z + releasePiece.size.z / 2;
+const releaseLandingStartZ = releaseEndZ + MAGNETIC_RELEASE_GAP;
+const releaseLandingCenterZ = releaseLandingStartZ + RELEASE_LANDING_LENGTH / 2;
+const brakeCenterZ = releaseLandingCenterZ + 5.6;
+const goalCenterZ = brakeCenterZ + 6.0;
 
 /**
  * P1 deliberately isolates one new world rule: luminous magnetic rail pieces
- * create a local attached-surface gravity frame. P1.1.2 tests that rule on a
- * steep but still readable wall ride before attempting inversion/overhang.
+ * create a local attached-surface gravity frame. P1.1.3 now asks whether that
+ * state changes planning, not merely whether the sphere can cling to a wall.
  */
 const pieces = [
   trackBox('m-start', 'magnetic-intro', 0, FLAT_Y, -30.0, 7.5, 9.0),
@@ -67,10 +72,40 @@ const pieces = [
 
   ...transitionPieces,
 
-  // Leaving luminous material removes attachment immediately. The final
-  // straight asks the player to re-read ordinary momentum and brake normally.
-  trackBox('m-release', 'magnetic-release', 0, FLAT_Y, transitionEndZ + 4.9, 5.4, 6.4),
-  trackBox('m-goal', 'magnetic-release', 0, FLAT_Y, transitionEndZ + 11.2, 6.4, 6.6, 0, 0, 0, 'goal'),
+  // The glow ends while still banked at 60°. There is intentionally no hidden
+  // floor in the release window: world gravity returns immediately and the
+  // player must carry enough forward momentum onto the lower ordinary deck.
+  trackBox(
+    'm-release-landing',
+    'magnetic-release',
+    RELEASE_LANDING_X,
+    RELEASE_LANDING_Y,
+    releaseLandingCenterZ,
+    6.0,
+    RELEASE_LANDING_LENGTH,
+  ),
+  trackBox(
+    'm-release-brake',
+    'magnetic-release',
+    RELEASE_LANDING_X,
+    RELEASE_LANDING_Y,
+    brakeCenterZ,
+    5.6,
+    5.8,
+  ),
+  trackBox(
+    'm-goal',
+    'magnetic-release',
+    RELEASE_LANDING_X,
+    RELEASE_LANDING_Y,
+    goalCenterZ,
+    6.4,
+    6.6,
+    0,
+    0,
+    0,
+    'goal',
+  ),
 ];
 
 const checkpoints: RecoveryCheckpoint[] = [
@@ -89,11 +124,14 @@ const checkpoints: RecoveryCheckpoint[] = [
     pose: { position: { x: 0, y: 1.05, z: -17.4 }, cameraYawRad: 0 },
   },
   {
-    id: 'cp-magnetic-release',
+    id: 'cp-magnetic-catch',
     section: 'magnetic-release',
-    trigger: { x: 0, y: 0, z: transitionEndZ + 1.9 },
-    triggerRadius: 2.2,
-    pose: { position: { x: 0, y: 1.05, z: transitionEndZ + 2.2 }, cameraYawRad: 0 },
+    trigger: { x: RELEASE_LANDING_X, y: -0.55, z: releaseLandingCenterZ },
+    triggerRadius: 2.5,
+    pose: {
+      position: { x: RELEASE_LANDING_X, y: -0.4, z: releaseLandingCenterZ },
+      cameraYawRad: 0,
+    },
   },
 ];
 
@@ -102,7 +140,7 @@ export const MAGNETIC_VOCABULARY_TRACK: ValidationTrackDefinition = {
   checkpoints,
   start: checkpoints[0].pose,
   goal: {
-    center: { x: 0, y: 0.6, z: transitionEndZ + 11.2 },
+    center: { x: RELEASE_LANDING_X, y: -0.55, z: goalCenterZ },
     halfExtents: { x: 3.1, y: 2.5, z: 2.7 },
     maxSpeed: 1.25,
     holdSeconds: 0.75,
@@ -113,7 +151,7 @@ export const MAGNETIC_VOCABULARY_TRACK: ValidationTrackDefinition = {
     minY: -10,
     maxY: 10,
     minZ: -38,
-    maxZ: transitionEndZ + 19,
+    maxZ: goalCenterZ + 10,
   },
 };
 
