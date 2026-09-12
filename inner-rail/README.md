@@ -4,19 +4,17 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P1.1.3 — Magnetic Decision Gate**
+**P1.1 — Magnetic Rail accepted / P1.2 candidate selection**
 
-The core control remains tilt-driven. Magnetic Rail is now technically established: luminous surfaces can become the local down direction, allowing a controllable 78° wall ride without changing the player's input model.
+The core control remains tilt-driven. Magnetic Rail has now passed its real-phone vocabulary gates: luminous surfaces can become the local down direction, the player can traverse a controllable 78° wall ride without changing the input model, and the release sequence creates intentional speed / braking / momentum decisions.
 
-P1.1.3 asks the more important product question: **does magnetic attachment change how the player plans momentum?**
-
-The active route now follows this loop:
+The accepted P1.1 loop is:
 
 `ordinary approach → magnetic entry → gradual wall ride → 78° hold → return to 60° → magnetic release gap → lower ordinary catch deck → brake goal`
 
-The luminous material deliberately ends while the surface is still banked. World gravity returns immediately; there is no hidden floor, scripted impulse, detach button, or automatic forward force. The player must prepare enough speed before release to reach the lower catch deck, then manage the remaining momentum on ordinary track.
+The luminous material ends while the surface is still banked. World gravity returns immediately; there is no hidden floor, scripted impulse, detach button, or automatic forward force. Successful play requires preparing enough speed before release, then managing the remaining momentum after landing.
 
-### Magnetic rule
+### Accepted Magnetic Rail rule
 
 While attached:
 
@@ -28,20 +26,26 @@ While attached:
 
 On ordinary track, the unchanged P0 world-gravity model applies immediately.
 
+### Accepted phone evidence
+
+- magnetic attraction is clearly perceptible;
+- the sphere remains attached on steep magnetic surfaces instead of immediately falling;
+- progressive roll geometry supports a stable 78° wall ride;
+- braking and backward motion remain controllable while attached;
+- the magnetic release makes approach speed and braking matter;
+- retries naturally lead to different momentum preparation rather than simply holding forward.
+
+This is sufficient to keep Magnetic Rail as core Physical Puzzle Vocabulary. Full 90°+ inversion remains deferred; it is an extension, not a requirement for the accepted base mechanic.
+
 > P0.4 tuning/validation instrumentation remains available via `?stage=p0`. The external five-player P0 gate and final orientation lock remain open; P1 exploration does not retroactively mark P0 PASS.
 
-## P1.1.3 phone gate
+## Next vocabulary direction
 
-On a real phone, verify that:
+The next recommended candidate is **P1.2 — Moving / Rotating Rail**.
 
-1. the 78° wall ride still feels as stable as the accepted P1.1.2 pass;
-2. approaching the end of the glow creates a clear reason to think about speed;
-3. insufficient momentum can miss the ordinary catch deck rather than being invisibly rescued;
-4. excess momentum creates a braking/correction problem after landing;
-5. retrying naturally leads to a different approach-speed or braking decision;
-6. the switch from magnetic gravity to ordinary gravity is understandable from world behavior alone.
+The goal is not spectacle. A moving or rotating surface should introduce prediction and timing while preserving the same tilt-to-gravity control contract. It should compose with Magnetic Rail so players must decide when to enter, how much momentum to retain, and whether to wait, brake, or commit before the surface changes orientation.
 
-If the route can still be solved by simply holding forward without reconsidering speed, Magnetic Rail has not yet earned its place as core puzzle vocabulary.
+Do not add full inversion, switches, or alternate friction at the same time. P1.2 should isolate one moving-surface rule first and keep it only if it creates a distinct decision that static Magnetic Rail cannot already provide.
 
 ## World readability
 
@@ -71,7 +75,3 @@ npm ci
 npm test
 npm run build
 ```
-
-## Next vocabulary decision
-
-Keep Magnetic Rail only if P1.1.3 proves intentional approach / speed / release planning. Only after that decision should the project consider full inversion or a second physical vocabulary item.
