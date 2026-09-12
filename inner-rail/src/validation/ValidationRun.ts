@@ -1,7 +1,7 @@
-import type { TiltSourceKind } from '../input/types';
-import type { TrackProgressSnapshot } from '../track/TrackProgress';
-import type { TrackSectionId } from '../track/TestTrack';
-import type { PrototypeTuningValues } from '../tuning/PrototypeTuning';
+import type { TiltSourceKind } from '../input/types.js';
+import type { TrackProgressSnapshot } from '../track/TrackProgress.js';
+import type { TrackSectionId } from '../track/TestTrack.js';
+import type { PrototypeTuningValues } from '../tuning/PrototypeTuning.js';
 
 export type ValidationOrientation = 'portrait' | 'landscape';
 
