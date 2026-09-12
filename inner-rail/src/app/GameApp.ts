@@ -9,7 +9,7 @@ import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
 import { resolveTrackForward } from '../track/TrackCamera';
 import { TrackProgress } from '../track/TrackProgress';
-import { VALIDATION_TRACK } from '../track/TestTrack';
+import type { TrackPose } from '../track/TestTrack';
 import {
   ballInertiaToLinearDamping,
   DEFAULT_PROTOTYPE_TUNING,
@@ -27,6 +27,7 @@ import {
   ValidationRunRecorder,
   type ValidationRunSummary,
 } from '../validation/ValidationRun';
+import { resolvePrototypeMode, type PrototypeMode } from './PrototypeMode';
 
 const SENSOR_SAMPLE_TIMEOUT_MS = 1800;
 
@@ -36,8 +37,9 @@ export class GameApp {
   private readonly tiltInput = new TiltInput();
   private readonly deviceSource = new DeviceOrientationSource();
   private readonly syntheticSource = new SyntheticTiltSource();
-  private readonly physics = new PhysicsWorld(VALIDATION_TRACK);
-  private readonly trackProgress = new TrackProgress(VALIDATION_TRACK);
+  private readonly mode: PrototypeMode;
+  private readonly physics: PhysicsWorld;
+  private readonly trackProgress: TrackProgress;
   private readonly validationRun = new ValidationRunRecorder();
   private readonly camera = new FirstPersonCamera();
   private readonly overlay: PrototypeOverlay;
@@ -58,6 +60,9 @@ export class GameApp {
   private validationHistory: ValidationRunSummary[] = loadValidationHistory();
 
   constructor(root: HTMLElement) {
+    this.mode = resolvePrototypeMode(location.search);
+    this.physics = new PhysicsWorld(this.mode.track);
+    this.trackProgress = new TrackProgress(this.mode.track);
     this.overlay = new PrototypeOverlay(root, {
       onStartDevice: () => void this.startDevice(),
       onStartSynthetic: () => void this.startSynthetic(),
@@ -65,8 +70,8 @@ export class GameApp {
       onRestart: () => this.restart(),
       onRecenter: () => this.recenter(),
       onSyntheticTilt: (x, y) => this.syntheticSource.setNormalized(x, y),
-    });
-    this.scene = new GameScene(this.overlay.sceneRoot, VALIDATION_TRACK);
+    }, this.mode.presentation);
+    this.scene = new GameScene(this.overlay.sceneRoot, this.mode.track);
     this.telemetry = new PrototypeTelemetry(this.overlay.telemetryRoot);
     this.tuningPanel = new PrototypeTuningPanel(this.overlay.tuningRoot, this.tuning, {
       onChange: (values) => this.applyTuning(values),
@@ -77,8 +82,8 @@ export class GameApp {
     const debugVisible = new URLSearchParams(location.search).get('debug') === '1';
     this.overlay.setDebugVisible(debugVisible);
     this.viewportOrientation = this.readViewportOrientation();
-    this.camera.reset(this.physics.getBallState(), VALIDATION_TRACK.start.cameraYawRad);
-    this.scene.setTrackProgress(this.trackProgress.snapshot(VALIDATION_TRACK.start.position));
+    this.camera.reset(this.physics.getBallState(), this.mode.track.start.cameraYawRad);
+    this.scene.setTrackProgress(this.trackProgress.snapshot(this.mode.track.start.position));
     this.resizeScene();
     this.bindKeyboard();
     window.addEventListener('resize', this.handleViewportResize);
@@ -199,14 +204,14 @@ export class GameApp {
 
   private resetSimulation(): void {
     this.trackProgress.reset();
-    this.resetToPose(VALIDATION_TRACK.start);
+    this.resetToPose(this.mode.track.start);
   }
 
   private recoverToCheckpoint(): void {
     this.resetToPose(this.trackProgress.recoveryPose());
   }
 
-  private resetToPose(pose: typeof VALIDATION_TRACK.start): void {
+  private resetToPose(pose: TrackPose): void {
     this.physics.resetBall(pose);
     this.physics.setVerticalGravity();
     this.worldGravityDirection = { x: 0, y: -1, z: 0 };
@@ -214,6 +219,7 @@ export class GameApp {
   }
 
   private startValidationRun(nowMs: number): void {
+    if (!this.mode.validationEnabled) return;
     const source = this.activeSource?.kind;
     if (!source) return;
     const ball = this.physics.getBallState();
@@ -329,12 +335,12 @@ export class GameApp {
 
       if (this.physics.isOutOfBounds()) {
         this.fallResetCount += 1;
-        this.validationRun.recordFall();
+        if (this.mode.validationEnabled) this.validationRun.recordFall();
         this.recoverToCheckpoint();
       } else {
         const trackForward = resolveTrackForward(
           steppedBallState.position,
-          VALIDATION_TRACK,
+          this.mode.track,
           this.camera.currentYawRad,
         );
         this.camera.update(steppedBallState, trackForward.yawRad, deltaSeconds);
@@ -343,8 +349,10 @@ export class GameApp {
 
     const ballState = this.physics.getBallState();
     const trackSnapshot = this.trackProgress.snapshot(ballState.position);
-    const completedRun = this.validationRun.update(nowMs, trackSnapshot);
-    if (completedRun) this.validationHistory = saveValidationRun(completedRun);
+    if (this.mode.validationEnabled) {
+      const completedRun = this.validationRun.update(nowMs, trackSnapshot);
+      if (completedRun) this.validationHistory = saveValidationRun(completedRun);
+    }
 
     this.overlay.renderVector(tiltSnapshot.normalized.x, tiltSnapshot.normalized.y);
     this.telemetry.render(tiltSnapshot, {
@@ -352,6 +360,8 @@ export class GameApp {
       camera: this.camera.telemetry(),
       track: trackSnapshot,
       validation: this.validationRun.snapshot(nowMs),
+      validationEnabled: this.mode.validationEnabled,
+      modeLabel: this.mode.presentation.milestoneLabel,
       bestPortrait: bestDeviceRun(this.validationHistory, 'portrait'),
       bestLandscape: bestDeviceRun(this.validationHistory, 'landscape'),
       worldGravity: this.worldGravityDirection,
