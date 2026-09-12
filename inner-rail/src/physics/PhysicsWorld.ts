@@ -23,6 +23,7 @@ const INACTIVE_MAGNETIC: MagneticRailSample = {
   pieceId: null,
   strength: 0,
   acceleration: { x: 0, y: 0, z: 0 },
+  inwardNormal: null,
 };
 
 export class PhysicsWorld {
@@ -66,8 +67,8 @@ export class PhysicsWorld {
     this.ball.allowSleep = false;
     this.world.addBody(this.ball);
 
-    // Apply attachment on every fixed physics sub-step. This keeps the magnetic
-    // field coherent when a rendered frame advances through multiple substeps.
+    // Apply seam/capture adhesion on every fixed physics sub-step. The main
+    // gravity direction is surface-relative while magnetic state is active.
     this.world.addEventListener('preStep', () => this.applyMagneticRailForce());
   }
 
@@ -136,6 +137,7 @@ export class PhysicsWorld {
         pieceId: this.magneticState.pieceId,
         strength: this.magneticState.strength,
         acceleration: { ...this.magneticState.acceleration },
+        inwardNormal: this.magneticState.inwardNormal ? { ...this.magneticState.inwardNormal } : null,
       },
     };
   }
