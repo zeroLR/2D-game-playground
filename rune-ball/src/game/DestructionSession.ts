@@ -28,6 +28,17 @@ import {
   projectSplitEchoes,
   type SplitCastProfile,
 } from '../progression/SplitEvolutionTuning';
+import {
+  ChainEvolutionSystem,
+  type ChainEvolutionPath,
+  type ChainEvolutionSnapshot,
+  type ChainEvolutionStage,
+} from '../progression/ChainEvolutionSystem';
+import {
+  getChainCastProfile,
+  planChainPropagation,
+  type ChainPropagationMode,
+} from '../progression/ChainEvolutionTuning';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
@@ -43,8 +54,10 @@ export type DestructionEvent =
   | { type: 'vortex-collapse'; center: Point2D; targets: Point2D[] }
   | { type: 'split-evolution-progress'; path: SplitEvolutionPath; stage: SplitEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
   | { type: 'split-evolved'; path: SplitEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
+  | { type: 'chain-evolution-progress'; path: ChainEvolutionPath; stage: ChainEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
+  | { type: 'chain-evolved'; path: ChainEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
-  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[] }
+  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[]; links: { from: Point2D; to: Point2D }[]; path: ChainEvolutionPath; stage: ChainEvolutionStage; mode: ChainPropagationMode; terminalCenter: Point2D | null; terminalRadius: number }
   | { type: 'overdrive-enter'; duration: number }
   | { type: 'overdrive-exit' };
 
@@ -56,18 +69,18 @@ export interface DestructionSnapshot {
   flow: FlowSnapshot;
   vortexEvolution: VortexEvolutionSnapshot;
   splitEvolution: SplitEvolutionSnapshot;
+  chainEvolution: ChainEvolutionSnapshot;
   splitEchoes: Point2D[];
 }
 
 export interface DestructionSessionOptions {
   vortexEvolutionPath?: VortexEvolutionPath;
   splitEvolutionPath?: SplitEvolutionPath;
+  chainEvolutionPath?: ChainEvolutionPath;
 }
 
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
-const CHAIN_RADIUS = 155;
-const CHAIN_TARGET_LIMIT = 3;
 
 export class DestructionSession {
   private readonly ball: BallModel;
@@ -77,6 +90,7 @@ export class DestructionSession {
   private readonly flow = new FlowSystem();
   private readonly vortexEvolution: VortexEvolutionSystem;
   private readonly splitEvolution: SplitEvolutionSystem;
+  private readonly chainEvolution: ChainEvolutionSystem;
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
@@ -88,6 +102,7 @@ export class DestructionSession {
     this.targets = new TargetSystem(bounds, BASE_TARGET_COUNT);
     this.vortexEvolution = new VortexEvolutionSystem(options.vortexEvolutionPath ?? 'gravity-well');
     this.splitEvolution = new SplitEvolutionSystem(options.splitEvolutionPath ?? 'prism');
+    this.chainEvolution = new ChainEvolutionSystem(options.chainEvolutionPath ?? 'relay');
   }
 
   get snapshot(): DestructionSnapshot {
@@ -101,6 +116,7 @@ export class DestructionSession {
       flow: this.flow.snapshot,
       vortexEvolution: this.vortexEvolution.snapshot,
       splitEvolution: this.splitEvolution.snapshot,
+      chainEvolution: this.chainEvolution.snapshot,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball, this.activeSplitProfile) : [],
     };
   }
@@ -366,16 +382,14 @@ export class DestructionSession {
     }
 
     if (canTriggerChain && this.runes.consumeChain()) {
+      const evolutionBeforeCast = this.chainEvolution.snapshot;
+      const profile = getChainCastProfile(evolutionBeforeCast.path, evolutionBeforeCast.stage);
       const excluded = new Set<number>(damagedThisStep);
       excluded.add(targetId);
-      const chainedIds = this.targets.nearbyTargetIds(
-        hit.target.position,
-        CHAIN_RADIUS,
-        excluded,
-        CHAIN_TARGET_LIMIT,
-      );
-      const positionsById = new Map(this.targets.snapshot.map((target) => [target.id, target.position]));
-      const chainedPositions = chainedIds
+      const targetSnapshot = this.targets.snapshot;
+      const plan = planChainPropagation(hit.target.position, targetSnapshot, excluded, profile);
+      const positionsById = new Map(targetSnapshot.map((target) => [target.id, target.position]));
+      const chainedPositions = plan.allTargetIds
         .map((id) => positionsById.get(id))
         .filter((position): position is Point2D => Boolean(position))
         .map((position) => ({ ...position }));
@@ -384,11 +398,41 @@ export class DestructionSession {
         type: 'chain-triggered',
         origin: { ...hit.target.position },
         targets: chainedPositions,
+        links: plan.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
+        path: evolutionBeforeCast.path,
+        stage: evolutionBeforeCast.stage,
+        mode: plan.mode,
+        terminalCenter: plan.terminalCenter ? { ...plan.terminalCenter } : null,
+        terminalRadius: plan.terminalRadius,
       });
-      if (this.flow.registerChain(chainedIds.length)) this.enterOverdrive(events);
+      if (this.flow.registerChain(plan.allTargetIds.length)) this.enterOverdrive(events);
 
-      for (const chainedId of chainedIds) {
+      for (const chainedId of plan.allTargetIds) {
         this.resolveTargetHit(chainedId, 'chain', false, events, damagedThisStep);
+      }
+
+      if (plan.qualificationCount >= 2) {
+        const advance = this.chainEvolution.registerQualifiedUse();
+        const evolution = advance.snapshot;
+        events.push({
+          type: 'chain-evolution-progress',
+          path: evolution.path,
+          stage: evolution.stage,
+          stageName: evolution.stageName,
+          qualifiedUses: evolution.qualifiedUses,
+          nextThreshold: evolution.nextThreshold,
+        });
+        if (advance.evolved && (evolution.stage === 1 || evolution.stage === 2)) {
+          events.push({
+            type: 'chain-evolved',
+            path: evolution.path,
+            stage: evolution.stage,
+            stageName: evolution.stageName,
+            qualifiedUses: evolution.qualifiedUses,
+            nextThreshold: evolution.nextThreshold,
+            center: plan.terminalCenter ? { ...plan.terminalCenter } : { ...hit.target.position },
+          });
+        }
       }
     }
 

@@ -28,6 +28,9 @@ export class RuneCausalityOverlay {
       case 'split-evolved':
         this.spawnEvolution('split', event.center, event.stage);
         break;
+      case 'chain-evolved':
+        this.spawnEvolution('chain', event.center, event.stage);
+        break;
       case 'vortex-collapse':
         this.spawnCollapse(event.center, event.targets);
         break;
@@ -35,7 +38,7 @@ export class RuneCausalityOverlay {
         if (event.runeInfluence) this.spawnSignature(event.runeInfluence, event.position, 'break');
         break;
       case 'chain-triggered':
-        this.spawnChainLinks(event.origin, event.targets);
+        this.spawnChainLinks(event.origin, event.links);
         break;
       default:
         break;
@@ -123,8 +126,8 @@ export class RuneCausalityOverlay {
     this.addTransient(group, 700);
   }
 
-  private spawnChainLinks(origin: Point2D, targets: Point2D[]): void {
-    if (targets.length === 0) return;
+  private spawnChainLinks(origin: Point2D, links: { from: Point2D; to: Point2D }[]): void {
+    if (links.length === 0) return;
     const group = document.createElementNS(SVG_NS, 'g');
     group.dataset.rune = 'chain';
     group.classList.add('rune-causality-chain');
@@ -134,12 +137,12 @@ export class RuneCausalityOverlay {
     originGlyph.classList.add('rune-causality-glyph');
     group.append(originGlyph);
 
-    for (const target of targets) {
+    for (const link of links) {
       const line = document.createElementNS(SVG_NS, 'line');
-      line.setAttribute('x1', origin.x.toFixed(2));
-      line.setAttribute('y1', origin.y.toFixed(2));
-      line.setAttribute('x2', target.x.toFixed(2));
-      line.setAttribute('y2', target.y.toFixed(2));
+      line.setAttribute('x1', link.from.x.toFixed(2));
+      line.setAttribute('y1', link.from.y.toFixed(2));
+      line.setAttribute('x2', link.to.x.toFixed(2));
+      line.setAttribute('y2', link.to.y.toFixed(2));
       line.classList.add('rune-causality-link');
       group.append(line);
     }

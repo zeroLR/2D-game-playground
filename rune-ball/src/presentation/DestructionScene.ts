@@ -5,6 +5,7 @@ import { DestructionSession, type DestructionEvent } from '../game/DestructionSe
 import type { TargetState } from '../game/TargetSystem';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 import type { SplitEvolutionPath, SplitEvolutionStage } from '../progression/SplitEvolutionSystem';
+import type { ChainEvolutionPath } from '../progression/ChainEvolutionSystem';
 import { SplitRuntimeSvg } from './SplitRuntimeSvg';
 import { SplitImpactPool } from './SplitImpactPool';
 import { classifyGesturePath } from '../input/GestureRecognizer';
@@ -76,6 +77,9 @@ interface ReleasedGesture {
 interface ChainBeat {
   origin: Point2D;
   targets: Point2D[];
+  links: { from: Point2D; to: Point2D }[];
+  terminalCenter: Point2D | null;
+  terminalRadius: number;
   life: number;
 }
 
@@ -91,6 +95,7 @@ export interface DestructionSceneCallbacks {
   onGameplayEvent?: (event: DestructionEvent) => void;
   vortexEvolutionPath?: VortexEvolutionPath;
   splitEvolutionPath?: SplitEvolutionPath;
+  chainEvolutionPath?: ChainEvolutionPath;
 }
 
 export class DestructionScene extends Container {
@@ -205,6 +210,7 @@ export class DestructionScene extends Container {
     this.session = new DestructionSession(this.arenaBounds, {
       vortexEvolutionPath: callbacks.vortexEvolutionPath,
       splitEvolutionPath: callbacks.splitEvolutionPath,
+      chainEvolutionPath: callbacks.chainEvolutionPath,
     });
     this.reducedMotion = typeof window !== 'undefined'
       && typeof window.matchMedia === 'function'
@@ -572,6 +578,17 @@ export class DestructionScene extends Container {
         this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());
         this.audio.playRune('split');
         break;
+      case 'chain-evolution-progress':
+        break;
+      case 'chain-evolved':
+        this.pushCapped(
+          this.runeConfirmations,
+          { rune: 'chain', center: { ...event.center }, life: RUNE_CONFIRM_SECONDS * (event.stage === 2 ? 2 : 1.45), success: true },
+          MAX_RUNE_CONFIRMATIONS,
+        );
+        this.cameraFeedback.kick(event.stage === 2 ? 'chain' : 'break', event.center, this.arenaCenter());
+        this.audio.playRune('chain');
+        break;
       case 'vortex-collapse':
         this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
         this.audio.playChain(Math.max(1, event.targets.length));
@@ -591,6 +608,9 @@ export class DestructionScene extends Container {
           {
             origin: { ...event.origin },
             targets: event.targets.map((point) => ({ ...point })),
+            links: event.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
+            terminalCenter: event.terminalCenter ? { ...event.terminalCenter } : null,
+            terminalRadius: event.terminalRadius,
             life: CHAIN_FX_SECONDS,
           },
           MAX_CHAIN_BEATS,
@@ -889,25 +909,32 @@ export class DestructionScene extends Container {
     for (const beat of this.chainBeats) {
       const progress = 1 - Math.max(0, beat.life) / CHAIN_FX_SECONDS;
       const alpha = 1 - progress;
-      for (const target of beat.targets) {
+      for (const link of beat.links) {
         this.runeFx
-          .moveTo(beat.origin.x, beat.origin.y)
-          .lineTo(target.x, target.y)
+          .moveTo(link.from.x, link.from.y)
+          .lineTo(link.to.x, link.to.y)
           .stroke({
             color: overdrive ? COLORS.white : COLORS.magenta,
             width: (overdrive ? 5 : 4) - progress * 2,
             alpha: alpha * (overdrive ? 0.88 : 0.72),
           });
-        this.runeFx
-          .circle(target.x, target.y, 10 + progress * (overdrive ? 24 : 18))
-          .stroke({ color: overdrive ? COLORS.cyan : COLORS.violet, width: overdrive ? 3 : 2, alpha: alpha * 0.58 });
 
         const travel = Math.min(1, progress * 1.45);
         const spark = {
-          x: beat.origin.x + (target.x - beat.origin.x) * travel,
-          y: beat.origin.y + (target.y - beat.origin.y) * travel,
+          x: link.from.x + (link.to.x - link.from.x) * travel,
+          y: link.from.y + (link.to.y - link.from.y) * travel,
         };
         this.runeFx.circle(spark.x, spark.y, overdrive ? 5 : 4).fill({ color: COLORS.white, alpha: alpha * 0.92 });
+      }
+      for (const target of beat.targets) {
+        this.runeFx
+          .circle(target.x, target.y, 10 + progress * (overdrive ? 24 : 18))
+          .stroke({ color: overdrive ? COLORS.cyan : COLORS.violet, width: overdrive ? 3 : 2, alpha: alpha * 0.58 });
+      }
+      if (beat.terminalCenter && beat.terminalRadius > 0) {
+        this.runeFx
+          .circle(beat.terminalCenter.x, beat.terminalCenter.y, beat.terminalRadius * (0.72 + progress * 0.28))
+          .stroke({ color: overdrive ? COLORS.white : COLORS.magenta, width: overdrive ? 3.5 : 2.5, alpha: alpha * 0.58 });
       }
     }
   }

@@ -1,12 +1,17 @@
 import {
+  CHAIN_PATH_ORDER,
   RUNE_TREE_ORDER,
   SPLIT_PATH_ORDER,
   VORTEX_PATH_ORDER,
+  getChainEvolutionNode,
+  getChainPathDefinition,
   getRuneBaseDefinition,
   getSplitEvolutionNode,
   getSplitPathDefinition,
   getVortexEvolutionNode,
   getVortexPathDefinition,
+  type ChainEvolutionPath,
+  type ChainEvolutionTier,
   type RuneTreeId,
   type SplitEvolutionPath,
   type SplitEvolutionTier,
@@ -19,11 +24,13 @@ import '../rune-tree-refinement.css';
 type NodeSelection =
   | { kind: 'base'; rune: RuneTreeId }
   | { kind: 'vortex'; path: VortexEvolutionPath; tier: VortexEvolutionTier }
-  | { kind: 'split'; path: SplitEvolutionPath; tier: SplitEvolutionTier };
+  | { kind: 'split'; path: SplitEvolutionPath; tier: SplitEvolutionTier }
+  | { kind: 'chain'; path: ChainEvolutionPath; tier: ChainEvolutionTier };
 
 export interface RuneTreePanelCallbacks {
   onVortexPathChange(path: VortexEvolutionPath): void;
   onSplitPathChange(path: SplitEvolutionPath): void;
+  onChainPathChange(path: ChainEvolutionPath): void;
 }
 
 export class RuneTreePanel {
@@ -37,16 +44,19 @@ export class RuneTreePanel {
   private selectedRune: RuneTreeId = 'vortex';
   private selectedVortexPath: VortexEvolutionPath;
   private selectedSplitPath: SplitEvolutionPath;
+  private selectedChainPath: ChainEvolutionPath;
   private selectedNode: NodeSelection;
 
   constructor(
     host: HTMLElement,
     selectedVortexPath: VortexEvolutionPath,
     selectedSplitPath: SplitEvolutionPath,
+    selectedChainPath: ChainEvolutionPath,
     callbacks: RuneTreePanelCallbacks,
   ) {
     this.selectedVortexPath = selectedVortexPath;
     this.selectedSplitPath = selectedSplitPath;
+    this.selectedChainPath = selectedChainPath;
     this.selectedNode = { kind: 'vortex', path: selectedVortexPath, tier: 2 };
     this.callbacks = callbacks;
 
@@ -119,6 +129,14 @@ export class RuneTreePanel {
     this.renderDetail();
   }
 
+  setChainPath(path: ChainEvolutionPath): void {
+    const changed = path !== this.selectedChainPath;
+    this.selectedChainPath = path;
+    if (changed && this.selectedRune === 'chain') this.selectedNode = { kind: 'chain', path, tier: 2 };
+    this.syncAuthoredState();
+    this.renderDetail();
+  }
+
   showConfiguredRune(): void {
     this.renderRune();
   }
@@ -132,7 +150,7 @@ export class RuneTreePanel {
     this.selectedRune = runeId;
     if (runeId === 'vortex') this.selectedNode = { kind: 'vortex', path: this.selectedVortexPath, tier: 2 };
     else if (runeId === 'split') this.selectedNode = { kind: 'split', path: this.selectedSplitPath, tier: 2 };
-    else this.selectedNode = { kind: 'base', rune: 'chain' };
+    else this.selectedNode = { kind: 'chain', path: this.selectedChainPath, tier: 2 };
     this.renderRune();
   }
 
@@ -147,7 +165,7 @@ export class RuneTreePanel {
 
     if (this.selectedRune === 'vortex') this.renderVortexTree();
     else if (this.selectedRune === 'split') this.renderSplitTree();
-    else this.renderFutureRune();
+    else this.renderChainTree();
 
     this.renderDetail();
   }
@@ -215,7 +233,30 @@ export class RuneTreePanel {
     this.syncAuthoredState();
   }
 
-  private makeBranch(rune: 'vortex' | 'split', path: string, equipped: boolean): HTMLElement {
+  private renderChainTree(): void {
+    const graph = document.createElement('div');
+    graph.className = 'rune-tree-graph';
+    const baseNode = this.makeBaseNode('chain');
+    const branches = document.createElement('div');
+    branches.className = 'rune-tree-branch-grid';
+
+    for (const path of CHAIN_PATH_ORDER) {
+      const branch = this.makeBranch('chain', path, path === this.selectedChainPath);
+      branch.append(
+        this.makePathMark(path),
+        this.makeChainEvolutionNode(path, 1),
+        this.makeRail(),
+        this.makeChainEvolutionNode(path, 2),
+      );
+      branches.append(branch);
+    }
+
+    graph.append(baseNode, branches);
+    this.treeMount.append(graph);
+    this.syncAuthoredState();
+  }
+
+  private makeBranch(rune: 'vortex' | 'split' | 'chain', path: string, equipped: boolean): HTMLElement {
     const branch = document.createElement('section');
     branch.className = 'rune-tree-branch';
     branch.dataset.path = path;
@@ -272,6 +313,25 @@ this.selectedSplitPath = path;
 this.callbacks.onSplitPathChange(path);
         }
         this.selectedNode = { kind: 'split', path, tier };
+      },
+    );
+  }
+
+  private makeChainEvolutionNode(path: ChainEvolutionPath, tier: ChainEvolutionTier): HTMLButtonElement {
+    const node = getChainEvolutionNode(path, tier);
+    return this.makeEvolutionButton(
+      `chain:${path}:${tier}`,
+      path,
+      tier,
+      node.name,
+      node.threshold,
+      'Chain',
+      () => {
+        if (path !== this.selectedChainPath) {
+          this.selectedChainPath = path;
+          this.callbacks.onChainPathChange(path);
+        }
+        this.selectedNode = { kind: 'chain', path, tier };
       },
     );
   }
@@ -374,9 +434,16 @@ this.callbacks.onSplitPathChange(path);
       return;
     }
 
-    const path = getSplitPathDefinition(this.selectedNode.path);
-    const node = getSplitEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
-    this.detailMount.append(this.makeEvolutionDetail(path.title, node.tier, node.name, node.description, node.playPattern, node.threshold, 'SPLIT'));
+    if (this.selectedNode.kind === 'split') {
+      const path = getSplitPathDefinition(this.selectedNode.path);
+      const node = getSplitEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
+      this.detailMount.append(this.makeEvolutionDetail(path.title, node.tier, node.name, node.description, node.playPattern, node.threshold, 'SPLIT'));
+      return;
+    }
+
+    const path = getChainPathDefinition(this.selectedNode.path);
+    const node = getChainEvolutionNode(this.selectedNode.path, this.selectedNode.tier);
+    this.detailMount.append(this.makeEvolutionDetail(path.title, node.tier, node.name, node.description, node.playPattern, node.threshold, 'CHAIN'));
   }
 
   private makeEvolutionDetail(
@@ -443,6 +510,11 @@ this.callbacks.onSplitPathChange(path);
         const branch = this.branchRoots.get(`split:${path}`);
         if (branch) branch.dataset.equipped = String(path === this.selectedSplitPath);
       }
+    } else {
+      for (const path of CHAIN_PATH_ORDER) {
+        const branch = this.branchRoots.get(`chain:${path}`);
+        if (branch) branch.dataset.equipped = String(path === this.selectedChainPath);
+      }
     }
     this.syncNodeSelection();
   }
@@ -452,8 +524,10 @@ this.callbacks.onSplitPathChange(path);
       const selected = this.selectedNode.kind === 'base'
         ? key === `${this.selectedNode.rune}:base`
         : this.selectedNode.kind === 'vortex'
-? key === `vortex:${this.selectedNode.path}:${this.selectedNode.tier}`
-: key === `split:${this.selectedNode.path}:${this.selectedNode.tier}`;
+          ? key === `vortex:${this.selectedNode.path}:${this.selectedNode.tier}`
+          : this.selectedNode.kind === 'split'
+            ? key === `split:${this.selectedNode.path}:${this.selectedNode.tier}`
+            : key === `chain:${this.selectedNode.path}:${this.selectedNode.tier}`;
       button.setAttribute('aria-pressed', String(selected));
     }
   }
