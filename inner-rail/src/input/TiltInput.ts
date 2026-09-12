@@ -32,8 +32,12 @@ const DEFAULT_CONFIG: TiltInputConfig = {
   smoothingResponsePerSecond: 12,
 };
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export class TiltInput {
-  private readonly config: TiltInputConfig;
+  private config: TiltInputConfig;
   private current: Vec2 = { x: 0, y: 0 };
   private neutral: Vec2 | null = null;
   private filtered: Vec2 = { x: 0, y: 0 };
@@ -53,6 +57,22 @@ export class TiltInput {
     this.current = { x: sample.screenXDeg, y: sample.screenYDeg };
     this.raw = sample.raw ?? null;
     this.lastSampleAtMs = sample.timestampMs;
+    this.refreshTarget();
+  }
+
+  setResponseTuning(tuning: Partial<TiltInputConfig>): void {
+    const deadZoneDeg = clamp(tuning.deadZoneDeg ?? this.config.deadZoneDeg, 0.25, 4);
+    const saturationDeg = clamp(tuning.saturationDeg ?? this.config.saturationDeg, 15, 35);
+    const smoothingResponsePerSecond = clamp(
+      tuning.smoothingResponsePerSecond ?? this.config.smoothingResponsePerSecond,
+      4,
+      24,
+    );
+    this.config = {
+      deadZoneDeg,
+      saturationDeg: Math.max(deadZoneDeg + 1, saturationDeg),
+      smoothingResponsePerSecond,
+    };
     this.refreshTarget();
   }
 
