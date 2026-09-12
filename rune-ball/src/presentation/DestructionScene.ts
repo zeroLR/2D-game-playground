@@ -41,6 +41,9 @@ const RUNE_CONFIRM_SECONDS = 0.38;
 const GESTURE_RELEASE_SECONDS = 0.22;
 const RUNE_FEEDBACK_SECONDS = 0.42;
 const CHAIN_FX_SECONDS = 0.32;
+const CHAIN_RELAY_FX_SECONDS = 0.24;
+const CHAIN_FUSE_FX_SECONDS = 0.44;
+const CHAIN_DETONATION_FX_SECONDS = 0.36;
 const OVERDRIVE_ENTRY_SECONDS = 0.72;
 const OVERDRIVE_EXIT_SECONDS = 0.46;
 const MAX_BREAK_RINGS = 18;
@@ -75,12 +78,14 @@ interface ReleasedGesture {
 }
 
 interface ChainBeat {
+  mode: 'base' | 'relay' | 'fuse' | 'detonation';
   origin: Point2D;
   targets: Point2D[];
   links: { from: Point2D; to: Point2D }[];
   terminalCenter: Point2D | null;
   terminalRadius: number;
   life: number;
+  duration: number;
 }
 
 interface OverdriveBeat {
@@ -603,20 +608,62 @@ export class DestructionScene extends Container {
         this.audio.playRuneFailure();
         break;
       case 'chain-triggered':
+        if (event.mode !== 'relay') {
+          const mode = event.mode === 'detonation' ? 'fuse' : 'base';
+          const duration = mode === 'fuse' ? CHAIN_FUSE_FX_SECONDS : CHAIN_FX_SECONDS;
+          this.pushCapped(
+            this.chainBeats,
+            {
+              mode,
+              origin: { ...event.origin },
+              targets: event.targets.map((point) => ({ ...point })),
+              links: event.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
+              terminalCenter: event.terminalCenter ? { ...event.terminalCenter } : null,
+              terminalRadius: event.terminalRadius,
+              life: duration,
+              duration,
+            },
+            MAX_CHAIN_BEATS,
+          );
+        }
+        if (event.mode === 'base') {
+          this.cameraFeedback.kick('chain', event.origin, this.arenaCenter());
+          this.audio.playChain(event.targets.length);
+        }
+        break;
+      case 'chain-hop':
         this.pushCapped(
           this.chainBeats,
           {
-            origin: { ...event.origin },
-            targets: event.targets.map((point) => ({ ...point })),
-            links: event.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
-            terminalCenter: event.terminalCenter ? { ...event.terminalCenter } : null,
-            terminalRadius: event.terminalRadius,
-            life: CHAIN_FX_SECONDS,
+            mode: 'relay',
+            origin: { ...event.from },
+            targets: [{ ...event.to }],
+            links: [{ from: { ...event.from }, to: { ...event.to } }],
+            terminalCenter: null,
+            terminalRadius: 0,
+            life: CHAIN_RELAY_FX_SECONDS,
+            duration: CHAIN_RELAY_FX_SECONDS,
           },
           MAX_CHAIN_BEATS,
         );
-        this.cameraFeedback.kick('chain', event.origin, this.arenaCenter());
-        this.audio.playChain(event.targets.length);
+        break;
+      case 'chain-detonated':
+        this.pushCapped(
+          this.chainBeats,
+          {
+            mode: 'detonation',
+            origin: { ...event.center },
+            targets: event.targets.map((point) => ({ ...point })),
+            links: [],
+            terminalCenter: { ...event.center },
+            terminalRadius: event.radius,
+            life: CHAIN_DETONATION_FX_SECONDS,
+            duration: CHAIN_DETONATION_FX_SECONDS,
+          },
+          MAX_CHAIN_BEATS,
+        );
+        this.cameraFeedback.kick('chain', event.center, this.arenaCenter());
+        this.audio.playChain(Math.max(1, event.targets.length));
         break;
       case 'overdrive-enter': {
         const center = this.session.snapshot.ball.position;
@@ -907,19 +954,65 @@ export class DestructionScene extends Container {
     }
 
     for (const beat of this.chainBeats) {
-      const progress = 1 - Math.max(0, beat.life) / CHAIN_FX_SECONDS;
+      const progress = 1 - Math.max(0, beat.life) / beat.duration;
       const alpha = 1 - progress;
+
+      if (beat.mode === 'fuse') {
+        const chargePulse = 0.55 + Math.sin(progress * Math.PI * 5) * 0.20;
+        for (const link of beat.links) {
+          this.runeFx
+            .moveTo(link.from.x, link.from.y)
+            .lineTo(link.to.x, link.to.y)
+            .stroke({ color: COLORS.violet, width: 1.6, alpha: 0.18 + chargePulse * 0.22 });
+          this.runeFx
+            .circle(link.to.x, link.to.y, 5 + progress * 4)
+            .stroke({ color: COLORS.cyan, width: 1.4, alpha: 0.28 + chargePulse * 0.30 });
+        }
+        if (beat.terminalCenter && beat.terminalRadius > 0) {
+          const chargeRadius = beat.terminalRadius * (1.06 - progress * 0.32);
+          this.runeFx
+            .circle(beat.terminalCenter.x, beat.terminalCenter.y, chargeRadius)
+            .stroke({ color: COLORS.magenta, width: 2.2 + progress * 1.4, alpha: 0.24 + progress * 0.48 });
+          this.runeFx
+            .circle(beat.terminalCenter.x, beat.terminalCenter.y, 5 + progress * 7)
+            .fill({ color: COLORS.white, alpha: 0.24 + progress * 0.58 });
+        }
+        continue;
+      }
+
+      if (beat.mode === 'detonation') {
+        if (beat.terminalCenter && beat.terminalRadius > 0) {
+          const radius = 10 + beat.terminalRadius * Math.min(1, progress * 1.25);
+          this.runeFx
+            .circle(beat.terminalCenter.x, beat.terminalCenter.y, radius)
+            .stroke({ color: overdrive ? COLORS.white : COLORS.magenta, width: 5 - progress * 2.5, alpha: alpha * 0.92 });
+          this.runeFx
+            .circle(beat.terminalCenter.x, beat.terminalCenter.y, radius * 0.72)
+            .stroke({ color: COLORS.cyan, width: 2.5, alpha: alpha * 0.62 });
+          for (let index = 0; index < 6; index += 1) {
+            const angle = index * Math.PI / 3;
+            const inner = 12 + progress * 10;
+            const outer = 28 + progress * beat.terminalRadius * 0.72;
+            this.runeFx
+              .moveTo(beat.terminalCenter.x + Math.cos(angle) * inner, beat.terminalCenter.y + Math.sin(angle) * inner)
+              .lineTo(beat.terminalCenter.x + Math.cos(angle) * outer, beat.terminalCenter.y + Math.sin(angle) * outer)
+              .stroke({ color: index % 2 === 0 ? COLORS.white : COLORS.violet, width: 2, alpha: alpha * 0.54 });
+          }
+        }
+        continue;
+      }
+
       for (const link of beat.links) {
         this.runeFx
           .moveTo(link.from.x, link.from.y)
           .lineTo(link.to.x, link.to.y)
           .stroke({
-            color: overdrive ? COLORS.white : COLORS.magenta,
+            color: overdrive ? COLORS.white : beat.mode === 'relay' ? COLORS.cyan : COLORS.magenta,
             width: (overdrive ? 5 : 4) - progress * 2,
             alpha: alpha * (overdrive ? 0.88 : 0.72),
           });
 
-        const travel = Math.min(1, progress * 1.45);
+        const travel = Math.min(1, progress * 1.65);
         const spark = {
           x: link.from.x + (link.to.x - link.from.x) * travel,
           y: link.from.y + (link.to.y - link.from.y) * travel,
@@ -930,11 +1023,6 @@ export class DestructionScene extends Container {
         this.runeFx
           .circle(target.x, target.y, 10 + progress * (overdrive ? 24 : 18))
           .stroke({ color: overdrive ? COLORS.cyan : COLORS.violet, width: overdrive ? 3 : 2, alpha: alpha * 0.58 });
-      }
-      if (beat.terminalCenter && beat.terminalRadius > 0) {
-        this.runeFx
-          .circle(beat.terminalCenter.x, beat.terminalCenter.y, beat.terminalRadius * (0.72 + progress * 0.28))
-          .stroke({ color: overdrive ? COLORS.white : COLORS.magenta, width: overdrive ? 3.5 : 2.5, alpha: alpha * 0.58 });
       }
     }
   }
