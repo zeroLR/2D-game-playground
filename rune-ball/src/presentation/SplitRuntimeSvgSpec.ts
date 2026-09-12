@@ -7,6 +7,7 @@ import lanceT2Svg from '../assets/runes/lance-t2.svg?raw';
 
 export type SplitRuntimeGlyphKey = 'split-base' | 'prism-t1' | 'prism-t2' | 'lance-t1' | 'lance-t2';
 export type SplitEnergyMotionKind = 'none' | 'prism-outward' | 'lance-forward';
+export type SplitParticleEnvelopeKind = 'none' | 'prism-crystal' | 'lance-fleck';
 
 export interface SplitMaterialProfile {
   glowEnabled: boolean;
@@ -29,6 +30,19 @@ export interface SplitEnergyMotionProfile {
   travelEnd: number;
 }
 
+export interface SplitParticleEnvelopeProfile {
+  kind: SplitParticleEnvelopeKind;
+  maxActive: number;
+  emitInterval: number;
+  lifetime: number;
+  speed: number;
+  spread: number;
+  reach: number;
+  alpha: number;
+  size: number;
+  tipSparkEvery: number;
+}
+
 export interface SplitRuntimeGlyphSpec {
   key: SplitRuntimeGlyphKey;
   pivotX: number;
@@ -36,6 +50,7 @@ export interface SplitRuntimeGlyphSpec {
   scale: number;
   material: SplitMaterialProfile;
   motion: SplitEnergyMotionProfile;
+  particles: SplitParticleEnvelopeProfile;
 }
 
 const BASE_MATERIAL: SplitMaterialProfile = {
@@ -143,6 +158,71 @@ const LANCE_T2_MOTION: SplitEnergyMotionProfile = {
   travelEnd: 4,
 };
 
+const BASE_PARTICLES: SplitParticleEnvelopeProfile = {
+  kind: 'none',
+  maxActive: 0,
+  emitInterval: 1,
+  lifetime: 0,
+  speed: 0,
+  spread: 0,
+  reach: 0,
+  alpha: 0,
+  size: 1,
+  tipSparkEvery: 0,
+};
+
+const PRISM_T1_PARTICLES: SplitParticleEnvelopeProfile = {
+  kind: 'prism-crystal',
+  maxActive: 8,
+  emitInterval: 0.095,
+  lifetime: 0.36,
+  speed: 18,
+  spread: 18,
+  reach: 23,
+  alpha: 0.66,
+  size: 0.82,
+  tipSparkEvery: 0,
+};
+
+const PRISM_T2_PARTICLES: SplitParticleEnvelopeProfile = {
+  kind: 'prism-crystal',
+  maxActive: 12,
+  emitInterval: 0.065,
+  lifetime: 0.42,
+  speed: 23,
+  spread: 22,
+  reach: 28,
+  alpha: 0.76,
+  size: 0.96,
+  tipSparkEvery: 0,
+};
+
+const LANCE_T1_PARTICLES: SplitParticleEnvelopeProfile = {
+  kind: 'lance-fleck',
+  maxActive: 7,
+  emitInterval: 0.085,
+  lifetime: 0.28,
+  speed: 24,
+  spread: 7,
+  reach: 30,
+  alpha: 0.70,
+  size: 0.80,
+  tipSparkEvery: 4,
+};
+
+const LANCE_T2_PARTICLES: SplitParticleEnvelopeProfile = {
+  kind: 'lance-fleck',
+  maxActive: 10,
+  emitInterval: 0.060,
+  lifetime: 0.34,
+  speed: 30,
+  spread: 9,
+  reach: 39,
+  alpha: 0.80,
+  size: 0.94,
+  tipSparkEvery: 3,
+};
+
 const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
   'split-base': {
     key: 'split-base',
@@ -151,6 +231,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     scale: 1.68,
     material: BASE_MATERIAL,
     motion: BASE_MOTION,
+    particles: BASE_PARTICLES,
   },
   'prism-t1': {
     key: 'prism-t1',
@@ -159,6 +240,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     scale: 2.90,
     material: PRISM_T1_MATERIAL,
     motion: PRISM_T1_MOTION,
+    particles: PRISM_T1_PARTICLES,
   },
   'prism-t2': {
     key: 'prism-t2',
@@ -167,6 +249,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     scale: 3.47,
     material: PRISM_T2_MATERIAL,
     motion: PRISM_T2_MOTION,
+    particles: PRISM_T2_PARTICLES,
   },
   'lance-t1': {
     key: 'lance-t1',
@@ -175,6 +258,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     scale: 2.55,
     material: LANCE_T1_MATERIAL,
     motion: LANCE_T1_MOTION,
+    particles: LANCE_T1_PARTICLES,
   },
   'lance-t2': {
     key: 'lance-t2',
@@ -183,6 +267,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     scale: 3.40,
     material: LANCE_T2_MATERIAL,
     motion: LANCE_T2_MOTION,
+    particles: LANCE_T2_PARTICLES,
   },
 };
 
