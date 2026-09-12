@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "test": "tsc --noEmit && npm run test:math",
-    "test:math": "rm -rf .test-dist && tsc src/input/orientationMath.test.ts src/physics/gravityMath.test.ts src/physics/MagneticRail.test.ts src/camera/cameraMath.test.ts src/track/TrackCamera.test.ts src/track/TrackProgress.test.ts src/validation/ValidationRun.test.ts --outDir .test-dist --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck && node .test-dist/input/orientationMath.test.js && node .test-dist/physics/gravityMath.test.js && node .test-dist/physics/MagneticRail.test.js && node .test-dist/camera/cameraMath.test.js && node .test-dist/track/TrackCamera.test.js && node .test-dist/track/TrackProgress.test.js && node .test-dist/validation/ValidationRun.test.js && rm -rf .test-dist"
+    "test:math": "rm -rf .test-dist && tsc src/input/orientationMath.test.ts src/physics/gravityMath.test.ts src/physics/MagneticRail.test.ts src/camera/cameraMath.test.ts src/track/TrackCamera.test.ts src/track/TrackProgress.test.ts src/track/MagneticVocabularyTrack.test.ts src/validation/ValidationRun.test.ts --outDir .test-dist --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck && node .test-dist/input/orientationMath.test.js && node .test-dist/physics/gravityMath.test.js && node .test-dist/physics/MagneticRail.test.js && node .test-dist/camera/cameraMath.test.js && node .test-dist/track/TrackCamera.test.js && node .test-dist/track/TrackProgress.test.js && node .test-dist/track/MagneticVocabularyTrack.test.js && node .test-dist/validation/ValidationRun.test.js && rm -rf .test-dist"
   },
   "dependencies": {
     "cannon-es": "^0.20.0",

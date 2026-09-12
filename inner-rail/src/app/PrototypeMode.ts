@@ -32,10 +32,10 @@ const P1_MAGNETIC_MODE: PrototypeMode = {
   track: MAGNETIC_VOCABULARY_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.1.1 / MAGNETIC ATTACHMENT',
+    milestoneLabel: 'P1.1.2 / MAGNETIC WALL RIDE',
     kicker: 'PHYSICAL PUZZLE VOCABULARY',
-    title: 'Let the rail become down.',
-    body: 'On luminous rail, neutral gravity anchors into the surface while your forward/back tilt still controls momentum. Traverse the overhang, then read ordinary gravity again when the glow ends.',
+    title: 'Follow the surface, not the seam.',
+    body: 'The luminous rail now rolls gradually into a steep 78° wall ride. Magnetic gravity keeps the surface as down while the same forward/back tilt controls momentum; full inversion comes later only if this transition reads naturally.',
   },
 };
 
