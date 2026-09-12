@@ -110,7 +110,7 @@ export class PrototypeTuningPanel {
       <details class="tuning-panel">
         <summary>
           <span>調校</span>
-          <small>P0.4 手感</small>
+          <small>原型手感</small>
         </summary>
         <div class="tuning-panel__body">
           ${GROUPS.map((group) => `
