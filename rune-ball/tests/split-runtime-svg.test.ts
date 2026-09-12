@@ -44,4 +44,27 @@ describe('Split runtime SVG alignment', () => {
     expect(prismT1.backGlowBlur).toBeGreaterThan(lanceT1.backGlowBlur);
     expect(lanceT1.hotAlpha).toBeGreaterThan(prismT1.hotAlpha);
   });
+
+  it('gives Prism outward motion and Lance forward motion while Base remains static', () => {
+    expect(getSplitRuntimeGlyphSpec('prism', 0).motion.kind).toBe('none');
+    expect(getSplitRuntimeGlyphSpec('prism', 1).motion.kind).toBe('prism-outward');
+    expect(getSplitRuntimeGlyphSpec('prism', 2).motion.kind).toBe('prism-outward');
+    expect(getSplitRuntimeGlyphSpec('lance', 1).motion.kind).toBe('lance-forward');
+    expect(getSplitRuntimeGlyphSpec('lance', 2).motion.kind).toBe('lance-forward');
+  });
+
+  it('escalates T2 cadence with a second phase without turning motion into particles', () => {
+    const prismT1 = getSplitRuntimeGlyphSpec('prism', 1).motion;
+    const prismT2 = getSplitRuntimeGlyphSpec('prism', 2).motion;
+    const lanceT1 = getSplitRuntimeGlyphSpec('lance', 1).motion;
+    const lanceT2 = getSplitRuntimeGlyphSpec('lance', 2).motion;
+
+    expect(prismT2.cycleSeconds).toBeLessThan(prismT1.cycleSeconds);
+    expect(prismT2.secondaryAlpha).toBeGreaterThan(0);
+    expect(prismT2.travelEnd).toBeGreaterThan(prismT1.travelEnd);
+
+    expect(lanceT2.cycleSeconds).toBeLessThan(lanceT1.cycleSeconds);
+    expect(lanceT2.secondaryAlpha).toBeGreaterThan(0);
+    expect(lanceT2.travelEnd).toBeLessThan(lanceT1.travelEnd);
+  });
 });
