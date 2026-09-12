@@ -7,6 +7,7 @@ import { cameraRelativeGravityToWorld, type WorldGravityDirection } from '../phy
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
+import { resolveTrackForward } from '../track/TrackCamera';
 import { TrackProgress } from '../track/TrackProgress';
 import { VALIDATION_TRACK } from '../track/TestTrack';
 import {
@@ -296,7 +297,12 @@ export class GameApp {
         this.fallResetCount += 1;
         this.recoverToCheckpoint();
       } else {
-        this.camera.update(steppedBallState, deltaSeconds);
+        const trackForward = resolveTrackForward(
+          steppedBallState.position,
+          VALIDATION_TRACK,
+          this.camera.currentYawRad,
+        );
+        this.camera.update(steppedBallState, trackForward.yawRad, deltaSeconds);
       }
     }
 
