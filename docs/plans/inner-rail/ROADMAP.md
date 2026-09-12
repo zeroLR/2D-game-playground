@@ -17,7 +17,8 @@ flowchart LR
     P04 --> P11[P1.1 Magnetic Rail]
     P11 --> P111[P1.1.1 Attachment Correction]
     P111 --> P112[P1.1.2 Transition Geometry]
-    P112 --> P1X[P1 Further Vocabulary]
+    P112 --> P113[P1.1.3 Decision Gate]
+    P113 --> P1X[P1 Further Vocabulary]
     P1X --> P2[P2 Spatial Puzzle Levels]
     P2 --> P3[P3 Sensory / Art Vertical Slice]
 ```
@@ -129,15 +130,13 @@ The user has chosen to begin P1 exploration before those external checks are com
 
 ### P1.1 — Magnetic Rail / Attached Surface
 
-**Status:** mechanic established; geometry/readability iteration active.
+**Status:** mechanic technically established; decision-depth gate active.
 
-The first implementation used only a local surface-normal attraction force and failed on phone because ordinary world gravity still pulled the sphere downward along steep surfaces.
+The magnetic rule rebases passive down into the local magnetic surface while keeping forward/back and left/right intent camera-relative. A local normal-only attraction force stabilizes capture without steering or velocity rewriting.
 
 ### P1.1.1 — Magnetic Attachment Correction
 
-**Status:** technical attachment accepted on real phone.
-
-**Corrected rule:** magnetic rail anchors the passive down component of effective gravity into the local surface while preserving camera-relative horizontal tilt intent. The explicit magnetic force remains only as local surface-normal seam/capture adhesion.
+**Status:** accepted on real phone.
 
 Accepted phone result:
 
@@ -146,37 +145,51 @@ Accepted phone result:
 - [x] forward/back tilt remains the source of route motion;
 - [x] no automatic route-forward propulsion is introduced.
 
-The remaining failure was geometric rather than physical: the authored `25° → 55° → 85° → 115°` box sequence created hard collision seams, and the near-90° transition became effectively impassable.
-
 ### P1.1.2 — Magnetic Transition Geometry Pass
+
+**Status:** accepted on real phone.
+
+Accepted phone result:
+
+- [x] progressive roll geometry removes the hard near-90° collision wall;
+- [x] the player can traverse 60° / 70° / 78° using the same tilt controls;
+- [x] attachment remains stable on the 78° wall ride;
+- [x] braking / backward motion remain controllable;
+- [x] returning toward flat no longer produces a blocking seam.
+
+Full 90°+ inversion remains deferred. Technical ability to cling to a surface is not enough by itself to justify the mechanic.
+
+### P1.1.3 — Magnetic Decision Gate
 
 **Status:** implementation complete; real-phone gate pending.
 
-**Goal:** prove that magnetic wall riding is readable and controllable before attempting inversion.
+**Goal:** prove Magnetic Rail changes planning around momentum rather than acting only as a safe wall surface.
 
-Changes:
+The route now climbs to 78°, returns only to 60°, then deliberately ends the magnetic material before a lower ordinary catch deck. The player must prepare velocity while still attached, cross a short free-gravity release window, land on ordinary track, and brake normally.
 
-- [x] preserve the accepted P1.1.1 magnetic gravity rule unchanged;
-- [x] replace the large 25°–30° roll jumps with a maximum 12° step;
-- [x] shorten and slightly overlap transition pieces to reduce hard seam gaps;
-- [x] cap this vocabulary gate at a steep 78° wall ride;
-- [x] add a short 78° hold section before returning gradually to horizontal;
-- [x] defer 90°+ overhang/inversion until the wall-ride transition itself is proven.
+#### Constraints
 
-#### P1.1.2 phone gate
+- [x] magnetic gravity / strength unchanged from accepted P1.1.1;
+- [x] wall-ride transition unchanged through the accepted 78° peak;
+- [x] release occurs while the surface is still banked at 60°;
+- [x] no hidden floor exists in the release gap;
+- [x] landing is ordinary track and immediately restores world gravity;
+- [x] no jump button, detach button, scripted impulse, auto-forward force, or velocity rewrite is added.
 
-- [ ] enter the luminous transition without a noticeable collision wall at the first roll change;
-- [ ] maintain forward motion through 60° / 70° / 78° using the same tilt controls;
-- [ ] remain attached when briefly returning toward neutral at 78°;
-- [ ] reverse/brake while on the steep surface without camera or control inversion;
-- [ ] return to flat magnetic rail without a hard seam stop;
-- [ ] leave magnetic material and immediately recover ordinary gravity behavior.
+#### P1.1.3 phone gate
 
-**KEEP** Magnetic Rail only if this readable transition creates meaningful approach/speed/release decisions. Full inversion is a later extension, not a requirement for the base vocabulary.
+- [ ] player naturally notices that speed must be prepared before the luminous material ends;
+- [ ] too little momentum can fail the release instead of being invisibly rescued;
+- [ ] excessive momentum can require braking/correction on the catch deck rather than being harmless;
+- [ ] the release from magnetic gravity to world gravity is understandable without HUD explanation;
+- [ ] retry behavior encourages a different approach speed or braking decision;
+- [ ] the mechanic feels like a planning tool, not merely a surface that prevents falling.
+
+**KEEP** Magnetic Rail as core vocabulary only if this gate produces intentional approach / speed / release decisions. If players simply hold forward and pass, redesign or remove the mechanic before adding another vocabulary item.
 
 ### Later candidates — one at a time
 
-Do not schedule these automatically. Choose the next only after P1.1.2 evidence:
+Choose the next only after the P1.1.3 decision gate:
 
 - 90°+ overhang / inversion using a continuous or sufficiently refined transition representation;
 - moving or rotating rail section;
@@ -224,4 +237,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate gameplay gate is **P1.1.2 Magnetic Transition Geometry on a real phone**. Prove a smooth, controllable steep wall ride before spending more complexity on inversion.
+The immediate gameplay gate is **P1.1.3 Magnetic Decision Gate on a real phone**. Confirm that attachment changes momentum planning before spending more complexity on inversion or a second mechanic.
