@@ -38,7 +38,13 @@ export class RuneCausalityOverlay {
         if (event.runeInfluence) this.spawnSignature(event.runeInfluence, event.position, 'break');
         break;
       case 'chain-triggered':
-        this.spawnChainLinks(event.origin, event.links);
+        if (event.mode !== 'relay') this.spawnChainLinks(event.origin, event.links);
+        break;
+      case 'chain-hop':
+        this.spawnChainLinks(event.from, [{ from: event.from, to: event.to }]);
+        break;
+      case 'chain-detonated':
+        this.spawnChainDetonation(event.center, event.radius);
         break;
       default:
         break;
@@ -148,6 +154,23 @@ export class RuneCausalityOverlay {
     }
 
     this.addTransient(group, 520);
+  }
+
+  private spawnChainDetonation(point: Point2D, radius: number): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.rune = 'chain';
+    group.classList.add('rune-causality-ascension', 'rune-causality-ascension--pulse');
+
+    for (const scale of [0.42, 0.72, 1]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', Math.max(16, radius * scale).toFixed(2));
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+
+    this.addTransient(group, 620);
   }
 
   private glyphPath(rune: RuneKind, point: Point2D, size: number): string {

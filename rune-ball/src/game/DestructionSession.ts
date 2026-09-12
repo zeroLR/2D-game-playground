@@ -37,8 +37,10 @@ import {
 import {
   getChainCastProfile,
   planChainPropagation,
+  type ChainLinkKind,
   type ChainPropagationMode,
 } from '../progression/ChainEvolutionTuning';
+import { buildChainResolutionTimeline } from '../progression/ChainResolutionTimeline';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
@@ -58,6 +60,8 @@ export type DestructionEvent =
   | { type: 'chain-evolved'; path: ChainEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
   | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[]; links: { from: Point2D; to: Point2D }[]; path: ChainEvolutionPath; stage: ChainEvolutionStage; mode: ChainPropagationMode; terminalCenter: Point2D | null; terminalRadius: number }
+  | { type: 'chain-hop'; from: Point2D; to: Point2D; path: ChainEvolutionPath; stage: ChainEvolutionStage; kind: ChainLinkKind }
+  | { type: 'chain-detonated'; center: Point2D; radius: number; targets: Point2D[]; path: ChainEvolutionPath; stage: ChainEvolutionStage }
   | { type: 'overdrive-enter'; duration: number }
   | { type: 'overdrive-exit' };
 
@@ -82,6 +86,26 @@ export interface DestructionSessionOptions {
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
 
+interface PendingRelayHit {
+  remainingSeconds: number;
+  targetId: number;
+  from: Point2D;
+  to: Point2D;
+  kind: ChainLinkKind;
+  path: ChainEvolutionPath;
+  stage: ChainEvolutionStage;
+}
+
+interface PendingDetonation {
+  remainingSeconds: number;
+  center: Point2D;
+  radius: number;
+  targetIds: number[];
+  targetPositions: Point2D[];
+  path: ChainEvolutionPath;
+  stage: ChainEvolutionStage;
+}
+
 export class DestructionSession {
   private readonly ball: BallModel;
   private readonly targets: TargetSystem;
@@ -96,6 +120,8 @@ export class DestructionSession {
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
   private activeSplitProfile: SplitCastProfile = BASE_SPLIT_PROFILE;
   private splitCastQualified = false;
+  private pendingRelayHits: PendingRelayHit[] = [];
+  private pendingDetonations: PendingDetonation[] = [];
 
   constructor(bounds: ArenaBounds, options: DestructionSessionOptions = {}) {
     this.ball = new BallModel(bounds);
@@ -257,6 +283,7 @@ export class DestructionSession {
     if (this.combo.update(dtSeconds, this.flow.snapshot.overdriveActive)) events.push({ type: 'combo-reset' });
 
     const damagedThisStep = new Set<number>();
+    this.resolvePendingChain(dtSeconds, events, damagedThisStep);
     if (collapseCenter) {
       const targetIds = this.targets.collidingTargetIds(collapseCenter, this.activeVortexProfile.collapseRadius);
       const positionsById = new Map(this.targets.snapshot.map((target) => [target.id, target.position]));
@@ -388,27 +415,60 @@ export class DestructionSession {
       excluded.add(targetId);
       const targetSnapshot = this.targets.snapshot;
       const plan = planChainPropagation(hit.target.position, targetSnapshot, excluded, profile);
+      const timeline = buildChainResolutionTimeline(plan, evolutionBeforeCast.stage);
       const positionsById = new Map(targetSnapshot.map((target) => [target.id, target.position]));
-      const chainedPositions = plan.allTargetIds
+      const eventTargetIds = plan.mode === 'detonation' ? plan.routeTargetIds : plan.allTargetIds;
+      const chainedPositions = eventTargetIds
         .map((id) => positionsById.get(id))
         .filter((position): position is Point2D => Boolean(position))
         .map((position) => ({ ...position }));
+      const visibleLinks = plan.mode === 'detonation'
+        ? plan.links.filter((link) => link.kind !== 'terminal')
+        : plan.links;
 
       events.push({
         type: 'chain-triggered',
         origin: { ...hit.target.position },
         targets: chainedPositions,
-        links: plan.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
+        links: visibleLinks.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
         path: evolutionBeforeCast.path,
         stage: evolutionBeforeCast.stage,
         mode: plan.mode,
         terminalCenter: plan.terminalCenter ? { ...plan.terminalCenter } : null,
         terminalRadius: plan.terminalRadius,
       });
-      if (this.flow.registerChain(plan.allTargetIds.length)) this.enterOverdrive(events);
+      if (this.flow.registerChain(eventTargetIds.length)) this.enterOverdrive(events);
 
-      for (const chainedId of plan.allTargetIds) {
+      for (const chainedId of timeline.immediateTargetIds) {
         this.resolveTargetHit(chainedId, 'chain', false, events, damagedThisStep);
+      }
+
+      for (const action of timeline.relayActions) {
+        this.pendingRelayHits.push({
+          remainingSeconds: action.delaySeconds,
+          targetId: action.targetId,
+          from: { ...action.from },
+          to: { ...action.to },
+          kind: action.kind,
+          path: evolutionBeforeCast.path,
+          stage: evolutionBeforeCast.stage,
+        });
+      }
+
+      if (timeline.detonation) {
+        const targetPositions = timeline.detonation.targetIds
+          .map((id) => positionsById.get(id))
+          .filter((position): position is Point2D => Boolean(position))
+          .map((position) => ({ ...position }));
+        this.pendingDetonations.push({
+          remainingSeconds: timeline.detonation.delaySeconds,
+          center: { ...timeline.detonation.center },
+          radius: timeline.detonation.radius,
+          targetIds: [...timeline.detonation.targetIds],
+          targetPositions,
+          path: evolutionBeforeCast.path,
+          stage: evolutionBeforeCast.stage,
+        });
       }
 
       if (plan.qualificationCount >= 2) {
@@ -437,6 +497,58 @@ export class DestructionSession {
     }
 
     return hit.destroyed;
+  }
+
+  private resolvePendingChain(
+    dtSeconds: number,
+    events: DestructionEvent[],
+    damagedThisStep: Set<number>,
+  ): void {
+    const dt = Math.min(0.12, Math.max(0, Number.isFinite(dtSeconds) ? dtSeconds : 0));
+
+    const remainingRelayHits: PendingRelayHit[] = [];
+    for (const action of this.pendingRelayHits) {
+      const remainingSeconds = action.remainingSeconds - dt;
+      if (remainingSeconds > 0) {
+        remainingRelayHits.push({ ...action, remainingSeconds });
+        continue;
+      }
+
+      const targetStillExists = this.targets.snapshot.some((target) => target.id === action.targetId);
+      if (!targetStillExists) continue;
+      events.push({
+        type: 'chain-hop',
+        from: { ...action.from },
+        to: { ...action.to },
+        path: action.path,
+        stage: action.stage,
+        kind: action.kind,
+      });
+      this.resolveTargetHit(action.targetId, 'chain', false, events, damagedThisStep);
+    }
+    this.pendingRelayHits = remainingRelayHits;
+
+    const remainingDetonations: PendingDetonation[] = [];
+    for (const action of this.pendingDetonations) {
+      const remainingSeconds = action.remainingSeconds - dt;
+      if (remainingSeconds > 0) {
+        remainingDetonations.push({ ...action, remainingSeconds });
+        continue;
+      }
+
+      events.push({
+        type: 'chain-detonated',
+        center: { ...action.center },
+        radius: action.radius,
+        targets: action.targetPositions.map((position) => ({ ...position })),
+        path: action.path,
+        stage: action.stage,
+      });
+      for (const targetId of action.targetIds) {
+        this.resolveTargetHit(targetId, 'chain', false, events, damagedThisStep);
+      }
+    }
+    this.pendingDetonations = remainingDetonations;
   }
 
   private vortexProfileForCurrentStage(): VortexCastProfile {
