@@ -50,7 +50,7 @@ function createShardGraphic(index: number): Graphics {
 
 export class SplitImpactPool extends Container {
   private readonly impacts: SplitImpactInstance[] = [];
-  private cursor = 0;
+  private poolCursor = 0;
   private spawnSerial = 0;
   private reducedMotion = false;
 
@@ -259,16 +259,16 @@ export class SplitImpactPool extends Container {
 
   private acquire(): SplitImpactInstance {
     for (let offset = 0; offset < this.impacts.length; offset += 1) {
-      const index = (this.cursor + offset) % this.impacts.length;
+      const index = (this.poolCursor + offset) % this.impacts.length;
       const impact = this.impacts[index];
       if (!impact.active) {
-        this.cursor = (index + 1) % this.impacts.length;
+        this.poolCursor = (index + 1) % this.impacts.length;
         return impact;
       }
     }
 
-    const impact = this.impacts[this.cursor];
-    this.cursor = (this.cursor + 1) % this.impacts.length;
+    const impact = this.impacts[this.poolCursor];
+    this.poolCursor = (this.poolCursor + 1) % this.impacts.length;
     return impact;
   }
 
