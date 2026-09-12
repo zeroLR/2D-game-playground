@@ -1,4 +1,5 @@
 import { COMPOSED_VOCABULARY_TRACK } from '../track/ComposedVocabularyTrack.js';
+import { GENERALIZED_COMPOSITION_TRACK } from '../track/GeneralizedCompositionTrack.js';
 import { MAGNETIC_VOCABULARY_TRACK } from '../track/MagneticVocabularyTrack.js';
 import { MOVING_VOCABULARY_TRACK } from '../track/MovingVocabularyTrack.js';
 import { VALIDATION_TRACK, type ValidationTrackDefinition } from '../track/TestTrack.js';
@@ -11,7 +12,7 @@ export interface PrototypePresentation {
 }
 
 export interface PrototypeMode {
-  id: 'p0' | 'p1-magnetic' | 'p1-moving' | 'p1-composition';
+  id: 'p0' | 'p1-magnetic' | 'p1-moving' | 'p1-composition' | 'p1-generalization';
   track: ValidationTrackDefinition;
   validationEnabled: boolean;
   presentation: PrototypePresentation;
@@ -58,21 +59,34 @@ const P1_COMPOSITION_MODE: PrototypeMode = {
   track: COMPOSED_VOCABULARY_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.3 / MAGNETIC SHUTTLE',
+    milestoneLabel: 'P1.3 / MAGNETIC SHUTTLE · ACCEPTED',
     kicker: 'FIRST MECHANIC COMPOSITION',
     title: 'Stay attached. Leave on alignment.',
-    body: 'Climb onto the 48° magnetic lane, board the magnetic shuttle, and remain attached while it moves sideways. Commit to the opposite magnetic receiver when the two surfaces align, then unwind back to ordinary gravity.',
+    body: 'Accepted first composition: ride the 48° magnetic shuttle sideways and commit to the opposite receiver when the surfaces align.',
+  },
+};
+
+const P1_GENERALIZATION_MODE: PrototypeMode = {
+  id: 'p1-generalization',
+  track: GENERALIZED_COMPOSITION_TRACK,
+  validationEnabled: false,
+  presentation: {
+    milestoneLabel: 'P1.4 / COMPOSITION GENERALIZATION',
+    kicker: 'SYSTEM DEPTH GATE',
+    title: 'Ride upward. Prepare before the upper dock arrives.',
+    body: 'Board the short 36° magnetic lift at the lower dock. Hold your position while the same surface rises, then prepare forward momentum so you can transfer onto the upper magnetic receiver during its docking window. No new mechanic or input is added.',
   },
 };
 
 /**
- * P1.3 composition is the active prototype. Earlier isolated routes remain
- * available for regression and diagnosis through explicit stage parameters.
+ * P1.4 is the active prototype. Earlier isolated and first-composition routes
+ * remain available for regression and direct A/B comparison.
  */
 export function resolvePrototypeMode(search: string): PrototypeMode {
   const stage = new URLSearchParams(search).get('stage');
   if (stage === 'p0') return P0_MODE;
   if (stage === 'p1-magnetic') return P1_MAGNETIC_MODE;
   if (stage === 'p1-moving') return P1_MOVING_MODE;
-  return P1_COMPOSITION_MODE;
+  if (stage === 'p1-composition') return P1_COMPOSITION_MODE;
+  return P1_GENERALIZATION_MODE;
 }
