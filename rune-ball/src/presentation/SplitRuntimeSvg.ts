@@ -5,6 +5,7 @@ import {
   SPLIT_RUNTIME_SVG_BY_KEY,
   getSplitRuntimeGlyphSpec,
   getSplitRuntimeGlyphSpecByKey,
+  type SplitEnergyMotionKind,
   type SplitRuntimeGlyphKey,
   type SplitRuntimeGlyphSpec,
 } from './SplitRuntimeSvgSpec';
@@ -15,7 +16,56 @@ interface SplitMaterialGlyph {
   backGlow: Graphics | null;
   aura: Graphics | null;
   hot: Graphics | null;
+  motionPrimary: Graphics | null;
+  motionSecondary: Graphics | null;
   spec: SplitRuntimeGlyphSpec;
+}
+
+function createMotionGraphic(kind: SplitEnergyMotionKind): Graphics | null {
+  if (kind === 'none') return null;
+
+  const graphic = new Graphics();
+  graphic.blendMode = 'add';
+
+  if (kind === 'prism-outward') {
+    graphic
+      .moveTo(-5, 2)
+      .lineTo(-3, -2)
+      .moveTo(5, 2)
+      .lineTo(3, -2)
+      .stroke({ color: 0xf0fbff, width: 1.35, alpha: 0.96 });
+    graphic
+      .moveTo(-4, 0)
+      .lineTo(-2, 0)
+      .moveTo(4, 0)
+      .lineTo(2, 0)
+      .stroke({ color: 0x6fe9ff, width: 1.1, alpha: 0.9 });
+    graphic.position.set(32, 32);
+    return graphic;
+  }
+
+  graphic
+    .moveTo(-3.4, 2.4)
+    .lineTo(0, -2.6)
+    .lineTo(3.4, 2.4)
+    .stroke({ color: 0xf0fbff, width: 1.35, alpha: 0.98 });
+  graphic.circle(0, 0, 1.15).fill({ color: 0xd756ff, alpha: 0.88 });
+  return graphic;
+}
+
+function motionPhase(timeSeconds: number, cycleSeconds: number, offset: number): number {
+  const cycle = Math.max(0.05, cycleSeconds);
+  const raw = (timeSeconds / cycle + offset) % 1;
+  return raw < 0 ? raw + 1 : raw;
+}
+
+function easeOutCubic(value: number): number {
+  const inv = 1 - value;
+  return 1 - inv * inv * inv;
+}
+
+function motionEnvelope(phase: number): number {
+  return Math.sin(Math.PI * phase) ** 1.15;
 }
 
 export class SplitRuntimeSvg extends Container {
@@ -48,6 +98,9 @@ export class SplitRuntimeSvg extends Container {
       const body = new Graphics(context);
       body.alpha = spec.material.bodyAlpha;
 
+      const motionPrimary = spec.motion.primaryAlpha > 0 ? createMotionGraphic(spec.motion.kind) : null;
+      const motionSecondary = spec.motion.secondaryAlpha > 0 ? createMotionGraphic(spec.motion.kind) : null;
+
       if (spec.material.glowEnabled) {
         hot = new Graphics(context);
         hot.alpha = spec.material.hotAlpha;
@@ -60,9 +113,20 @@ export class SplitRuntimeSvg extends Container {
       if (backGlow) root.addChild(backGlow);
       if (aura) root.addChild(aura);
       root.addChild(body);
+      if (motionPrimary) root.addChild(motionPrimary);
+      if (motionSecondary) root.addChild(motionSecondary);
       if (hot) root.addChild(hot);
 
-      this.glyphs.set(key, { root, body, backGlow, aura, hot, spec });
+      this.glyphs.set(key, {
+        root,
+        body,
+        backGlow,
+        aura,
+        hot,
+        motionPrimary,
+        motionSecondary,
+        spec,
+      });
       this.addChild(root);
     }
   }
@@ -100,5 +164,59 @@ export class SplitRuntimeSvg extends Container {
     if (glyph.backGlow) glyph.backGlow.alpha = Math.min(1, spec.material.backGlowAlpha * intensity);
     if (glyph.aura) glyph.aura.alpha = Math.min(1, spec.material.auraAlpha * intensity);
     if (glyph.hot) glyph.hot.alpha = Math.min(1, spec.material.hotAlpha * (overdrive ? 1.35 : 1));
+
+    this.presentMotionLayer(
+      glyph.motionPrimary,
+      spec,
+      presentationTime,
+      0,
+      spec.motion.primaryAlpha,
+      reducedMotion,
+      overdrive,
+    );
+    this.presentMotionLayer(
+      glyph.motionSecondary,
+      spec,
+      presentationTime,
+      spec.motion.secondaryPhase,
+      spec.motion.secondaryAlpha,
+      reducedMotion,
+      overdrive,
+    );
+  }
+
+  private presentMotionLayer(
+    graphic: Graphics | null,
+    spec: SplitRuntimeGlyphSpec,
+    presentationTime: number,
+    phaseOffset: number,
+    baseAlpha: number,
+    reducedMotion: boolean,
+    overdrive: boolean,
+  ): void {
+    if (!graphic) return;
+    if (reducedMotion || spec.motion.kind === 'none') {
+      graphic.visible = false;
+      return;
+    }
+
+    const phase = motionPhase(presentationTime, spec.motion.cycleSeconds, phaseOffset);
+    const travel = easeOutCubic(phase);
+    const envelope = motionEnvelope(phase);
+    const intensity = overdrive ? 1.18 : 1;
+
+    graphic.visible = true;
+    graphic.alpha = Math.min(1, baseAlpha * envelope * intensity);
+
+    if (spec.motion.kind === 'prism-outward') {
+      const distance = spec.motion.travelStart + (spec.motion.travelEnd - spec.motion.travelStart) * travel;
+      graphic.position.set(32, 32);
+      graphic.scale.set(Math.max(0.6, distance / 4), 0.92 + envelope * 0.16);
+      return;
+    }
+
+    const y = spec.motion.travelStart + (spec.motion.travelEnd - spec.motion.travelStart) * travel;
+    graphic.position.set(32, y);
+    graphic.scale.set(0.9 + envelope * 0.24, 0.9 + phase * 0.16);
   }
 }
