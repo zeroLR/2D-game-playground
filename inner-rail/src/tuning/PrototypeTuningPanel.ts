@@ -21,68 +21,74 @@ interface ControlDefinition {
   format(value: number): string;
 }
 
+const GROUP_LABELS: Record<TuningGroup, string> = {
+  INPUT: '輸入',
+  PHYSICS: '物理',
+  CAMERA: '相機',
+};
+
 const CONTROLS: ControlDefinition[] = [
   {
     group: 'INPUT',
     key: 'tiltSensitivity',
-    label: 'Tilt sensitivity',
-    hint: 'Higher = reaches full force with less physical tilt.',
+    label: '傾斜靈敏度',
+    hint: '數值越高，只要較小的手機傾斜角度就能產生較強的控制力；越低則需要傾斜更多。',
     format: (value) => `${value.toFixed(2)}×`,
   },
   {
     group: 'INPUT',
     key: 'tiltDeadZoneDeg',
-    label: 'Neutral dead zone',
-    hint: 'Higher = more hand tremor ignored around the calibrated pose.',
+    label: '中立死區',
+    hint: '數值越高，越能忽略手持時的小幅晃動；太高會讓細微修正變得不靈敏。',
     format: (value) => `${value.toFixed(2)}°`,
   },
   {
     group: 'INPUT',
     key: 'tiltSaturationDeg',
-    label: 'Full-force tilt',
-    hint: 'Lower = reaches maximum field sooner. Higher = larger physical tilt range.',
+    label: '滿輸出傾角',
+    hint: '數值越低，手機只要傾斜一點就能達到最大控制力；越高則有更大的可控制傾斜範圍。',
     format: (value) => `${Math.round(value)}°`,
   },
   {
     group: 'INPUT',
     key: 'tiltSmoothingResponsePerSecond',
-    label: 'Input response',
-    hint: 'Lower = softer/slower filtering. Higher = faster correction response.',
+    label: '輸入反應速度',
+    hint: '數值越低，輸入越平滑但反應較慢；越高則修正更快，但也更容易感覺敏感或抖動。',
     format: (value) => `${value.toFixed(0)}×`,
   },
   {
     group: 'PHYSICS',
     key: 'ballInertia',
-    label: 'Ball inertia',
-    hint: 'Higher = carries momentum longer. Lower = settles faster.',
+    label: '球體慣性',
+    hint: '數值越高，球會保留動量更久、滑得更遠；越低則更容易減速與停下。',
     format: (value) => `${Math.round(value * 100)}%`,
   },
   {
     group: 'PHYSICS',
     key: 'contactFriction',
-    label: 'Track friction',
-    hint: 'Higher = stronger traction and braking authority. Lower = more slide.',
+    label: '軌道摩擦力',
+    hint: '數值越高，抓地與煞車效果越明顯；越低則更容易滑動。',
     format: (value) => value.toFixed(2),
   },
   {
     group: 'PHYSICS',
     key: 'contactRestitution',
-    label: 'Contact bounce',
-    hint: 'Higher = more rebound on landings and edges. Keep restrained for comfort.',
+    label: '碰撞回彈',
+    hint: '數值越高，落地或撞到邊緣時彈得越明顯；為了第一人稱舒適度通常不建議太高。',
     format: (value) => value.toFixed(2),
   },
   {
     group: 'CAMERA',
     key: 'cameraFovDeg',
-    label: 'Camera zoom / FOV',
-    hint: 'Lower = tighter / closer. Higher = wider / farther.',
+    label: '相機視野 / FOV',
+    hint: '數值越低，畫面較像拉近、視野較窄；越高則看得更廣，但速度感也會更強。',
     format: (value) => `${Math.round(value)}°`,
   },
   {
     group: 'CAMERA',
     key: 'cameraYawResponsePerSecond',
-    label: 'Track follow',
-    hint: 'How quickly the view aligns to authored track direction. Ball velocity never turns the camera.',
+    label: '軌道方向跟隨速度',
+    hint: '控制相機多快轉向軌道的前進方向。越低轉得較慢、較穩；越高則更快對準彎道。球本身往後或側滑不會讓相機掉頭。',
     format: (value) => `${value.toFixed(1)}×`,
   },
 ];
@@ -103,13 +109,13 @@ export class PrototypeTuningPanel {
     this.root.innerHTML = `
       <details class="tuning-panel">
         <summary>
-          <span>TUNE</span>
-          <small>P0.4 FEEL</small>
+          <span>調校</span>
+          <small>P0.4 手感</small>
         </summary>
         <div class="tuning-panel__body">
           ${GROUPS.map((group) => `
-            <section class="tuning-group" aria-label="${group.toLowerCase()} tuning">
-              <p class="tuning-group__label">${group}</p>
+            <section class="tuning-group" aria-label="${GROUP_LABELS[group]}參數調校">
+              <p class="tuning-group__label">${GROUP_LABELS[group]}</p>
               ${CONTROLS.filter((control) => control.group === group).map((control) => {
                 const range = PROTOTYPE_TUNING_RANGES[control.key];
                 return `
@@ -131,7 +137,7 @@ export class PrototypeTuningPanel {
               }).join('')}
             </section>
           `).join('')}
-          <button type="button" class="tuning-reset" data-tuning-reset>RESET BASELINE</button>
+          <button type="button" class="tuning-reset" data-tuning-reset>重設為基準值</button>
         </div>
       </details>
     `;
