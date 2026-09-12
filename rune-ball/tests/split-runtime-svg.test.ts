@@ -23,4 +23,25 @@ describe('Split runtime SVG alignment', () => {
       expect(source).toContain('viewBox="0 0 64 64"');
     }
   });
+
+  it('keeps Base Split restrained while evolved forms gain authored glow material', () => {
+    expect(getSplitRuntimeGlyphSpec('prism', 0).material.glowEnabled).toBe(false);
+    expect(getSplitRuntimeGlyphSpec('prism', 1).material.glowEnabled).toBe(true);
+    expect(getSplitRuntimeGlyphSpec('lance', 1).material.glowEnabled).toBe(true);
+  });
+
+  it('escalates T2 material without flattening Prism and Lance into the same glow', () => {
+    const prismT1 = getSplitRuntimeGlyphSpec('prism', 1).material;
+    const prismT2 = getSplitRuntimeGlyphSpec('prism', 2).material;
+    const lanceT1 = getSplitRuntimeGlyphSpec('lance', 1).material;
+    const lanceT2 = getSplitRuntimeGlyphSpec('lance', 2).material;
+
+    expect(prismT2.backGlowBlur).toBeGreaterThan(prismT1.backGlowBlur);
+    expect(prismT2.backGlowAlpha).toBeGreaterThan(prismT1.backGlowAlpha);
+    expect(lanceT2.hotAlpha).toBeGreaterThan(lanceT1.hotAlpha);
+    expect(lanceT2.backGlowBlur).toBeGreaterThan(lanceT1.backGlowBlur);
+
+    expect(prismT1.backGlowBlur).toBeGreaterThan(lanceT1.backGlowBlur);
+    expect(lanceT1.hotAlpha).toBeGreaterThan(prismT1.hotAlpha);
+  });
 });
