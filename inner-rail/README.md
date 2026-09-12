@@ -4,84 +4,91 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P0.2 — Ball Physics + Stabilized First-Person Camera**
+**P0.4 — Phone Feel / Comfort Gate**
 
-P0.2 turns the proven input harness into the first playable physical loop:
+The playable loop is now:
 
-`Device tilt → camera-relative gravity → cannon-es sphere → momentum → stabilized first-person camera`
+`Device tilt → calibrated gravity → cannon-es sphere → authored validation track → track-forward stabilized camera`
 
-Portrait and landscape remain equal test modes. They use the same input response, ball physics, camera behavior, FOV policy, and sandbox geometry so the eventual orientation decision is based on real gameplay evidence rather than layout preference.
+The camera follows the authored route direction rather than instantaneous ball velocity, so braking and deliberate backward movement do not rotate the view 180°.
 
-### Included
+P0.4 does **not** add new gameplay rules. It exists to settle the feel baseline and decide whether the physical identity is strong enough to enter P1.
 
-- cannon-es dynamic sphere with one global material/handling configuration;
-- camera-relative effective gravity with approximately constant gravity magnitude;
-- broad enclosed sandbox for acceleration, braking, turning, reversing, and wall recovery;
-- fixed-step physics with a safety-only maximum speed bound;
-- Three.js first-person renderer positioned inside the sphere;
-- camera translation follows the ball while camera roll is independent of rigid-body spin;
-- damped velocity-heading yaw with a low-speed hold threshold;
-- conservative airborne pitch and subtle speed-based FOV expansion;
-- `prefers-reduced-motion` removes nonessential shell/pitch/FOV motion;
-- faint rotating inner-shell reference so physical ball rotation can be perceived while the horizon remains stable;
-- runtime **RESTART** and **RECENTER** actions;
-- rotating between portrait and landscape pauses the sandbox and requires a fresh neutral pose;
-- `?debug=1` telemetry for input, world gravity, ball state, grounded approximation, speed, camera yaw/pitch/FOV, and recovery count;
-- `?debug=1` live tuning panel for camera FOV, camera follow response, ball inertia, and tilt sensitivity;
-- tuning values persist locally on the device so repeated phone tests can keep the last configuration;
-- pure tests for orientation, camera-relative gravity, and camera angle damping.
+### Validation track
 
-## Controls
+The same global physics rules drive the full course:
 
-### Phone
+1. Calibration Deck — basic cause/effect.
+2. Wide S-Curve — anticipatory correction.
+3. Narrow Rail — fine control.
+4. Momentum Dip + Gap — run-up judgment.
+5. Banked Turn — physical line choice.
+6. Goal Brake Zone — deliberate braking.
 
-1. Open in portrait or landscape.
-2. Tap **ENABLE MOTION**.
-3. Hold the phone comfortably and tap **SET NEUTRAL & START**.
-4. Tilt forward to accelerate; return to neutral to coast.
-5. Tilt against motion to brake or reverse.
-6. Tilt left/right while moving to redirect the gravity field and curve the trajectory.
-7. Use **RECENTER** if your natural holding pose changes; use **RESTART** to reset the sandbox.
-8. Rotate the phone and recalibrate to compare portrait and landscape under the same simulation rules.
+Falling recovers to the latest authored checkpoint. The gap contains no hidden floor or scripted launch force.
 
-### Debug tuning
+## Phone controls
 
-Append `?debug=1` and open **TUNE / P0.2 FEEL**. Changes apply while the sandbox is running and are stored locally.
+1. Tap **ENABLE MOTION**.
+2. Hold the phone naturally and tap **SET NEUTRAL & START**.
+3. Tilt forward/back/left/right to redirect effective gravity.
+4. Return toward neutral to coast; tilt against momentum to brake or reverse.
+5. Use **RECENTER** when your natural holding pose changes.
+6. Use **RESTART** for a fresh timed validation attempt.
 
-- **Camera zoom / FOV** — lower values produce a tighter view; higher values expose more peripheral space.
-- **Camera follow** — lower values add more heading-follow inertia; higher values make the stabilized view turn toward travel direction faster.
-- **Ball inertia** — higher values reduce linear damping so momentum carries longer.
-- **Tilt sensitivity** — higher values reach the same maximum gravity deflection with less physical device tilt.
-- **RESET DEFAULTS** restores the original P0.2 baseline.
+Portrait and landscape remain valid test modes until P0.4 provides enough evidence to lock one primary product orientation.
 
-### Desktop / development
+## Debug feel tuning
 
-- Start **DESKTOP TILT TEST**.
-- Calibrate once.
-- WASD / arrow keys or the drag pad feed the same `TiltInput` abstraction.
-- Append `?debug=1` to expose telemetry and live tuning controls.
+Append `?debug=1` and open **TUNE / P0.4 FEEL**. These controls are prototype instrumentation, not player settings.
 
-## P0.2 phone gate
+### Input
 
-The sandbox must be sufficient to prove the physical sensation before P0.3 adds authored track geometry.
+- **Tilt sensitivity** — how little physical tilt is required to reach the same maximum field.
+- **Neutral dead zone** — how much hand tremor is ignored around the calibrated pose.
+- **Full-force tilt** — physical angle at which input saturates.
+- **Input response** — exponential smoothing response; higher reacts faster.
 
-On a real phone, in both portrait and landscape, verify that you can intentionally:
+### Physics
 
-1. accelerate forward;
-2. turn left/right without the camera feeling like direct steering;
-3. reverse direction;
-4. brake to near-stop by tilting against momentum;
-5. hit a wall and recover orientation;
-6. understand that the sphere is rotating while the camera horizon does not inherit that roll.
+- **Ball inertia** — mapped to global linear damping.
+- **Track friction** — one global ball/track contact friction value.
+- **Contact bounce** — one global restitution value.
 
-Also compare portrait vs landscape on:
+### Camera
 
-- fine-control precision;
-- physical holding comfort;
-- visibility of forward space;
-- first-person presence / sense of being inside the ball.
+- **Camera zoom / FOV** — first-person field of view.
+- **Track follow** — how quickly yaw converges toward authored route-forward.
 
-If camera comfort or force semantics are weak, remain in P0.2. Do not hide those issues with track gimmicks or tutorials.
+Changing a tuning value invalidates the current validation timer; press **RESTART** before recording a comparison run. Values persist locally on the test device. Older P0.2 tuning values migrate where compatible.
+
+## P0.4 validation telemetry
+
+Completed runs record locally on the test device:
+
+- portrait / landscape;
+- device motion / synthetic input;
+- total completion time;
+- fall count;
+- per-section elapsed time;
+- tuning snapshot used for the run.
+
+`?debug=1` shows the best completed **device-motion** run for portrait and landscape. Synthetic runs remain useful for development but do not count toward the phone gate.
+
+Use `docs/plans/inner-rail/P0-VALIDATION-LOG.md` for the five-player external protocol and orientation A/B notes.
+
+## P0.4 pass criteria
+
+P0 passes only after real-phone testing confirms the acceptance thresholds in the prototype spec, including:
+
+- at least 4/5 testers intentionally accelerate, brake, and change direction;
+- at least 3/5 finish within three attempts;
+- at least 3/5 solve the gap through deliberate run-up adjustment;
+- no more than 1/5 is blocked primarily by camera discomfort;
+- players describe the control as tilt / gravity / momentum rather than joystick-like movement;
+- portrait vs landscape evidence is strong enough to lock the primary orientation.
+
+Do not enter P1 by compensating for a failed gate with more tutorials, obstacles, assists, or progression.
 
 ## Commands
 
@@ -93,4 +100,4 @@ npm run build
 
 ## Next slice
 
-**P0.3 — 60–90 Second Validation Track** only after the P0.2 real-phone movement/camera gate is accepted. The final primary orientation may remain open until the phone comparison produces a clear winner.
+**P1 — Physical Puzzle Vocabulary**, only after P0.4 locks the baseline feel and primary orientation and the external validation gate passes.
