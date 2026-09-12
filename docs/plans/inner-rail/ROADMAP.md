@@ -15,7 +15,8 @@ flowchart LR
     P03 --> P031[P0.3.1 Track-Forward Camera]
     P031 --> P04[P0.4 Phone Feel Gate]
     P04 --> P11[P1.1 Magnetic Rail]
-    P11 --> P1X[P1 Further Vocabulary]
+    P11 --> P111[P1.1.1 Attachment Correction]
+    P111 --> P1X[P1 Further Vocabulary]
     P1X --> P2[P2 Spatial Puzzle Levels]
     P2 --> P3[P3 Sensory / Art Vertical Slice]
 ```
@@ -127,11 +128,13 @@ The user has chosen to begin P1 exploration before those external checks are com
 
 ### P1.1 — Magnetic Rail / Attached Surface
 
-**Status:** implementation complete; real-phone mechanic gate pending.
+**Status:** first phone gate failed; corrective implementation in P1.1.1.
 
-**Rule:** luminous magnetic track pieces attract the sphere toward their local surface. Player input remains the same calibrated gravity field; the magnet never sets velocity or steers along the route.
+The first implementation used only a local surface-normal attraction force. Real-phone testing showed that the sphere still fell from the rolled/overhanging section.
 
-#### Vocabulary test route
+**Root cause:** a free-rolling sphere pressed against a vertical wall still experiences ordinary world-down gravity tangent to that wall, so it rolls downward. Increasing normal attraction alone does not solve the control model.
+
+#### Existing vocabulary route
 
 - [x] normal approach establishes baseline behavior
 - [x] flat magnetic entry introduces the state
@@ -141,24 +144,42 @@ The user has chosen to begin P1 exploration before those external checks are com
 - [x] ordinary braking goal after release
 - [x] authored checkpoints before/after the magnetic challenge
 
-#### Readability / architecture
+#### Existing readability / architecture
 
 - [x] magnetic material is distinct through luminous cyan surface bands
 - [x] inner-shell intensity subtly increases while attached
 - [x] debug telemetry reports active magnetic piece + strength
-- [x] magnetic force is a local surface-normal field, not path steering
-- [x] one authored track definition drives render + collision as before
+- [x] one authored track definition drives render + collision
 - [x] P0 track remains selectable with `?stage=p0`
 
-#### P1.1 phone gate
+### P1.1.1 — Magnetic Attachment Correction
 
-A player should be able to infer that the luminous rail is physically different, traverse the overhang with the same tilt control, and notice the return to ordinary momentum when the luminous material ends.
+**Status:** implementation in progress; real-phone gate pending.
 
-**KEEP** only if magnetic attachment creates new decisions around speed, correction, approach, and release timing. If it simply prevents falling or makes an impressive visual, revise or remove it.
+**Corrected rule:** magnetic rail anchors the passive down component of effective gravity into the local surface while preserving camera-relative horizontal tilt intent. The explicit magnetic force remains only as local surface-normal seam/capture adhesion.
+
+This means:
+
+- neutral input presses the sphere into a wall/overhang instead of allowing world-down gravity to roll it off;
+- forward/back tilt remains camera-relative and continues to control route momentum;
+- left/right tilt keeps the same screen-relative semantics instead of rotating with the rail;
+- the system never writes velocity or adds automatic route-forward propulsion;
+- ordinary track immediately returns to the unchanged P0 gravity model.
+
+#### P1.1.1 phone gate
+
+- [ ] neutral input remains attached through the 85° / 115° overhang
+- [ ] forward/back tilt still produces intentional route motion
+- [ ] no automatic forward movement is introduced
+- [ ] left/right input does not unexpectedly rotate with the rail
+- [ ] release from magnetic material clearly restores ordinary gravity
+- [ ] after technical attachment passes, evaluate whether Magnetic Rail creates meaningful approach/speed/release decisions
+
+**KEEP** Magnetic Rail only if the corrected attachment state changes planning. Technical ability to cling to a wall is necessary but not sufficient.
 
 ### Later candidates — one at a time
 
-Do not schedule all of these automatically. Choose the next only after P1.1 evidence:
+Do not schedule these automatically. Choose the next only after P1.1.1 evidence:
 
 - controlled wall / inversion route using accepted magnetic behavior;
 - moving or rotating rail section;
@@ -206,4 +227,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate gameplay gate is **P1.1 Magnetic Rail on a real phone**. Evaluate whether attachment materially deepens force/momentum planning before moving to another physical vocabulary item.
+The immediate gameplay gate is **P1.1.1 Magnetic Attachment Correction on a real phone**. First prove that the sphere can remain controllably attached through the overhang; only then judge Magnetic Rail for puzzle depth.
