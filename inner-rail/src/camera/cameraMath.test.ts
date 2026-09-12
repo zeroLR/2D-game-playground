@@ -1,9 +1,4 @@
-import {
-  dampAngle,
-  headingFollowWeight,
-  shortestAngleDeltaRad,
-  velocityHeadingRad,
-} from './cameraMath.js';
+import { dampAngle, shortestAngleDeltaRad } from './cameraMath.js';
 
 const near = (actual: number, expected: number, epsilon = 1e-6): void => {
   if (Math.abs(actual - expected) > epsilon) {
@@ -11,8 +6,6 @@ const near = (actual: number, expected: number, epsilon = 1e-6): void => {
   }
 };
 
-near(velocityHeadingRad(0, 1), 0);
-near(velocityHeadingRad(1, 0), Math.PI / 2);
 near(shortestAngleDeltaRad((170 * Math.PI) / 180, (-170 * Math.PI) / 180), (20 * Math.PI) / 180);
 
 {
@@ -25,16 +18,11 @@ near(shortestAngleDeltaRad((170 * Math.PI) / 180, (-170 * Math.PI) / 180), (20 *
 }
 
 {
-  const hold = (14 * Math.PI) / 180;
-  const full = (42 * Math.PI) / 180;
-  near(headingFollowWeight((8 * Math.PI) / 180, hold, full), 0);
-  near(headingFollowWeight((-14 * Math.PI) / 180, hold, full), 0);
-  near(headingFollowWeight((42 * Math.PI) / 180, hold, full), 1);
-  near(headingFollowWeight((-60 * Math.PI) / 180, hold, full), 1);
-
-  const mid = headingFollowWeight((28 * Math.PI) / 180, hold, full);
-  if (!(mid > 0 && mid < 1)) {
-    throw new Error('Camera follow response should ramp between hold and full-follow angles.');
+  const current = 0;
+  const target = Math.PI / 2;
+  const next = dampAngle(current, target, 4.2, 1 / 60);
+  if (!(next > current && next < target)) {
+    throw new Error('Track-forward camera should approach authored heading without snapping.');
   }
 }
 
