@@ -1,3 +1,4 @@
+import { COMPOSED_VOCABULARY_TRACK } from '../track/ComposedVocabularyTrack.js';
 import { MAGNETIC_VOCABULARY_TRACK } from '../track/MagneticVocabularyTrack.js';
 import { MOVING_VOCABULARY_TRACK } from '../track/MovingVocabularyTrack.js';
 import { VALIDATION_TRACK, type ValidationTrackDefinition } from '../track/TestTrack.js';
@@ -10,7 +11,7 @@ export interface PrototypePresentation {
 }
 
 export interface PrototypeMode {
-  id: 'p0' | 'p1-magnetic' | 'p1-moving';
+  id: 'p0' | 'p1-magnetic' | 'p1-moving' | 'p1-composition';
   track: ValidationTrackDefinition;
   validationEnabled: boolean;
   presentation: PrototypePresentation;
@@ -48,17 +49,30 @@ const P1_MOVING_MODE: PrototypeMode = {
     milestoneLabel: 'P1.2 / MOVING RAIL',
     kicker: 'PHYSICAL PUZZLE VOCABULARY',
     title: 'Read the cycle. Choose when to commit.',
-    body: 'The amber bridge follows a fixed six-second lateral cycle. Wait for alignment, commit across it, or ride the moving surface and recover your timing. No countdown or automatic movement is added to your controls.',
+    body: 'Isolated Moving Rail regression route. The amber bridge follows a fixed lateral cycle without a countdown or new player input.',
+  },
+};
+
+const P1_COMPOSITION_MODE: PrototypeMode = {
+  id: 'p1-composition',
+  track: COMPOSED_VOCABULARY_TRACK,
+  validationEnabled: false,
+  presentation: {
+    milestoneLabel: 'P1.3 / MAGNETIC SHUTTLE',
+    kicker: 'FIRST MECHANIC COMPOSITION',
+    title: 'Stay attached. Leave on alignment.',
+    body: 'Climb onto the 48° magnetic lane, board the magnetic shuttle, and remain attached while it moves sideways. Commit to the opposite magnetic receiver when the two surfaces align, then unwind back to ordinary gravity.',
   },
 };
 
 /**
- * P1.2 moving vocabulary is the default active prototype. Use `?stage=p0` for
- * the frozen baseline or `?stage=p1-magnetic` for the accepted P1.1 route.
+ * P1.3 composition is the active prototype. Earlier isolated routes remain
+ * available for regression and diagnosis through explicit stage parameters.
  */
 export function resolvePrototypeMode(search: string): PrototypeMode {
   const stage = new URLSearchParams(search).get('stage');
   if (stage === 'p0') return P0_MODE;
   if (stage === 'p1-magnetic') return P1_MAGNETIC_MODE;
-  return P1_MOVING_MODE;
+  if (stage === 'p1-moving') return P1_MOVING_MODE;
+  return P1_COMPOSITION_MODE;
 }
