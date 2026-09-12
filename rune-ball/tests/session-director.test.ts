@@ -66,7 +66,20 @@ describe('SessionDirector', () => {
     director.start();
 
     director.registerEvent({ type: 'rune-activated', rune: 'chain', center: { x: 0, y: 0 } });
-    director.registerEvent({ type: 'chain-triggered', origin: { x: 0, y: 0 }, targets: [{ x: 1, y: 1 }, { x: 2, y: 2 }] });
+    director.registerEvent({
+      type: 'chain-triggered',
+      origin: { x: 0, y: 0 },
+      targets: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
+      links: [
+        { from: { x: 0, y: 0 }, to: { x: 1, y: 1 } },
+        { from: { x: 1, y: 1 }, to: { x: 2, y: 2 } },
+      ],
+      path: 'relay',
+      stage: 1,
+      mode: 'relay',
+      terminalCenter: null,
+      terminalRadius: 0,
+    });
     director.registerEvent({ type: 'overdrive-enter', duration: 12 });
     director.registerEvent(breakEvent(3, 180, 'chain'));
     director.registerEvent({ type: 'overdrive-exit' });

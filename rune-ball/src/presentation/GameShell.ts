@@ -1,7 +1,9 @@
 import { DEFAULT_STAGE_ID, STAGES, getStage, type StageId } from '../content/StageCatalog';
 import {
+  getChainPathDefinition,
   getSplitPathDefinition,
   getVortexPathDefinition,
+  type ChainEvolutionPath,
   type SplitEvolutionPath,
   type VortexEvolutionPath,
 } from '../progression/RuneEvolutionCatalog';
@@ -14,6 +16,7 @@ export interface GameShellCallbacks {
   onStartStage(stageId: StageId): void;
   onVortexPathChange(path: VortexEvolutionPath): void;
   onSplitPathChange(path: SplitEvolutionPath): void;
+  onChainPathChange(path: ChainEvolutionPath): void;
   onScreenChange(screen: AppScreen): void;
 }
 
@@ -26,14 +29,22 @@ export class GameShell {
   private runeTree: RuneTreePanel | null = null;
   private selectedPath: VortexEvolutionPath;
   private selectedSplitPath: SplitEvolutionPath;
+  private selectedChainPath: ChainEvolutionPath;
   private selectedStage: StageId = DEFAULT_STAGE_ID;
   private currentScreen: ProductScreen = 'home';
   private stageDetailReturn: 'home' | 'journey' = 'journey';
   private runesReturn: 'home' | 'stage-detail' = 'home';
 
-  constructor(host: HTMLElement, selectedPath: VortexEvolutionPath, selectedSplitPath: SplitEvolutionPath, callbacks: GameShellCallbacks) {
+  constructor(
+    host: HTMLElement,
+    selectedPath: VortexEvolutionPath,
+    selectedSplitPath: SplitEvolutionPath,
+    selectedChainPath: ChainEvolutionPath,
+    callbacks: GameShellCallbacks,
+  ) {
     this.selectedPath = selectedPath;
     this.selectedSplitPath = selectedSplitPath;
+    this.selectedChainPath = selectedChainPath;
     this.callbacks = callbacks;
 
     const root = document.createElement('div');
@@ -111,6 +122,11 @@ export class GameShell {
 
   setSplitPath(path: SplitEvolutionPath): void {
     this.selectedSplitPath = path;
+    this.renderBuild();
+  }
+
+  setChainPath(path: ChainEvolutionPath): void {
+    this.selectedChainPath = path;
     this.renderBuild();
   }
 
@@ -219,7 +235,7 @@ export class GameShell {
     intro.textContent = 'Choose a Rune, then tap an evolution symbol to make that path active. Qualified uses evolve it automatically during a run.';
     body.append(intro);
 
-    this.runeTree = new RuneTreePanel(body, this.selectedPath, this.selectedSplitPath, {
+    this.runeTree = new RuneTreePanel(body, this.selectedPath, this.selectedSplitPath, this.selectedChainPath, {
       onVortexPathChange: (path) => {
         this.selectedPath = path;
         this.renderBuild();
@@ -229,6 +245,11 @@ export class GameShell {
         this.selectedSplitPath = path;
         this.renderBuild();
         this.callbacks.onSplitPathChange(path);
+      },
+      onChainPathChange: (path) => {
+        this.selectedChainPath = path;
+        this.renderBuild();
+        this.callbacks.onChainPathChange(path);
       },
     });
 
@@ -350,11 +371,13 @@ export class GameShell {
   private renderBuild(): void {
     const vortexPath = getVortexPathDefinition(this.selectedPath);
     const splitPath = getSplitPathDefinition(this.selectedSplitPath);
-    const text = `○ ${vortexPath.title} · V ${splitPath.title} · Z BASE`;
+    const chainPath = getChainPathDefinition(this.selectedChainPath);
+    const text = `○ ${vortexPath.title} · V ${splitPath.title} · Z ${chainPath.title}`;
     if (this.homeBuild) this.homeBuild.textContent = text;
     if (this.stageBuild) this.stageBuild.textContent = text;
     this.runeTree?.setVortexPath(this.selectedPath);
     this.runeTree?.setSplitPath(this.selectedSplitPath);
+    this.runeTree?.setChainPath(this.selectedChainPath);
   }
 
   private show(screenName: ProductScreen): void {

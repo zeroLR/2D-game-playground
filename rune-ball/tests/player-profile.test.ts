@@ -14,22 +14,22 @@ function memoryStorage(): Storage {
 }
 
 describe('PlayerProfile', () => {
-  it('defaults to Gravity + Prism while preserving old-profile compatibility', () => {
-    expect(readPlayerProfile(null)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism' });
+  it('defaults to Gravity + Prism + Relay while preserving old-profile compatibility', () => {
+    expect(readPlayerProfile(null)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism', chainPath: 'relay' });
     const storage = memoryStorage();
     storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'orbit' }));
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'prism' });
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'prism', chainPath: 'relay' });
   });
 
-  it('persists selected Vortex and Split evolution paths', () => {
+  it('persists selected evolution paths for all authored Runes', () => {
     const storage = memoryStorage();
-    writePlayerProfile(storage, { vortexPath: 'orbit', splitPath: 'lance' });
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'lance' });
+    writePlayerProfile(storage, { vortexPath: 'orbit', splitPath: 'lance', chainPath: 'detonation' });
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'lance', chainPath: 'detonation' });
   });
 
   it('falls back per-field when stored profile data is invalid', () => {
     const storage = memoryStorage();
-    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'unknown', splitPath: 'unknown' }));
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism' });
+    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'unknown', splitPath: 'unknown', chainPath: 'unknown' }));
+    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism', chainPath: 'relay' });
   });
 });

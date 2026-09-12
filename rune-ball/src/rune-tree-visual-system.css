@@ -245,3 +245,31 @@ html[data-reduced-transparency='true'] .rune-tree-evolution-node {
     border-width: 2px;
   }
 }
+
+/* P8.4 Chain gameplay tree branch grammar */
+.rune-tree-branch[data-path='relay'] {
+  --rt-branch-rgb: var(--rt-left-rgb);
+}
+
+.rune-tree-branch[data-path='detonation'] {
+  --rt-branch-rgb: var(--rt-right-rgb);
+}
+
+.rune-tree-node-sigil--relay .rune-tree-node-sigil-core {
+  border-radius: 50%;
+  box-shadow: -9px 5px 0 -2px rgb(var(--rt-left-rgb) / 78%), 9px -5px 0 -2px rgb(var(--rt-left-rgb) / 58%);
+}
+
+.rune-tree-node-sigil--detonation .rune-tree-node-sigil-core {
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 5px rgb(var(--rt-right-rgb) / 14%);
+}
+
+.rune-tree-path-mark--relay::after,
+.rune-tree-path-mark--detonation::after {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  content: '';
+}

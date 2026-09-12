@@ -1,10 +1,13 @@
 import type { DestructionEvent } from '../game/DestructionSession';
 import {
+  CHAIN_TIER_ONE_THRESHOLD,
   SPLIT_TIER_ONE_THRESHOLD,
   VORTEX_TIER_ONE_THRESHOLD,
+  getChainPathDefinition,
   getRuneBaseDefinition,
   getSplitPathDefinition,
   getVortexPathDefinition,
+  type ChainEvolutionPath,
   type SplitEvolutionPath,
   type VortexEvolutionPath,
 } from '../progression/RuneEvolutionCatalog';
@@ -17,6 +20,8 @@ interface EvolutionDisplayState {
   finalStageName: string;
 }
 
+type AuthoredRune = 'vortex' | 'split' | 'chain';
+
 export class RuneEvolutionStatus {
   private readonly root: HTMLElement;
   private readonly glyph: HTMLElement;
@@ -24,16 +29,25 @@ export class RuneEvolutionStatus {
   private readonly progress: HTMLElement;
   private vortexPath: VortexEvolutionPath;
   private splitPath: SplitEvolutionPath;
+  private chainPath: ChainEvolutionPath;
   private vortexState: EvolutionDisplayState;
   private splitState: EvolutionDisplayState;
-  private activeRune: 'vortex' | 'split' = 'vortex';
+  private chainState: EvolutionDisplayState;
+  private activeRune: AuthoredRune = 'vortex';
   private flashTimer: number | null = null;
 
-  constructor(host: HTMLElement, vortexPath: VortexEvolutionPath, splitPath: SplitEvolutionPath) {
+  constructor(
+    host: HTMLElement,
+    vortexPath: VortexEvolutionPath,
+    splitPath: SplitEvolutionPath,
+    chainPath: ChainEvolutionPath,
+  ) {
     this.vortexPath = vortexPath;
     this.splitPath = splitPath;
+    this.chainPath = chainPath;
     this.vortexState = this.initialVortexState();
     this.splitState = this.initialSplitState();
+    this.chainState = this.initialChainState();
 
     const root = document.createElement('div');
     root.className = 'rune-evolution-status';
@@ -59,11 +73,13 @@ export class RuneEvolutionStatus {
     this.render('vortex');
   }
 
-  reset(vortexPath: VortexEvolutionPath, splitPath: SplitEvolutionPath): void {
+  reset(vortexPath: VortexEvolutionPath, splitPath: SplitEvolutionPath, chainPath: ChainEvolutionPath): void {
     this.vortexPath = vortexPath;
     this.splitPath = splitPath;
+    this.chainPath = chainPath;
     this.vortexState = this.initialVortexState();
     this.splitState = this.initialSplitState();
+    this.chainState = this.initialChainState();
     this.activeRune = 'vortex';
     this.root.classList.remove('is-evolving');
     if (this.flashTimer !== null) window.clearTimeout(this.flashTimer);
@@ -97,6 +113,20 @@ export class RuneEvolutionStatus {
       };
       this.render('split');
       if (event.type === 'split-evolved') this.flashEvolution();
+      return;
+    }
+
+    if (event.type === 'chain-evolution-progress' || event.type === 'chain-evolved') {
+      this.chainPath = event.path;
+      this.chainState = {
+        stage: event.stage,
+        stageName: event.stageName,
+        qualifiedUses: event.qualifiedUses,
+        nextThreshold: event.nextThreshold,
+        finalStageName: getChainPathDefinition(event.path).tierTwo.name,
+      };
+      this.render('chain');
+      if (event.type === 'chain-evolved') this.flashEvolution();
     }
   }
 
@@ -129,9 +159,23 @@ export class RuneEvolutionStatus {
     };
   }
 
-  private render(rune: 'vortex' | 'split'): void {
+  private initialChainState(): EvolutionDisplayState {
+    return {
+      stage: 0,
+      stageName: getRuneBaseDefinition('chain').name,
+      qualifiedUses: 0,
+      nextThreshold: CHAIN_TIER_ONE_THRESHOLD,
+      finalStageName: getChainPathDefinition(this.chainPath).tierTwo.name,
+    };
+  }
+
+  private render(rune: AuthoredRune): void {
     this.activeRune = rune;
-    const state = rune === 'vortex' ? this.vortexState : this.splitState;
+    const state = rune === 'vortex'
+      ? this.vortexState
+      : rune === 'split'
+        ? this.splitState
+        : this.chainState;
     this.root.dataset.rune = rune;
     this.root.dataset.stage = String(state.stage);
     this.glyph.textContent = getRuneBaseDefinition(rune).glyph;

@@ -5,6 +5,9 @@ export type VortexEvolutionTier = 1 | 2;
 export type SplitEvolutionPath = 'prism' | 'lance';
 export type SplitEvolutionStage = 0 | 1 | 2;
 export type SplitEvolutionTier = 1 | 2;
+export type ChainEvolutionPath = 'relay' | 'detonation';
+export type ChainEvolutionStage = 0 | 1 | 2;
+export type ChainEvolutionTier = 1 | 2;
 
 export interface RuneBaseDefinition {
   id: RuneTreeId;
@@ -52,10 +55,30 @@ export interface SplitEvolutionPathDefinition {
   tierTwo: SplitEvolutionNodeDefinition;
 }
 
+export interface ChainEvolutionNodeDefinition {
+  id: string;
+  tier: ChainEvolutionTier;
+  name: string;
+  threshold: number;
+  description: string;
+  playPattern: string;
+}
+
+export interface ChainEvolutionPathDefinition {
+  id: ChainEvolutionPath;
+  title: string;
+  identity: string;
+  summary: string;
+  tierOne: ChainEvolutionNodeDefinition;
+  tierTwo: ChainEvolutionNodeDefinition;
+}
+
 export const VORTEX_TIER_ONE_THRESHOLD = 3;
 export const VORTEX_TIER_TWO_THRESHOLD = 6;
 export const SPLIT_TIER_ONE_THRESHOLD = 3;
 export const SPLIT_TIER_TWO_THRESHOLD = 6;
+export const CHAIN_TIER_ONE_THRESHOLD = 3;
+export const CHAIN_TIER_TWO_THRESHOLD = 6;
 
 export const RUNE_BASE_DEFINITIONS: Readonly<Record<RuneTreeId, RuneBaseDefinition>> = {
   vortex: {
@@ -83,7 +106,7 @@ export const RUNE_BASE_DEFINITIONS: Readonly<Record<RuneTreeId, RuneBaseDefiniti
     role: 'PROPAGATION / PAYOFF',
     description: 'Arm the next impact so destruction propagates across nearby targets.',
     playPattern: 'Prime impact → propagate the break',
-    evolutionStatus: 'future',
+    evolutionStatus: 'authored',
   },
 };
 
@@ -181,9 +204,57 @@ export const SPLIT_EVOLUTION_PATHS: Readonly<Record<SplitEvolutionPath, SplitEvo
   },
 };
 
+export const CHAIN_EVOLUTION_PATHS: Readonly<Record<ChainEvolutionPath, ChainEvolutionPathDefinition>> = {
+  relay: {
+    id: 'relay',
+    title: 'RELAY',
+    identity: 'NETWORK / SPREAD',
+    summary: 'Turn nearby targets into stepping stones so one armed impact can travel across the arena topology.',
+    tierOne: {
+      id: 'relay',
+      tier: 1,
+      name: 'RELAY',
+      threshold: CHAIN_TIER_ONE_THRESHOLD,
+      description: 'Chain stops radiating from the first hit and instead jumps target-to-target through nearby bridges.',
+      playPattern: 'Find bridge → relay → reach the far cluster',
+    },
+    tierTwo: {
+      id: 'arc-web',
+      tier: 2,
+      name: 'ARC WEB',
+      threshold: CHAIN_TIER_TWO_THRESHOLD,
+      description: 'The relay route can shed limited lateral forks while the main propagation keeps moving forward.',
+      playPattern: 'Bridge → branch → spread the network',
+    },
+  },
+  detonation: {
+    id: 'detonation',
+    title: 'DETONATION',
+    identity: 'TERMINAL / CASH-OUT',
+    summary: 'Trade broad propagation for a tighter route that delivers a concentrated payoff at its endpoint.',
+    tierOne: {
+      id: 'fuse',
+      tier: 1,
+      name: 'FUSE',
+      threshold: CHAIN_TIER_ONE_THRESHOLD,
+      description: 'Chain follows a tighter sequential route, then detonates around the final reached target.',
+      playPattern: 'Route → deliver → detonate',
+    },
+    tierTwo: {
+      id: 'critical-mass',
+      tier: 2,
+      name: 'CRITICAL MASS',
+      threshold: CHAIN_TIER_TWO_THRESHOLD,
+      description: 'Each successful relay hop increases the final detonation radius up to a controlled cap.',
+      playPattern: 'Extend fuse → choose endpoint → cash out',
+    },
+  },
+};
+
 export const RUNE_TREE_ORDER: readonly RuneTreeId[] = ['vortex', 'split', 'chain'];
 export const VORTEX_PATH_ORDER: readonly VortexEvolutionPath[] = ['gravity-well', 'orbit'];
 export const SPLIT_PATH_ORDER: readonly SplitEvolutionPath[] = ['prism', 'lance'];
+export const CHAIN_PATH_ORDER: readonly ChainEvolutionPath[] = ['relay', 'detonation'];
 
 export function getRuneBaseDefinition(id: RuneTreeId): RuneBaseDefinition {
   return RUNE_BASE_DEFINITIONS[id];
@@ -227,4 +298,24 @@ export function getSplitEvolutionStageName(
 ): string {
   if (stage === 0) return RUNE_BASE_DEFINITIONS.split.name;
   return getSplitEvolutionNode(path, stage).name;
+}
+
+export function getChainPathDefinition(path: ChainEvolutionPath): ChainEvolutionPathDefinition {
+  return CHAIN_EVOLUTION_PATHS[path];
+}
+
+export function getChainEvolutionNode(
+  path: ChainEvolutionPath,
+  tier: ChainEvolutionTier,
+): ChainEvolutionNodeDefinition {
+  const definition = getChainPathDefinition(path);
+  return tier === 1 ? definition.tierOne : definition.tierTwo;
+}
+
+export function getChainEvolutionStageName(
+  path: ChainEvolutionPath,
+  stage: ChainEvolutionStage,
+): string {
+  if (stage === 0) return RUNE_BASE_DEFINITIONS.chain.name;
+  return getChainEvolutionNode(path, stage).name;
 }
