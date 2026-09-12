@@ -183,8 +183,13 @@ export class GameScene {
       );
       edges.renderOrder = 1;
       mesh.add(edges);
+
+      // Surface grammar composes visually as well as physically: magnetic
+      // pieces keep their cyan longitudinal bands, while any moving collider
+      // also receives amber transverse motion bands. A moving magnetic rail
+      // therefore communicates both rules without a HUD icon.
       if (piece.surface === 'magnetic') this.addMagneticBands(mesh, piece);
-      if (piece.surface === 'moving') this.addMovingBands(mesh, piece);
+      if (piece.motion) this.addMovingBands(mesh, piece);
       if (piece.motion) {
         this.movingMeshes.set(piece.id, mesh);
         this.addMovingPathGuide(piece);
@@ -260,7 +265,11 @@ export class GameScene {
         depthWrite: false,
       });
       const marker = new THREE.Mesh(geometry, material);
-      marker.position.set(checkpoint.pose.position.x, 0.035, checkpoint.pose.position.z);
+      marker.position.set(
+        checkpoint.pose.position.x,
+        checkpoint.trigger.y + 0.035,
+        checkpoint.pose.position.z,
+      );
       marker.rotation.y = checkpoint.pose.cameraYawRad;
       this.checkpointMarkers.push(marker);
       this.scene.add(marker);
@@ -272,7 +281,11 @@ export class GameScene {
       new THREE.TorusGeometry(1.65, 0.075, 10, 36),
       this.goalBeaconMaterial,
     );
-    beacon.position.set(this.track.goal.center.x, 1.75, this.track.goal.center.z);
+    beacon.position.set(
+      this.track.goal.center.x,
+      this.track.goal.center.y + 1.15,
+      this.track.goal.center.z,
+    );
     beacon.rotation.y = Math.PI / 2;
     this.scene.add(beacon);
   }
