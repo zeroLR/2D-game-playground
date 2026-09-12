@@ -32,10 +32,10 @@ const P1_MAGNETIC_MODE: PrototypeMode = {
   track: MAGNETIC_VOCABULARY_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.1.2 / MAGNETIC WALL RIDE',
+    milestoneLabel: 'P1.1.3 / MAGNETIC DECISION GATE',
     kicker: 'PHYSICAL PUZZLE VOCABULARY',
-    title: 'Follow the surface, not the seam.',
-    body: 'The luminous rail now rolls gradually into a steep 78° wall ride. Magnetic gravity keeps the surface as down while the same forward/back tilt controls momentum; full inversion comes later only if this transition reads naturally.',
+    title: 'Prepare before the glow ends.',
+    body: 'Ride the luminous surface up to 78°, then manage speed as it returns to 60°. The magnetic state ends before the lower catch deck, so enough momentum must be carried through the release without overshooting the ordinary landing.',
   },
 };
 
