@@ -1,5 +1,6 @@
 import * as CANNON from 'cannon-es';
-import type { TrackPose, ValidationTrackDefinition } from '../track/TestTrack';
+import { sampleTrackPieceMotion, type TrackMotionSample } from '../track/TrackMotion';
+import type { TrackPiece, TrackPose, ValidationTrackDefinition } from '../track/TestTrack';
 import { VALIDATION_TRACK } from '../track/TestTrack';
 import type { WorldGravityDirection } from './gravityMath';
 import { sampleMagneticRail, type MagneticRailSample } from './MagneticRail';
@@ -12,6 +13,11 @@ export interface BallState {
   speed: number;
   grounded: boolean;
   magnetic: MagneticRailSample;
+}
+
+interface MovingTrackBody {
+  piece: TrackPiece;
+  body: CANNON.Body;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -33,7 +39,9 @@ export class PhysicsWorld {
   private readonly trackMaterial = new CANNON.Material('track');
   private readonly ballMaterial = new CANNON.Material('ball');
   private readonly contactMaterial: CANNON.ContactMaterial;
+  private readonly movingTrackBodies: MovingTrackBody[] = [];
   private magneticState: MagneticRailSample = INACTIVE_MAGNETIC;
+  private trackMotionTimeSeconds = 0;
 
   constructor(private readonly track: ValidationTrackDefinition = VALIDATION_TRACK) {
     this.world = new CANNON.World({
@@ -67,9 +75,13 @@ export class PhysicsWorld {
     this.ball.allowSleep = false;
     this.world.addBody(this.ball);
 
-    // Apply seam/capture adhesion on every fixed physics sub-step. The main
-    // gravity direction is surface-relative while magnetic state is active.
-    this.world.addEventListener('preStep', () => this.applyMagneticRailForce());
+    // Simulation remains authoritative for dynamic rail transforms. Update the
+    // kinematic bodies on each fixed sub-step, then apply magnetic seam/capture
+    // adhesion against the resulting world state.
+    this.world.addEventListener('preStep', () => {
+      this.advanceMovingTrack();
+      this.applyMagneticRailForce();
+    });
   }
 
   setGravityDirection(direction: WorldGravityDirection): void {
@@ -98,6 +110,17 @@ export class PhysicsWorld {
     const safeDelta = Math.min(Math.max(deltaSeconds, 0), 0.1);
     this.world.step(PHYSICS_CONFIG.fixedTimeStep, safeDelta, PHYSICS_CONFIG.maxSubSteps);
     this.applySafetySpeedLimit();
+  }
+
+  resetTrackMotion(): void {
+    this.trackMotionTimeSeconds = 0;
+    this.syncMovingTrack(0);
+  }
+
+  getMovingTrackState(): readonly TrackMotionSample[] {
+    return this.movingTrackBodies.map(({ piece }) =>
+      sampleTrackPieceMotion(piece, this.trackMotionTimeSeconds),
+    );
   }
 
   resetBall(pose: TrackPose = this.track.start): void {
@@ -142,6 +165,33 @@ export class PhysicsWorld {
     };
   }
 
+  private advanceMovingTrack(): void {
+    if (this.movingTrackBodies.length === 0) return;
+    this.trackMotionTimeSeconds += PHYSICS_CONFIG.fixedTimeStep;
+    this.syncMovingTrack(this.trackMotionTimeSeconds);
+  }
+
+  private syncMovingTrack(elapsedSeconds: number): void {
+    for (const { piece, body } of this.movingTrackBodies) {
+      const sample = sampleTrackPieceMotion(piece, elapsedSeconds);
+      body.position.set(sample.position.x, sample.position.y, sample.position.z);
+      body.velocity.set(
+        sample.linearVelocity.x,
+        sample.linearVelocity.y,
+        sample.linearVelocity.z,
+      );
+      body.quaternion.setFromEuler(
+        sample.rotation.x,
+        sample.rotation.y,
+        sample.rotation.z,
+        'XYZ',
+      );
+      body.angularVelocity.set(0, 0, 0);
+      body.aabbNeedsUpdate = true;
+      body.wakeUp();
+    }
+  }
+
   private applyMagneticRailForce(): void {
     this.magneticState = sampleMagneticRail(
       { x: this.ball.position.x, y: this.ball.position.y, z: this.ball.position.z },
@@ -158,20 +208,34 @@ export class PhysicsWorld {
 
   private createTrack(): void {
     for (const piece of this.track.pieces) {
+      const initial = sampleTrackPieceMotion(piece, 0);
       const body = new CANNON.Body({
         mass: 0,
         material: this.trackMaterial,
         shape: new CANNON.Box(
           new CANNON.Vec3(piece.size.x / 2, piece.size.y / 2, piece.size.z / 2),
         ),
-        position: new CANNON.Vec3(piece.position.x, piece.position.y, piece.position.z),
+        position: new CANNON.Vec3(initial.position.x, initial.position.y, initial.position.z),
       });
       body.quaternion.setFromEuler(
-        piece.rotation.x,
-        piece.rotation.y,
-        piece.rotation.z,
+        initial.rotation.x,
+        initial.rotation.y,
+        initial.rotation.z,
         'XYZ',
       );
+
+      if (piece.motion) {
+        body.type = CANNON.Body.KINEMATIC;
+        body.velocity.set(
+          initial.linearVelocity.x,
+          initial.linearVelocity.y,
+          initial.linearVelocity.z,
+        );
+        body.allowSleep = false;
+        body.updateMassProperties();
+        this.movingTrackBodies.push({ piece, body });
+      }
+
       this.world.addBody(body);
     }
   }

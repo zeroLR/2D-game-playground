@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { BallState } from '../physics/PhysicsWorld';
 import { PHYSICS_CONFIG } from '../physics/physicsConfig';
+import type { TrackMotionSample } from '../track/TrackMotion';
 import type { TrackProgressSnapshot } from '../track/TrackProgress';
 import { VALIDATION_TRACK, type TrackPiece, type ValidationTrackDefinition } from '../track/TestTrack';
 
@@ -11,6 +12,7 @@ export class GameScene {
   private readonly shell: THREE.Mesh;
   private readonly shellMaterial: THREE.MeshBasicMaterial;
   private readonly reducedMotion: boolean;
+  private readonly movingMeshes = new Map<string, THREE.Mesh>();
   private readonly goalMaterial = new THREE.MeshStandardMaterial({
     color: 0x28544d,
     roughness: 0.38,
@@ -25,10 +27,23 @@ export class GameScene {
     emissive: 0x0b8f8c,
     emissiveIntensity: 1.35,
   });
+  private readonly movingMaterial = new THREE.MeshStandardMaterial({
+    color: 0x5a4722,
+    roughness: 0.38,
+    metalness: 0.54,
+    emissive: 0xc27318,
+    emissiveIntensity: 0.92,
+  });
   private readonly magneticBandMaterial = new THREE.MeshBasicMaterial({
     color: 0x8ff7e8,
     transparent: true,
     opacity: 0.82,
+    depthWrite: false,
+  });
+  private readonly movingBandMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffd18a,
+    transparent: true,
+    opacity: 0.86,
     depthWrite: false,
   });
   private readonly goalBeaconMaterial = new THREE.MeshStandardMaterial({
@@ -82,7 +97,18 @@ export class GameScene {
     }
   }
 
-  render(camera: THREE.Camera, ballState: BallState): void {
+  render(
+    camera: THREE.Camera,
+    ballState: BallState,
+    movingTrack: readonly TrackMotionSample[] = [],
+  ): void {
+    for (const state of movingTrack) {
+      const mesh = this.movingMeshes.get(state.pieceId);
+      if (!mesh) continue;
+      mesh.position.set(state.position.x, state.position.y, state.position.z);
+      mesh.rotation.set(state.rotation.x, state.rotation.y, state.rotation.z);
+    }
+
     this.shell.visible = !this.reducedMotion;
     this.shell.position.set(ballState.position.x, ballState.position.y, ballState.position.z);
     this.shell.quaternion.set(
@@ -131,21 +157,38 @@ export class GameScene {
       transparent: true,
       opacity: 0.78,
     });
+    const movingEdgeMaterial = new THREE.LineBasicMaterial({
+      color: 0xffd18a,
+      transparent: true,
+      opacity: 0.82,
+    });
 
     for (const piece of this.track.pieces) {
       const material = piece.surface === 'goal'
         ? this.goalMaterial
         : piece.surface === 'magnetic'
           ? this.magneticMaterial
-          : trackMaterial;
+          : piece.surface === 'moving'
+            ? this.movingMaterial
+            : trackMaterial;
       const mesh = this.createTrackPieceMesh(piece, material);
+      const edge = piece.surface === 'magnetic'
+        ? magneticEdgeMaterial
+        : piece.surface === 'moving'
+          ? movingEdgeMaterial
+          : edgeMaterial;
       const edges = new THREE.LineSegments(
         new THREE.EdgesGeometry(mesh.geometry as THREE.BoxGeometry),
-        piece.surface === 'magnetic' ? magneticEdgeMaterial : edgeMaterial,
+        edge,
       );
       edges.renderOrder = 1;
       mesh.add(edges);
       if (piece.surface === 'magnetic') this.addMagneticBands(mesh, piece);
+      if (piece.surface === 'moving') this.addMovingBands(mesh, piece);
+      if (piece.motion) {
+        this.movingMeshes.set(piece.id, mesh);
+        this.addMovingPathGuide(piece);
+      }
       this.scene.add(mesh);
     }
   }
@@ -158,6 +201,41 @@ export class GameScene {
       band.renderOrder = 2;
       mesh.add(band);
     }
+  }
+
+  private addMovingBands(mesh: THREE.Mesh, piece: TrackPiece): void {
+    const geometry = new THREE.BoxGeometry(piece.size.x * 0.78, 0.026, 0.095);
+    for (const z of [-0.32, -0.1, 0.12, 0.34]) {
+      const band = new THREE.Mesh(geometry, this.movingBandMaterial);
+      band.position.set(0, piece.size.y / 2 + 0.026, piece.size.z * z);
+      band.renderOrder = 2;
+      mesh.add(band);
+    }
+  }
+
+  private addMovingPathGuide(piece: TrackPiece): void {
+    const motion = piece.motion;
+    if (!motion || motion.kind !== 'sine-translate') return;
+    const axisLength = Math.hypot(motion.axis.x, motion.axis.y, motion.axis.z);
+    if (axisLength <= 1e-9) return;
+    const axis = new THREE.Vector3(
+      motion.axis.x / axisLength,
+      motion.axis.y / axisLength,
+      motion.axis.z / axisLength,
+    );
+    const start = new THREE.Vector3(piece.position.x, piece.position.y - 0.42, piece.position.z)
+      .addScaledVector(axis, -motion.amplitude);
+    const end = new THREE.Vector3(piece.position.x, piece.position.y - 0.42, piece.position.z)
+      .addScaledVector(axis, motion.amplitude);
+    const guide = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([start, end]),
+      new THREE.LineBasicMaterial({
+        color: 0xa87331,
+        transparent: true,
+        opacity: 0.52,
+      }),
+    );
+    this.scene.add(guide);
   }
 
   private createTrackPieceMesh(piece: TrackPiece, material: THREE.Material): THREE.Mesh {

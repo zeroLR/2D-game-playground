@@ -204,6 +204,7 @@ export class GameApp {
   }
 
   private resetSimulation(): void {
+    this.physics.resetTrackMotion();
     this.trackProgress.reset();
     this.resetToPose(this.mode.track.start);
   }
@@ -378,7 +379,7 @@ export class GameApp {
       gameplayActive: this.gameplayActive,
     });
     this.scene.setTrackProgress(trackSnapshot);
-    this.scene.render(this.camera.camera, ballState);
+    this.scene.render(this.camera.camera, ballState, this.physics.getMovingTrackState());
     this.animationFrameId = requestAnimationFrame(this.tick);
   };
 }

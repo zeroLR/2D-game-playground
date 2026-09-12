@@ -1,4 +1,5 @@
 import { MAGNETIC_VOCABULARY_TRACK } from '../track/MagneticVocabularyTrack.js';
+import { MOVING_VOCABULARY_TRACK } from '../track/MovingVocabularyTrack.js';
 import { VALIDATION_TRACK, type ValidationTrackDefinition } from '../track/TestTrack.js';
 
 export interface PrototypePresentation {
@@ -9,7 +10,7 @@ export interface PrototypePresentation {
 }
 
 export interface PrototypeMode {
-  id: 'p0' | 'p1-magnetic';
+  id: 'p0' | 'p1-magnetic' | 'p1-moving';
   track: ValidationTrackDefinition;
   validationEnabled: boolean;
   presentation: PrototypePresentation;
@@ -32,18 +33,32 @@ const P1_MAGNETIC_MODE: PrototypeMode = {
   track: MAGNETIC_VOCABULARY_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.1.3 / MAGNETIC DECISION GATE',
+    milestoneLabel: 'P1.1 / MAGNETIC RAIL · ACCEPTED',
     kicker: 'PHYSICAL PUZZLE VOCABULARY',
     title: 'Prepare before the glow ends.',
-    body: 'Ride the luminous surface up to 78°, then manage speed as it returns to 60°. The magnetic state ends before the lower catch deck, so enough momentum must be carried through the release without overshooting the ordinary landing.',
+    body: 'Accepted Magnetic Rail regression route: manage speed through the 78° wall ride and prepare momentum before the magnetic state releases onto ordinary track.',
+  },
+};
+
+const P1_MOVING_MODE: PrototypeMode = {
+  id: 'p1-moving',
+  track: MOVING_VOCABULARY_TRACK,
+  validationEnabled: false,
+  presentation: {
+    milestoneLabel: 'P1.2 / MOVING RAIL',
+    kicker: 'PHYSICAL PUZZLE VOCABULARY',
+    title: 'Read the cycle. Choose when to commit.',
+    body: 'The amber bridge follows a fixed six-second lateral cycle. Wait for alignment, commit across it, or ride the moving surface and recover your timing. No countdown or automatic movement is added to your controls.',
   },
 };
 
 /**
- * P1 magnetic vocabulary is the default active prototype. `?stage=p0` keeps
- * the frozen P0 validation track available for regression and external tests.
+ * P1.2 moving vocabulary is the default active prototype. Use `?stage=p0` for
+ * the frozen baseline or `?stage=p1-magnetic` for the accepted P1.1 route.
  */
 export function resolvePrototypeMode(search: string): PrototypeMode {
   const stage = new URLSearchParams(search).get('stage');
-  return stage === 'p0' ? P0_MODE : P1_MAGNETIC_MODE;
+  if (stage === 'p0') return P0_MODE;
+  if (stage === 'p1-magnetic') return P1_MAGNETIC_MODE;
+  return P1_MOVING_MODE;
 }
