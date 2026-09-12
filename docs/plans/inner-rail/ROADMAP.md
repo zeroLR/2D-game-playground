@@ -16,7 +16,8 @@ flowchart LR
     P031 --> P04[P0.4 Phone Feel Gate]
     P04 --> P11[P1.1 Magnetic Rail]
     P11 --> P111[P1.1.1 Attachment Correction]
-    P111 --> P1X[P1 Further Vocabulary]
+    P111 --> P112[P1.1.2 Transition Geometry]
+    P112 --> P1X[P1 Further Vocabulary]
     P1X --> P2[P2 Spatial Puzzle Levels]
     P2 --> P3[P3 Sensory / Art Vertical Slice]
 ```
@@ -128,60 +129,56 @@ The user has chosen to begin P1 exploration before those external checks are com
 
 ### P1.1 — Magnetic Rail / Attached Surface
 
-**Status:** first phone gate failed; corrective implementation in P1.1.1.
+**Status:** mechanic established; geometry/readability iteration active.
 
-The first implementation used only a local surface-normal attraction force. Real-phone testing showed that the sphere still fell from the rolled/overhanging section.
-
-**Root cause:** a free-rolling sphere pressed against a vertical wall still experiences ordinary world-down gravity tangent to that wall, so it rolls downward. Increasing normal attraction alone does not solve the control model.
-
-#### Existing vocabulary route
-
-- [x] normal approach establishes baseline behavior
-- [x] flat magnetic entry introduces the state
-- [x] authored roll transition reaches 115° overhang
-- [x] continuous magnetic return transition
-- [x] release back onto ordinary track
-- [x] ordinary braking goal after release
-- [x] authored checkpoints before/after the magnetic challenge
-
-#### Existing readability / architecture
-
-- [x] magnetic material is distinct through luminous cyan surface bands
-- [x] inner-shell intensity subtly increases while attached
-- [x] debug telemetry reports active magnetic piece + strength
-- [x] one authored track definition drives render + collision
-- [x] P0 track remains selectable with `?stage=p0`
+The first implementation used only a local surface-normal attraction force and failed on phone because ordinary world gravity still pulled the sphere downward along steep surfaces.
 
 ### P1.1.1 — Magnetic Attachment Correction
 
-**Status:** implementation in progress; real-phone gate pending.
+**Status:** technical attachment accepted on real phone.
 
 **Corrected rule:** magnetic rail anchors the passive down component of effective gravity into the local surface while preserving camera-relative horizontal tilt intent. The explicit magnetic force remains only as local surface-normal seam/capture adhesion.
 
-This means:
+Accepted phone result:
 
-- neutral input presses the sphere into a wall/overhang instead of allowing world-down gravity to roll it off;
-- forward/back tilt remains camera-relative and continues to control route momentum;
-- left/right tilt keeps the same screen-relative semantics instead of rotating with the rail;
-- the system never writes velocity or adds automatic route-forward propulsion;
-- ordinary track immediately returns to the unchanged P0 gravity model.
+- [x] magnetic attraction is clearly perceptible;
+- [x] the sphere remains attached instead of immediately dropping from steep magnetic surfaces;
+- [x] forward/back tilt remains the source of route motion;
+- [x] no automatic route-forward propulsion is introduced.
 
-#### P1.1.1 phone gate
+The remaining failure was geometric rather than physical: the authored `25° → 55° → 85° → 115°` box sequence created hard collision seams, and the near-90° transition became effectively impassable.
 
-- [ ] neutral input remains attached through the 85° / 115° overhang
-- [ ] forward/back tilt still produces intentional route motion
-- [ ] no automatic forward movement is introduced
-- [ ] left/right input does not unexpectedly rotate with the rail
-- [ ] release from magnetic material clearly restores ordinary gravity
-- [ ] after technical attachment passes, evaluate whether Magnetic Rail creates meaningful approach/speed/release decisions
+### P1.1.2 — Magnetic Transition Geometry Pass
 
-**KEEP** Magnetic Rail only if the corrected attachment state changes planning. Technical ability to cling to a wall is necessary but not sufficient.
+**Status:** implementation complete; real-phone gate pending.
+
+**Goal:** prove that magnetic wall riding is readable and controllable before attempting inversion.
+
+Changes:
+
+- [x] preserve the accepted P1.1.1 magnetic gravity rule unchanged;
+- [x] replace the large 25°–30° roll jumps with a maximum 12° step;
+- [x] shorten and slightly overlap transition pieces to reduce hard seam gaps;
+- [x] cap this vocabulary gate at a steep 78° wall ride;
+- [x] add a short 78° hold section before returning gradually to horizontal;
+- [x] defer 90°+ overhang/inversion until the wall-ride transition itself is proven.
+
+#### P1.1.2 phone gate
+
+- [ ] enter the luminous transition without a noticeable collision wall at the first roll change;
+- [ ] maintain forward motion through 60° / 70° / 78° using the same tilt controls;
+- [ ] remain attached when briefly returning toward neutral at 78°;
+- [ ] reverse/brake while on the steep surface without camera or control inversion;
+- [ ] return to flat magnetic rail without a hard seam stop;
+- [ ] leave magnetic material and immediately recover ordinary gravity behavior.
+
+**KEEP** Magnetic Rail only if this readable transition creates meaningful approach/speed/release decisions. Full inversion is a later extension, not a requirement for the base vocabulary.
 
 ### Later candidates — one at a time
 
-Do not schedule these automatically. Choose the next only after P1.1.1 evidence:
+Do not schedule these automatically. Choose the next only after P1.1.2 evidence:
 
-- controlled wall / inversion route using accepted magnetic behavior;
+- 90°+ overhang / inversion using a continuous or sufficiently refined transition representation;
 - moving or rotating rail section;
 - stateful gate / switch;
 - alternate friction surface.
@@ -227,4 +224,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate gameplay gate is **P1.1.1 Magnetic Attachment Correction on a real phone**. First prove that the sphere can remain controllably attached through the overhang; only then judge Magnetic Rail for puzzle depth.
+The immediate gameplay gate is **P1.1.2 Magnetic Transition Geometry on a real phone**. Prove a smooth, controllable steep wall ride before spending more complexity on inversion.
