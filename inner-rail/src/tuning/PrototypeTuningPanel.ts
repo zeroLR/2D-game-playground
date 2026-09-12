@@ -28,8 +28,8 @@ const CONTROLS: ControlDefinition[] = [
   },
   {
     key: 'cameraYawResponsePerSecond',
-    label: 'Camera follow',
-    hint: 'Applies after heading commit. Lower = slower catch-up; higher = faster turn-in.',
+    label: 'Track follow',
+    hint: 'How quickly the view aligns to the authored track direction. Ball velocity never turns the camera.',
     format: (value) => `${value.toFixed(1)}×`,
   },
   {
@@ -61,7 +61,7 @@ export class PrototypeTuningPanel {
       <details class="tuning-panel">
         <summary>
           <span>TUNE</span>
-          <small>P0.2 FEEL</small>
+          <small>P0.3 FEEL</small>
         </summary>
         <div class="tuning-panel__body">
           ${CONTROLS.map((control) => {
