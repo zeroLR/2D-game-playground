@@ -4,6 +4,7 @@ import { SyntheticTiltSource } from '../input/SyntheticTiltSource';
 import { TiltInput } from '../input/TiltInput';
 import type { TiltSource } from '../input/types';
 import { cameraRelativeGravityToWorld, type WorldGravityDirection } from '../physics/gravityMath';
+import { magneticSurfaceGravityDirection } from '../physics/MagneticRail';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { GameScene } from '../render/GameScene';
 import { PrototypeTelemetry } from '../telemetry/PrototypeTelemetry';
@@ -323,10 +324,18 @@ export class GameApp {
     const tiltSnapshot = this.tiltInput.snapshot();
 
     if (this.gameplayActive) {
-      this.worldGravityDirection = cameraRelativeGravityToWorld(
-        tiltSnapshot.gravityDirection,
-        this.camera.currentYawRad,
-      );
+      const preStepBallState = this.physics.getBallState();
+      const inwardNormal = preStepBallState.magnetic.inwardNormal;
+      this.worldGravityDirection = preStepBallState.magnetic.active && inwardNormal
+        ? magneticSurfaceGravityDirection(
+            tiltSnapshot.gravityDirection,
+            this.camera.currentYawRad,
+            inwardNormal,
+          )
+        : cameraRelativeGravityToWorld(
+            tiltSnapshot.gravityDirection,
+            this.camera.currentYawRad,
+          );
       this.physics.setGravityDirection(this.worldGravityDirection);
       this.physics.step(deltaSeconds);
 

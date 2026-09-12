@@ -1,4 +1,4 @@
-import { sampleMagneticRail } from './MagneticRail.js';
+import { magneticSurfaceGravityDirection, sampleMagneticRail } from './MagneticRail.js';
 import type { TrackPiece } from '../track/TestTrack.js';
 
 const DEG = Math.PI / 180;
@@ -26,6 +26,14 @@ function piece(surface: TrackPiece['surface'], rollDeg = 0): TrackPiece {
   near(sample.strength, 1);
   near(sample.acceleration.x, 0);
   if (!(sample.acceleration.y < -17.9)) throw new Error('Flat magnetic rail should pull toward the surface.');
+  if (!sample.inwardNormal) throw new Error('Active magnetic sample should expose its inward surface normal.');
+  near(sample.inwardNormal.x, 0);
+  near(sample.inwardNormal.y, -1);
+
+  const gravity = magneticSurfaceGravityDirection({ x: 0, y: -1, z: 0 }, 0, sample.inwardNormal);
+  near(gravity.x, 0);
+  near(gravity.y, -1);
+  near(gravity.z, 0);
 }
 
 {
@@ -51,14 +59,32 @@ function piece(surface: TrackPiece['surface'], rollDeg = 0): TrackPiece {
     0.65,
     [piece('magnetic', 115)],
   );
-  if (!sample.active) throw new Error('Overhanging magnetic rail should remain attached at contact range.');
+  if (!sample.active || !sample.inwardNormal) {
+    throw new Error('Overhanging magnetic rail should remain attached at contact range.');
+  }
   if (!(sample.acceleration.y > 0)) {
-    throw new Error('Overhanging magnetic rail must pull upward against gravity on its authored outer face.');
+    throw new Error('Overhanging magnetic rail must pull upward against ordinary world gravity on its authored outer face.');
+  }
+
+  const neutral = magneticSurfaceGravityDirection({ x: 0, y: -1, z: 0 }, 0, sample.inwardNormal);
+  near(neutral.x, sample.inwardNormal.x);
+  near(neutral.y, sample.inwardNormal.y);
+  near(neutral.z, sample.inwardNormal.z);
+  if (!(neutral.y > 0)) {
+    throw new Error('Neutral gravity on a 115° overhang must press into the surface instead of pulling the ball downward.');
+  }
+
+  const forward = magneticSurfaceGravityDirection({ x: 0, y: -0.95, z: 0.3 }, 0, sample.inwardNormal);
+  if (!(forward.z > 0)) {
+    throw new Error('Forward tilt must retain route-forward acceleration while magnetized.');
+  }
+  if (!(forward.y > 0)) {
+    throw new Error('Forward tilt must retain inward attachment on the overhang.');
   }
 }
 
 {
-  const sample = sampleMagneticRail({ x: 0, y: 1.1, z: 0 }, 0.65, [piece('magnetic')]);
+  const sample = sampleMagneticRail({ x: 0, y: 1.25, z: 0 }, 0.65, [piece('magnetic')]);
   if (!(sample.strength > 0 && sample.strength < 1)) {
     throw new Error('Magnetic capture should fall off smoothly before contact.');
   }
