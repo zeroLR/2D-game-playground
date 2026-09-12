@@ -20,6 +20,13 @@ import {
 } from '../tuning/PrototypeTuning';
 import { PrototypeTuningPanel } from '../tuning/PrototypeTuningPanel';
 import { PrototypeOverlay } from '../ui/PrototypeOverlay';
+import {
+  bestDeviceRun,
+  loadValidationHistory,
+  saveValidationRun,
+  ValidationRunRecorder,
+  type ValidationRunSummary,
+} from '../validation/ValidationRun';
 
 const SENSOR_SAMPLE_TIMEOUT_MS = 1800;
 
@@ -31,6 +38,7 @@ export class GameApp {
   private readonly syntheticSource = new SyntheticTiltSource();
   private readonly physics = new PhysicsWorld(VALIDATION_TRACK);
   private readonly trackProgress = new TrackProgress(VALIDATION_TRACK);
+  private readonly validationRun = new ValidationRunRecorder();
   private readonly camera = new FirstPersonCamera();
   private readonly overlay: PrototypeOverlay;
   private readonly scene: GameScene;
@@ -47,6 +55,7 @@ export class GameApp {
   private viewportOrientation: ViewportOrientation;
   private worldGravityDirection: WorldGravityDirection = { x: 0, y: -1, z: 0 };
   private tuning: PrototypeTuningValues = loadPrototypeTuning();
+  private validationHistory: ValidationRunSummary[] = loadValidationHistory();
 
   constructor(root: HTMLElement) {
     this.overlay = new PrototypeOverlay(root, {
@@ -149,11 +158,13 @@ export class GameApp {
     this.resetSimulation();
     this.gameplayActive = true;
     this.overlay.renderState({ kind: 'active', synthetic: this.activeSource?.kind === 'synthetic' });
+    this.startValidationRun(performance.now());
   }
 
   private restart(): void {
     if (!this.gameplayActive) return;
     this.resetSimulation();
+    this.startValidationRun(performance.now());
   }
 
   private recenter(): void {
@@ -167,8 +178,17 @@ export class GameApp {
       yawResponsePerSecond: this.tuning.cameraYawResponsePerSecond,
     });
     this.physics.setBallLinearDamping(ballInertiaToLinearDamping(this.tuning.ballInertia));
+    this.physics.setContactTuning(this.tuning.contactFriction, this.tuning.contactRestitution);
     this.tiltInput.setSensitivityMultiplier(this.tuning.tiltSensitivity);
-    if (persist) savePrototypeTuning(this.tuning);
+    this.tiltInput.setResponseTuning({
+      deadZoneDeg: this.tuning.tiltDeadZoneDeg,
+      saturationDeg: this.tuning.tiltSaturationDeg,
+      smoothingResponsePerSecond: this.tuning.tiltSmoothingResponsePerSecond,
+    });
+    if (persist) {
+      savePrototypeTuning(this.tuning);
+      this.validationRun.cancel();
+    }
   }
 
   private resetTuning(): void {
@@ -193,8 +213,22 @@ export class GameApp {
     this.camera.reset(this.physics.getBallState(), pose.cameraYawRad);
   }
 
+  private startValidationRun(nowMs: number): void {
+    const source = this.activeSource?.kind;
+    if (!source) return;
+    const ball = this.physics.getBallState();
+    this.validationRun.start(
+      nowMs,
+      this.viewportOrientation,
+      source,
+      this.tuning,
+      this.trackProgress.snapshot(ball.position),
+    );
+  }
+
   private pauseGameplay(): void {
     this.gameplayActive = false;
+    this.validationRun.cancel();
     this.physics.setVerticalGravity();
     this.worldGravityDirection = { x: 0, y: -1, z: 0 };
   }
@@ -295,6 +329,7 @@ export class GameApp {
 
       if (this.physics.isOutOfBounds()) {
         this.fallResetCount += 1;
+        this.validationRun.recordFall();
         this.recoverToCheckpoint();
       } else {
         const trackForward = resolveTrackForward(
@@ -308,11 +343,17 @@ export class GameApp {
 
     const ballState = this.physics.getBallState();
     const trackSnapshot = this.trackProgress.snapshot(ballState.position);
+    const completedRun = this.validationRun.update(nowMs, trackSnapshot);
+    if (completedRun) this.validationHistory = saveValidationRun(completedRun);
+
     this.overlay.renderVector(tiltSnapshot.normalized.x, tiltSnapshot.normalized.y);
     this.telemetry.render(tiltSnapshot, {
       ball: ballState,
       camera: this.camera.telemetry(),
       track: trackSnapshot,
+      validation: this.validationRun.snapshot(nowMs),
+      bestPortrait: bestDeviceRun(this.validationHistory, 'portrait'),
+      bestLandscape: bestDeviceRun(this.validationHistory, 'landscape'),
       worldGravity: this.worldGravityDirection,
       fallResetCount: this.fallResetCount,
       gameplayActive: this.gameplayActive,
