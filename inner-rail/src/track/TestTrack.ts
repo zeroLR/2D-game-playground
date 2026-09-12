@@ -7,7 +7,10 @@ export type TrackSectionId =
   | 'goal-brake'
   | 'magnetic-intro'
   | 'magnetic-overhang'
-  | 'magnetic-release';
+  | 'magnetic-release'
+  | 'moving-intro'
+  | 'moving-crossing'
+  | 'moving-release';
 
 export interface TrackVec3 {
   x: number;
@@ -20,13 +23,22 @@ export interface TrackPose {
   cameraYawRad: number;
 }
 
+export interface TrackMotion {
+  kind: 'sine-translate';
+  axis: TrackVec3;
+  amplitude: number;
+  periodSeconds: number;
+  phaseRad?: number;
+}
+
 export interface TrackPiece {
   id: string;
   section: TrackSectionId;
   position: TrackVec3;
   size: TrackVec3;
   rotation: TrackVec3;
-  surface: 'track' | 'goal' | 'magnetic';
+  surface: 'track' | 'goal' | 'magnetic' | 'moving';
+  motion?: TrackMotion;
 }
 
 export interface RecoveryCheckpoint {
@@ -77,6 +89,7 @@ export function trackBox(
   yawDeg = 0,
   rollDeg = 0,
   surface: TrackPiece['surface'] = 'track',
+  motion?: TrackMotion,
 ): TrackPiece {
   return {
     id,
@@ -89,6 +102,7 @@ export function trackBox(
       z: rollDeg * DEG,
     },
     surface,
+    motion,
   };
 }
 
@@ -202,4 +216,7 @@ export const TRACK_SECTION_LABELS: Record<TrackSectionId, string> = {
   'magnetic-intro': 'MAGNETIC ENTRY',
   'magnetic-overhang': 'MAGNETIC OVERHANG',
   'magnetic-release': 'MAGNETIC RELEASE',
+  'moving-intro': 'MOVING RAIL APPROACH',
+  'moving-crossing': 'MOVING RAIL CROSSING',
+  'moving-release': 'MOVING RAIL EXIT',
 };
