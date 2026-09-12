@@ -37,7 +37,7 @@ export class PrototypeOverlay {
         <div class="scene-root" data-scene-root aria-hidden="true"></div>
         <div class="ambient-grid" aria-hidden="true"></div>
         <header class="prototype-header">
-          <span class="eyebrow">INNER RAIL / P0.3</span>
+          <span class="eyebrow">INNER RAIL / P0.4</span>
           <span class="status-dot" aria-hidden="true"></span>
           <span class="orientation-chip orientation-chip--portrait">PORTRAIT TEST</span>
           <span class="orientation-chip orientation-chip--landscape">LANDSCAPE TEST</span>
@@ -115,9 +115,9 @@ export class PrototypeOverlay {
       const secondary = state.preferSynthetic ? 'TRY DEVICE SENSOR' : 'USE SYNTHETIC INPUT';
       const secondaryDisabled = !state.deviceSupported && state.preferSynthetic;
       this.stateRoot.innerHTML = `
-        <p class="kicker">60–90 SECOND VALIDATION TRACK</p>
-        <h1>Become the ball.</h1>
-        <p>One gravity rule. Read the rail, manage momentum, clear the gap, and brake inside the final luminous gate.</p>
+        <p class="kicker">PHONE FEEL / COMFORT GATE</p>
+        <h1>One track. One physical rule.</h1>
+        <p>Run the validation course, tune only what changes control readability, and compare portrait vs landscape under the same rule set.</p>
         <div class="action-stack">
           <button type="button" class="button button--primary" data-primary>${primary}</button>
           <button type="button" class="button button--ghost" data-secondary ${secondaryDisabled ? 'disabled' : ''}>${secondary}</button>
