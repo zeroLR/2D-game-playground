@@ -18,10 +18,23 @@ export interface BallState {
 interface MovingTrackBody {
   piece: TrackPiece;
   body: CANNON.Body;
+  liveMagneticPiece: TrackPiece | null;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function cloneTrackPiece(piece: TrackPiece): TrackPiece {
+  return {
+    ...piece,
+    position: { ...piece.position },
+    size: { ...piece.size },
+    rotation: { ...piece.rotation },
+    motion: piece.motion
+      ? { ...piece.motion, axis: { ...piece.motion.axis } }
+      : undefined,
+  };
 }
 
 const INACTIVE_MAGNETIC: MagneticRailSample = {
@@ -40,6 +53,7 @@ export class PhysicsWorld {
   private readonly ballMaterial = new CANNON.Material('ball');
   private readonly contactMaterial: CANNON.ContactMaterial;
   private readonly movingTrackBodies: MovingTrackBody[] = [];
+  private readonly liveMagneticPieces: TrackPiece[] = [];
   private magneticState: MagneticRailSample = INACTIVE_MAGNETIC;
   private trackMotionTimeSeconds = 0;
 
@@ -75,9 +89,9 @@ export class PhysicsWorld {
     this.ball.allowSleep = false;
     this.world.addBody(this.ball);
 
-    // Simulation remains authoritative for dynamic rail transforms. Update the
-    // kinematic bodies on each fixed sub-step, then apply magnetic seam/capture
-    // adhesion against the resulting world state.
+    // Simulation owns both kinematic collision transforms and the magnetic
+    // field transforms derived from them. A moving magnetic rail therefore has
+    // one authoritative pose for contact, rendering, and attachment sampling.
     this.world.addEventListener('preStep', () => {
       this.advanceMovingTrack();
       this.applyMagneticRailForce();
@@ -172,7 +186,7 @@ export class PhysicsWorld {
   }
 
   private syncMovingTrack(elapsedSeconds: number): void {
-    for (const { piece, body } of this.movingTrackBodies) {
+    for (const { piece, body, liveMagneticPiece } of this.movingTrackBodies) {
       const sample = sampleTrackPieceMotion(piece, elapsedSeconds);
       body.position.set(sample.position.x, sample.position.y, sample.position.z);
       body.velocity.set(
@@ -189,6 +203,15 @@ export class PhysicsWorld {
       body.angularVelocity.set(0, 0, 0);
       body.aabbNeedsUpdate = true;
       body.wakeUp();
+
+      if (liveMagneticPiece) {
+        liveMagneticPiece.position.x = sample.position.x;
+        liveMagneticPiece.position.y = sample.position.y;
+        liveMagneticPiece.position.z = sample.position.z;
+        liveMagneticPiece.rotation.x = sample.rotation.x;
+        liveMagneticPiece.rotation.y = sample.rotation.y;
+        liveMagneticPiece.rotation.z = sample.rotation.z;
+      }
     }
   }
 
@@ -196,7 +219,7 @@ export class PhysicsWorld {
     this.magneticState = sampleMagneticRail(
       { x: this.ball.position.x, y: this.ball.position.y, z: this.ball.position.z },
       PHYSICS_CONFIG.ballRadius,
-      this.track.pieces,
+      this.liveMagneticPieces,
     );
     if (!this.magneticState.active) return;
 
@@ -209,6 +232,9 @@ export class PhysicsWorld {
   private createTrack(): void {
     for (const piece of this.track.pieces) {
       const initial = sampleTrackPieceMotion(piece, 0);
+      const liveMagneticPiece = piece.surface === 'magnetic' ? cloneTrackPiece(piece) : null;
+      if (liveMagneticPiece) this.liveMagneticPieces.push(liveMagneticPiece);
+
       const body = new CANNON.Body({
         mass: 0,
         material: this.trackMaterial,
@@ -233,7 +259,7 @@ export class PhysicsWorld {
         );
         body.allowSleep = false;
         body.updateMassProperties();
-        this.movingTrackBodies.push({ piece, body });
+        this.movingTrackBodies.push({ piece, body, liveMagneticPiece });
       }
 
       this.world.addBody(body);
