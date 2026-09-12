@@ -36,9 +36,7 @@ flowchart LR
 ### Deliverables
 
 - [x] `inner-rail/` Vite + strict TypeScript project
-- [x] Three.js + cannon-es dependencies and committed lockfile
 - [x] full-screen mobile harness
-- [x] explicit bootstrap failure state
 - [x] device-orientation permission flow
 - [x] neutral calibration / recenter
 - [x] screen-orientation correction
@@ -46,7 +44,7 @@ flowchart LR
 - [x] desktop synthetic tilt source using the same `TiltInput` contract
 - [x] dev telemetry overlay
 - [x] unit tests for orientation math
-- [x] complete CI / GitHub Pages registration for the new game
+- [x] complete CI / GitHub Pages registration
 
 ---
 
@@ -54,23 +52,11 @@ flowchart LR
 
 **Status:** complete; real-device portrait/landscape input mapping accepted.
 
-**Objective:** remove the premature landscape product assumption and make portrait/landscape an explicit real-device comparison before P0.2 locks presentation.
+**Objective:** remove the premature landscape assumption and make portrait/landscape an explicit real-device comparison.
 
-### Deliverables
-
-- [x] remove portrait gameplay blocker
-- [x] responsive portrait and landscape harness layouts
-- [x] visible current-orientation test label
-- [x] preserve one shared `TiltInput` contract across both orientations
-- [x] invalidate neutral calibration when the viewport changes orientation
-- [x] require a fresh neutral pose after portrait/landscape rotation
-- [x] expose viewport orientation in debug telemetry
-
-### Gate
-
-On a real phone, both portrait and landscape must reach the same calibrated gravity-vector test without hidden input differences. Rotating the viewport must return the harness to calibration rather than carrying a stale neutral pose across coordinate systems.
-
-P0.1.1 does **not** choose the winning orientation. It only makes the comparison valid.
+- [x] portrait and landscape share one `TiltInput` contract
+- [x] viewport rotation invalidates the old neutral calibration
+- [x] both orientations reach the same physics path
 
 ---
 
@@ -78,45 +64,16 @@ P0.1.1 does **not** choose the winning orientation. It only makes the comparison
 
 **Status:** implementation complete; real-device direction mapping accepted, with final feel/orientation tuning deferred to P0.4.
 
-**Objective:** establish the physical sensation before building a level, while comparing portrait and landscape using the exact same physics/camera rules.
+**Objective:** establish the physical sensation before building a level.
 
-### Deliverables
-
-- [x] cannon-es world + dynamic sphere
+- [x] cannon-es dynamic sphere
 - [x] tilt-driven camera-relative effective gravity
-- [x] one broad sandbox plane with walls
-- [x] global friction/restitution/damping config
-- [x] stable fixed-step physics update
-- [x] camera follows ball translation
-- [x] camera roll fixed independent of sphere rotation
-- [x] initial stabilized heading-follow model for sandbox validation
-- [x] conservative pitch behavior
-- [x] restart + recenter controls
-- [x] reduced-motion suppression of nonessential camera feedback
-- [x] first-person inner-shell rotation cue independent of camera roll
-- [x] debug telemetry for ball, world gravity, and camera state
-- [x] pure tests for camera-relative gravity and camera angle damping
-- [ ] portrait/landscape A/B notes for control precision, holding comfort, forward readability, and first-person presence
-
-### Phone gate
-
-From the same sandbox in both orientations, the player can intentionally:
-
-1. accelerate forward;
-2. turn left/right;
-3. reverse direction;
-4. brake to near-stop;
-5. hit a wall and recover orientation;
-6. perceive sphere rotation without the camera horizon inheriting roll.
-
-Record which orientation better supports:
-
-- fine two-axis force control;
-- comfortable physical posture;
-- forward track readability;
-- the fantasy of being inside the ball.
-
-Do not lock the final product orientation until this comparison exists.
+- [x] global friction / restitution / damping
+- [x] stable fixed-step simulation
+- [x] camera translation follows ball while roll remains stabilized
+- [x] restrained pitch and speed FOV
+- [x] restart / recenter
+- [x] debug telemetry + live feel tuning
 
 ---
 
@@ -126,8 +83,6 @@ Do not lock the final product orientation until this comparison exists.
 
 **Objective:** turn the established movement model into deliberate physical decisions without adding new rules.
 
-### Track sections
-
 - [x] Calibration Deck
 - [x] Wide S-Curve
 - [x] Narrow Rail
@@ -136,63 +91,74 @@ Do not lock the final product orientation until this comparison exists.
 - [x] Goal Brake Zone
 - [x] authored recovery checkpoints
 
-### Design constraint
-
-Every challenge must be solvable with the same gravity/ball rule set. No invisible assists, per-section handling changes, magnets, moving hazards, switches, or scripted launch forces.
-
-### Gate
-
-A competent player can complete the track through force/momentum control alone, and each section tests a visibly different skill: basic cause/effect, correction timing, precision, run-up judgment, fast line choice, and braking.
+Every challenge uses the same gravity/ball rule set. No invisible assists, per-section handling changes, magnets, moving hazards, switches, or scripted launch forces.
 
 ---
 
 ## P0.3.1 — Track-Forward Camera
 
-**Status:** implementation complete; real-phone backward-motion / turn-readability gate pending.
+**Status:** complete; real-phone backward-motion behavior accepted.
 
-**Objective:** separate **where the ball is moving** from **where the player is looking**. The first-person view represents the authored route-forward direction, not velocity heading.
+**Objective:** separate **where the ball is moving** from **where the player is looking**.
 
-### Camera contract
+- [x] camera yaw follows authored track-forward rather than velocity heading
+- [x] rolling backward no longer rotates the camera 180°
+- [x] lateral drift does not redefine facing
+- [x] authored bends still rotate the view smoothly
+- [x] checkpoint recovery restores authored route-facing heading
+- [x] ball velocity only affects non-directional presentation feedback
 
-- [x] track geometry resolves an authored horizontal forward heading
-- [x] camera yaw smoothly follows track-forward
-- [x] rolling backward does not rotate the camera 180°
-- [x] lateral drift does not redefine player-facing direction
-- [x] authored bends still rotate the camera through the route
-- [x] checkpoint recovery restores an authored route-forward heading
-- [x] ball velocity remains camera feedback only for speed FOV / airborne pitch
-- [x] Track Follow tuning controls route-heading catch-up speed
-
-### Gate
-
-On a real phone, deliberately tilt backward until the sphere travels in reverse. The camera must continue facing the route-forward direction. Then traverse the S-curve and banked turn: camera rotation should come from the authored track bend, remain smooth, and preserve the meaning of screen-relative tilt.
+**Accepted phone result:** braking and deliberate backward movement read more naturally while the camera continues to face the route-forward direction.
 
 ---
 
 ## P0.4 — Phone Feel / Comfort Gate
 
+**Status:** tuning + validation instrumentation implemented; real-phone tuning, orientation lock, and external 5-player gate pending.
+
 **Objective:** decide whether the product identity deserves expansion.
 
-### Deliverables
+### Feel tuning
 
-- [ ] tune sensor smoothing/dead zone/saturation
-- [ ] tune global ball friction/damping/restitution
-- [ ] tune camera track-follow/pitch/FOV behavior
-- [ ] minimal impact/motion feedback only where it improves physical readability
-- [ ] lock primary phone orientation from accumulated P0 evidence
-- [ ] execute the P0 5-player validation protocol
-- [ ] record observations against the P0 acceptance thresholds
+- [x] live tilt sensitivity tuning
+- [x] live neutral dead-zone tuning
+- [x] live full-force saturation tuning
+- [x] live sensor smoothing / response tuning
+- [x] live global ball inertia / damping tuning
+- [x] live global contact friction tuning
+- [x] live global contact restitution tuning
+- [x] live camera track-follow / FOV tuning
+- [x] all tuning remains debug-only and locally persisted
+- [ ] add impact / motion feedback only if phone testing shows that contact state is not readable enough
+
+### Validation instrumentation
+
+- [x] record orientation and active input source per completed run
+- [x] record total completion time and fall count
+- [x] record per-section elapsed time
+- [x] record the tuning snapshot used by the run
+- [x] persist recent completed runs locally on the test device
+- [x] expose best device-motion portrait / landscape runs in debug telemetry
+- [x] provide `P0-VALIDATION-LOG.md` for the external test protocol
+
+### Remaining phone gate
+
+- [ ] settle the P0 baseline tuning values from real-phone runs
+- [ ] compare portrait vs landscape on control precision, posture comfort, forward readability, first-person presence, and camera comfort
+- [ ] lock the primary product orientation from accumulated evidence
+- [ ] execute the 5-player external validation protocol
+- [ ] record observations against every P0 acceptance threshold
 
 ### Decision
 
 **PASS** only when control is understood, momentum produces intentional decisions, and the stabilized first-person view is acceptable for the short session.
 
-If P0 fails, iterate the three fundamentals in this order:
+If P0 fails, iterate in this order:
 
 ```mermaid
 flowchart LR
-    A[Input mapping] --> B[Camera stabilization]
-    B --> C[Physics tuning]
+    A[Input mapping / calibration] --> B[Camera stabilization]
+    B --> C[Global physics tuning]
     C --> D[Track geometry]
 ```
 
@@ -259,4 +225,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate next gate is **P0.3 / P0.3.1 real-phone validation-track completion and camera readability**. Do not enter P0.4 until backward motion preserves route-facing orientation and the full course remains readable through the shared gravity/momentum rule set.
+The immediate gate is **P0.4 real-phone feel / comfort validation**. Do not enter P1 until the baseline tuning and primary orientation are locked and the 5-player protocol passes.
