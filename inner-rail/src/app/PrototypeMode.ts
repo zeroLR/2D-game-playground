@@ -32,10 +32,10 @@ const P1_MAGNETIC_MODE: PrototypeMode = {
   track: MAGNETIC_VOCABULARY_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.1 / MAGNETIC RAIL',
+    milestoneLabel: 'P1.1.1 / MAGNETIC ATTACHMENT',
     kicker: 'PHYSICAL PUZZLE VOCABULARY',
-    title: 'Trust the luminous rail.',
-    body: 'Cyan rail sections attract the sphere to their surface. Keep using the same gravity control while the route rolls past vertical, then read ordinary momentum again when the glow ends.',
+    title: 'Let the rail become down.',
+    body: 'On luminous rail, neutral gravity anchors into the surface while your forward/back tilt still controls momentum. Traverse the overhang, then read ordinary gravity again when the glow ends.',
   },
 };
 
