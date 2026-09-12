@@ -6,6 +6,7 @@ import type { TargetState } from '../game/TargetSystem';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
 import type { SplitEvolutionPath, SplitEvolutionStage } from '../progression/SplitEvolutionSystem';
 import { SplitRuntimeSvg } from './SplitRuntimeSvg';
+import { SplitImpactPool } from './SplitImpactPool';
 import { classifyGesturePath } from '../input/GestureRecognizer';
 import { PointerPathSampler } from '../input/PointerPathSampler';
 import type { Point2D } from '../input/SwipeClassifier';
@@ -104,6 +105,7 @@ export class DestructionScene extends Container {
   private readonly trail = new Graphics();
   private readonly runeFx = new Graphics();
   private readonly splitRuntimeSvg = new SplitRuntimeSvg();
+  private readonly splitImpactPool = new SplitImpactPool();
   private readonly overdriveFx = new Graphics();
   private readonly impactPool = new ImpactPool();
   private readonly ballGlow = new Graphics().circle(0, 0, 38).fill({ color: COLORS.violet, alpha: 0.18 });
@@ -209,6 +211,7 @@ export class DestructionScene extends Container {
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.cameraFeedback.setReducedMotion(this.reducedMotion);
     this.impactPool.setReducedMotion(this.reducedMotion);
+    this.splitImpactPool.setReducedMotion(this.reducedMotion);
 
     this.scoreText.anchor.set(0, 0.5);
     this.comboText.anchor.set(1, 0.5);
@@ -236,6 +239,7 @@ export class DestructionScene extends Container {
       this.runeFx,
       this.splitRuntimeSvg,
       this.impactPool,
+      this.splitImpactPool,
       this.overdriveFx,
       this.ballGlow,
       this.ballSigil,
@@ -264,6 +268,7 @@ export class DestructionScene extends Container {
     this.reducedMotion = enabled;
     this.cameraFeedback.setReducedMotion(enabled);
     this.impactPool.setReducedMotion(enabled);
+    this.splitImpactPool.setReducedMotion(enabled);
   }
 
   update(dtSeconds: number): void {
@@ -300,6 +305,7 @@ export class DestructionScene extends Container {
       : 0;
 
     this.impactPool.update(dt);
+    this.splitImpactPool.update(dt);
     this.cameraOffset = this.cameraFeedback.update(dt);
 
     const snapshot = this.session.snapshot;
@@ -504,8 +510,19 @@ export class DestructionScene extends Container {
       }
       case 'target-hit': {
         this.targetHitFlashes.set(event.targetId, TARGET_HIT_FLASH_SECONDS);
-        const overdrive = this.session.snapshot.flow.overdriveActive;
+        const snapshot = this.session.snapshot;
+        const overdrive = snapshot.flow.overdriveActive;
         this.impactPool.spawn(event.position, overdrive ? 'overdrive' : event.source === 'chain' ? 'break' : 'hit');
+        if (event.source === 'split') {
+          this.splitImpactPool.spawn(
+            event.position,
+            snapshot.ball.position,
+            snapshot.ball.velocity,
+            snapshot.splitEvolution.path,
+            snapshot.splitEvolution.stage,
+            overdrive,
+          );
+        }
         this.audio.playImpact(event.source, event.armorBroken);
         break;
       }

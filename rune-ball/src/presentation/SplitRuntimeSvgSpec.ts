@@ -8,6 +8,7 @@ import lanceT2Svg from '../assets/runes/lance-t2.svg?raw';
 export type SplitRuntimeGlyphKey = 'split-base' | 'prism-t1' | 'prism-t2' | 'lance-t1' | 'lance-t2';
 export type SplitEnergyMotionKind = 'none' | 'prism-outward' | 'lance-forward';
 export type SplitParticleEnvelopeKind = 'none' | 'prism-crystal' | 'lance-fleck';
+export type SplitImpactKind = 'none' | 'prism-refraction' | 'lance-pierce';
 
 export interface SplitMaterialProfile {
   glowEnabled: boolean;
@@ -43,6 +44,19 @@ export interface SplitParticleEnvelopeProfile {
   tipSparkEvery: number;
 }
 
+export interface SplitImpactProfile {
+  kind: SplitImpactKind;
+  duration: number;
+  hotRadius: number;
+  ringRadius: number;
+  streakLength: number;
+  shardCount: number;
+  shardSpeed: number;
+  shardSpread: number;
+  alpha: number;
+  secondaryAlpha: number;
+}
+
 export interface SplitRuntimeGlyphSpec {
   key: SplitRuntimeGlyphKey;
   pivotX: number;
@@ -51,6 +65,7 @@ export interface SplitRuntimeGlyphSpec {
   material: SplitMaterialProfile;
   motion: SplitEnergyMotionProfile;
   particles: SplitParticleEnvelopeProfile;
+  impact: SplitImpactProfile;
 }
 
 const BASE_MATERIAL: SplitMaterialProfile = {
@@ -223,6 +238,71 @@ const LANCE_T2_PARTICLES: SplitParticleEnvelopeProfile = {
   tipSparkEvery: 3,
 };
 
+const BASE_IMPACT: SplitImpactProfile = {
+  kind: 'none',
+  duration: 0,
+  hotRadius: 0,
+  ringRadius: 0,
+  streakLength: 0,
+  shardCount: 0,
+  shardSpeed: 0,
+  shardSpread: 0,
+  alpha: 0,
+  secondaryAlpha: 0,
+};
+
+const PRISM_T1_IMPACT: SplitImpactProfile = {
+  kind: 'prism-refraction',
+  duration: 0.22,
+  hotRadius: 6,
+  ringRadius: 20,
+  streakLength: 28,
+  shardCount: 4,
+  shardSpeed: 90,
+  shardSpread: 1.15,
+  alpha: 0.78,
+  secondaryAlpha: 0.22,
+};
+
+const PRISM_T2_IMPACT: SplitImpactProfile = {
+  kind: 'prism-refraction',
+  duration: 0.28,
+  hotRadius: 8,
+  ringRadius: 27,
+  streakLength: 38,
+  shardCount: 7,
+  shardSpeed: 118,
+  shardSpread: 1.35,
+  alpha: 0.92,
+  secondaryAlpha: 0.42,
+};
+
+const LANCE_T1_IMPACT: SplitImpactProfile = {
+  kind: 'lance-pierce',
+  duration: 0.18,
+  hotRadius: 6.5,
+  ringRadius: 13,
+  streakLength: 54,
+  shardCount: 3,
+  shardSpeed: 145,
+  shardSpread: 0.32,
+  alpha: 0.88,
+  secondaryAlpha: 0.24,
+};
+
+const LANCE_T2_IMPACT: SplitImpactProfile = {
+  kind: 'lance-pierce',
+  duration: 0.24,
+  hotRadius: 8,
+  ringRadius: 16,
+  streakLength: 78,
+  shardCount: 5,
+  shardSpeed: 180,
+  shardSpread: 0.38,
+  alpha: 1,
+  secondaryAlpha: 0.46,
+};
+
 const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
   'split-base': {
     key: 'split-base',
@@ -232,6 +312,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     material: BASE_MATERIAL,
     motion: BASE_MOTION,
     particles: BASE_PARTICLES,
+    impact: BASE_IMPACT,
   },
   'prism-t1': {
     key: 'prism-t1',
@@ -241,6 +322,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     material: PRISM_T1_MATERIAL,
     motion: PRISM_T1_MOTION,
     particles: PRISM_T1_PARTICLES,
+    impact: PRISM_T1_IMPACT,
   },
   'prism-t2': {
     key: 'prism-t2',
@@ -250,6 +332,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     material: PRISM_T2_MATERIAL,
     motion: PRISM_T2_MOTION,
     particles: PRISM_T2_PARTICLES,
+    impact: PRISM_T2_IMPACT,
   },
   'lance-t1': {
     key: 'lance-t1',
@@ -259,6 +342,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     material: LANCE_T1_MATERIAL,
     motion: LANCE_T1_MOTION,
     particles: LANCE_T1_PARTICLES,
+    impact: LANCE_T1_IMPACT,
   },
   'lance-t2': {
     key: 'lance-t2',
@@ -268,6 +352,7 @@ const SPECS: Record<SplitRuntimeGlyphKey, SplitRuntimeGlyphSpec> = {
     material: LANCE_T2_MATERIAL,
     motion: LANCE_T2_MOTION,
     particles: LANCE_T2_PARTICLES,
+    impact: LANCE_T2_IMPACT,
   },
 };
 
