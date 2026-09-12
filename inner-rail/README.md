@@ -4,28 +4,51 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P0.4 — Phone Feel / Comfort Gate**
+**P1.1 — Magnetic Rail / Attached Surface Vocabulary**
 
-The playable loop is now:
+The core control remains unchanged:
 
-`Device tilt → calibrated gravity → cannon-es sphere → authored validation track → track-forward stabilized camera`
+`Device tilt → calibrated gravity → sphere momentum → track interaction → track-forward stabilized camera`
 
-The camera follows the authored route direction rather than instantaneous ball velocity, so braking and deliberate backward movement do not rotate the view 180°.
+P1 adds one world rule at a time. The first candidate is a **magnetic rail surface**: luminous cyan rail pieces attract the sphere toward their local surface, allowing the route to roll past vertical without adding a button, steering assist, or scripted path constraint.
 
-P0.4 does **not** add new gameplay rules. It exists to settle the feel baseline and decide whether the physical identity is strong enough to enter P1.
+> P0.4 tuning/validation instrumentation remains available, but the external five-player P0 gate and final primary-orientation lock are still open. P1.1 is therefore an exploratory vocabulary slice, not a retroactive declaration that P0 passed.
 
-### Validation track
+## P1.1 vocabulary test
 
-The same global physics rules drive the full course:
+The default prototype now opens a short authored magnetic test route:
 
-1. Calibration Deck — basic cause/effect.
-2. Wide S-Curve — anticipatory correction.
-3. Narrow Rail — fine control.
-4. Momentum Dip + Gap — run-up judgment.
-5. Banked Turn — physical line choice.
-6. Goal Brake Zone — deliberate braking.
+1. **Normal approach** — establishes ordinary gravity/momentum behavior.
+2. **Magnetic entry** — luminous material introduces attachment on a flat surface.
+3. **Roll transition** — the magnetic rail rolls through 25°, 55°, 85°, and a 115° overhang.
+4. **Return transition** — the same rail rolls back toward horizontal.
+5. **Magnetic release** — luminous material ends and normal momentum behavior resumes.
+6. **Goal brake** — player must slow inside the final goal using the existing reverse-tilt braking rule.
 
-Falling recovers to the latest authored checkpoint. The gap contains no hidden floor or scripted launch force.
+The magnetic field is local to authored magnetic pieces. It does not steer along the route, change player input, or set velocity directly.
+
+### World readability
+
+Magnetic surfaces use a distinct luminous cyan material and repeated longitudinal bands. While attachment is active, the inner sphere reference becomes slightly brighter. This is world/state feedback; there is no new gameplay HUD or icon language.
+
+## P1.1 phone gate
+
+On a real phone, verify that:
+
+- the luminous surface reads as a distinct physical state before explanation is needed;
+- the sphere can traverse the overhanging section using the same tilt/gravity control;
+- the player still needs to manage forward speed and lateral correction rather than being carried by the magnet;
+- leaving the luminous rail clearly returns to ordinary momentum behavior;
+- camera stabilization remains comfortable while the physical surface rolls past vertical;
+- the mechanic changes route planning enough to justify keeping it.
+
+If magnetic attachment only makes the route easier or more spectacular without creating a new force/momentum decision, remove or redesign it before adding another vocabulary item.
+
+## P0 regression mode
+
+Append `?stage=p0` to return to the frozen P0 validation track. Add `&debug=1` for telemetry and tuning.
+
+P0 device-run history remains separate from P1. Synthetic input is still development-only evidence for phone validation.
 
 ## Phone controls
 
@@ -34,61 +57,15 @@ Falling recovers to the latest authored checkpoint. The gap contains no hidden f
 3. Tilt forward/back/left/right to redirect effective gravity.
 4. Return toward neutral to coast; tilt against momentum to brake or reverse.
 5. Use **RECENTER** when your natural holding pose changes.
-6. Use **RESTART** for a fresh timed validation attempt.
+6. Use **RESTART** to restart the active prototype route.
 
-Portrait and landscape remain valid test modes until P0.4 provides enough evidence to lock one primary product orientation.
+No new input is introduced for magnetic attachment.
 
 ## Debug feel tuning
 
-Append `?debug=1` and open **TUNE / P0.4 FEEL**. These controls are prototype instrumentation, not player settings.
+Append `?debug=1` to expose the existing Traditional Chinese tuning panel for input, physics, and camera feel. Magnetic strength is intentionally **not** exposed as a player-feel slider in P1.1; it is a mechanic rule that should first be judged as a coherent authored behavior.
 
-### Input
-
-- **Tilt sensitivity** — how little physical tilt is required to reach the same maximum field.
-- **Neutral dead zone** — how much hand tremor is ignored around the calibrated pose.
-- **Full-force tilt** — physical angle at which input saturates.
-- **Input response** — exponential smoothing response; higher reacts faster.
-
-### Physics
-
-- **Ball inertia** — mapped to global linear damping.
-- **Track friction** — one global ball/track contact friction value.
-- **Contact bounce** — one global restitution value.
-
-### Camera
-
-- **Camera zoom / FOV** — first-person field of view.
-- **Track follow** — how quickly yaw converges toward authored route-forward.
-
-Changing a tuning value invalidates the current validation timer; press **RESTART** before recording a comparison run. Values persist locally on the test device. Older P0.2 tuning values migrate where compatible.
-
-## P0.4 validation telemetry
-
-Completed runs record locally on the test device:
-
-- portrait / landscape;
-- device motion / synthetic input;
-- total completion time;
-- fall count;
-- per-section elapsed time;
-- tuning snapshot used for the run.
-
-`?debug=1` shows the best completed **device-motion** run for portrait and landscape. Synthetic runs remain useful for development but do not count toward the phone gate.
-
-Use `docs/plans/inner-rail/P0-VALIDATION-LOG.md` for the five-player external protocol and orientation A/B notes.
-
-## P0.4 pass criteria
-
-P0 passes only after real-phone testing confirms the acceptance thresholds in the prototype spec, including:
-
-- at least 4/5 testers intentionally accelerate, brake, and change direction;
-- at least 3/5 finish within three attempts;
-- at least 3/5 solve the gap through deliberate run-up adjustment;
-- no more than 1/5 is blocked primarily by camera discomfort;
-- players describe the control as tilt / gravity / momentum rather than joystick-like movement;
-- portrait vs landscape evidence is strong enough to lock the primary orientation.
-
-Do not enter P1 by compensating for a failed gate with more tutorials, obstacles, assists, or progression.
+Debug telemetry now also shows the active magnetic piece and attachment strength.
 
 ## Commands
 
@@ -98,6 +75,6 @@ npm test
 npm run build
 ```
 
-## Next slice
+## Next vocabulary decision
 
-**P1 — Physical Puzzle Vocabulary**, only after P0.4 locks the baseline feel and primary orientation and the external validation gate passes.
+Keep **Magnetic Rail** only if P1.1 demonstrates a meaningful new planning state. If accepted, the next candidate should build on it—most likely a controlled wall/inversion test—rather than introducing an unrelated mechanic immediately.
