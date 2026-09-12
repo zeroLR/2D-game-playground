@@ -12,7 +12,8 @@ flowchart LR
     P01 --> P011[P0.1.1 Orientation-Agnostic Harness]
     P011 --> P02[P0.2 Ball Physics + Stable Camera]
     P02 --> P03[P0.3 Validation Track]
-    P03 --> P04[P0.4 Phone Feel Gate]
+    P03 --> P031[P0.3.1 Track-Forward Camera]
+    P031 --> P04[P0.4 Phone Feel Gate]
     P04 --> P1[P1 Physical Puzzle Vocabulary]
     P1 --> P2[P2 Spatial Puzzle Levels]
     P2 --> P3[P3 Sensory / Art Vertical Slice]
@@ -88,9 +89,8 @@ P0.1.1 does **not** choose the winning orientation. It only makes the comparison
 - [x] stable fixed-step physics update
 - [x] camera follows ball translation
 - [x] camera roll fixed independent of sphere rotation
-- [x] damped velocity/heading-based yaw
+- [x] initial stabilized heading-follow model for sandbox validation
 - [x] conservative pitch behavior
-- [x] low-speed heading stability
 - [x] restart + recenter controls
 - [x] reduced-motion suppression of nonessential camera feedback
 - [x] first-person inner-shell rotation cue independent of camera roll
@@ -116,7 +116,7 @@ Record which orientation better supports:
 - forward track readability;
 - the fantasy of being inside the ball.
 
-Do not lock the final product orientation until this comparison exists. If the camera is uncomfortable or braking feels like direct steering, remain in P0.2.
+Do not lock the final product orientation until this comparison exists.
 
 ---
 
@@ -146,6 +146,29 @@ A competent player can complete the track through force/momentum control alone, 
 
 ---
 
+## P0.3.1 — Track-Forward Camera
+
+**Status:** implementation complete; real-phone backward-motion / turn-readability gate pending.
+
+**Objective:** separate **where the ball is moving** from **where the player is looking**. The first-person view represents the authored route-forward direction, not velocity heading.
+
+### Camera contract
+
+- [x] track geometry resolves an authored horizontal forward heading
+- [x] camera yaw smoothly follows track-forward
+- [x] rolling backward does not rotate the camera 180°
+- [x] lateral drift does not redefine player-facing direction
+- [x] authored bends still rotate the camera through the route
+- [x] checkpoint recovery restores an authored route-forward heading
+- [x] ball velocity remains camera feedback only for speed FOV / airborne pitch
+- [x] Track Follow tuning controls route-heading catch-up speed
+
+### Gate
+
+On a real phone, deliberately tilt backward until the sphere travels in reverse. The camera must continue facing the route-forward direction. Then traverse the S-curve and banked turn: camera rotation should come from the authored track bend, remain smooth, and preserve the meaning of screen-relative tilt.
+
+---
+
 ## P0.4 — Phone Feel / Comfort Gate
 
 **Objective:** decide whether the product identity deserves expansion.
@@ -154,7 +177,7 @@ A competent player can complete the track through force/momentum control alone, 
 
 - [ ] tune sensor smoothing/dead zone/saturation
 - [ ] tune global ball friction/damping/restitution
-- [ ] tune camera yaw/pitch/FOV behavior
+- [ ] tune camera track-follow/pitch/FOV behavior
 - [ ] minimal impact/motion feedback only where it improves physical readability
 - [ ] lock primary phone orientation from accumulated P0 evidence
 - [ ] execute the P0 5-player validation protocol
@@ -236,4 +259,4 @@ Do not schedule these until a multi-level core exists:
 - backend accounts;
 - monetization.
 
-The immediate next gate is **P0.3 real-phone validation-track completion**. Do not enter P0.4 until the full course is completable through the shared gravity/momentum rule set and its timing/readability problems are understood.
+The immediate next gate is **P0.3 / P0.3.1 real-phone validation-track completion and camera readability**. Do not enter P0.4 until backward motion preserves route-facing orientation and the full course remains readable through the shared gravity/momentum rule set.
