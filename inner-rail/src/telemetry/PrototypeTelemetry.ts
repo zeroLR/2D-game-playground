@@ -23,6 +23,8 @@ export interface RuntimeTelemetry {
   camera: CameraTelemetry;
   track: TrackProgressSnapshot;
   validation: ValidationRunSnapshot;
+  validationEnabled: boolean;
+  modeLabel: string;
   bestPortrait: ValidationRunSummary | null;
   bestLandscape: ValidationRunSummary | null;
   worldGravity: WorldGravityDirection;
@@ -35,15 +37,22 @@ export class PrototypeTelemetry {
 
   render(snapshot: TiltSnapshot, runtime: RuntimeTelemetry): void {
     const raw = snapshot.raw;
+    const validationLines = runtime.validationEnabled
+      ? [
+          `validation  ${runtime.validation.active ? `${runtime.validation.elapsedSeconds.toFixed(1)}s` : 'inactive'}  falls ${runtime.validation.fallCount}`,
+          `best device portrait ${bestRunLabel(runtime.bestPortrait)}`,
+          `best device landscape ${bestRunLabel(runtime.bestLandscape)}`,
+        ]
+      : [];
     this.root.textContent = [
+      `prototype   ${runtime.modeLabel}`,
       `mode        ${runtime.gameplayActive ? 'physics active' : 'paused'}`,
       `source      ${snapshot.source ?? 'none'}`,
       `viewport    ${viewportOrientation()}  ${window.innerWidth}×${window.innerHeight}`,
-      `validation  ${runtime.validation.active ? `${runtime.validation.elapsedSeconds.toFixed(1)}s` : 'inactive'}  falls ${runtime.validation.fallCount}`,
-      `best device portrait ${bestRunLabel(runtime.bestPortrait)}`,
-      `best device landscape ${bestRunLabel(runtime.bestLandscape)}`,
+      ...validationLines,
       `section     ${runtime.track.sectionLabel}`,
       `checkpoint  ${runtime.track.checkpointId}  goal ${Math.round(runtime.track.goalHoldProgress * 100)}%${runtime.track.complete ? ' COMPLETE' : ''}`,
+      `magnetic    ${runtime.ball.magnetic.active ? `${runtime.ball.magnetic.pieceId ?? 'active'}  ${Math.round(runtime.ball.magnetic.strength * 100)}%` : 'off'}`,
       `screen deg  x ${fixed(snapshot.screenTiltDeg.x)}  y ${fixed(snapshot.screenTiltDeg.y)}`,
       `neutral     x ${fixed(snapshot.neutral?.x)}  y ${fixed(snapshot.neutral?.y)}`,
       `relative    x ${fixed(snapshot.relativeTiltDeg.x)}  y ${fixed(snapshot.relativeTiltDeg.y)}`,

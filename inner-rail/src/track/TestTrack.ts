@@ -4,7 +4,10 @@ export type TrackSectionId =
   | 'narrow-rail'
   | 'momentum-gap'
   | 'banked-turn'
-  | 'goal-brake';
+  | 'goal-brake'
+  | 'magnetic-intro'
+  | 'magnetic-overhang'
+  | 'magnetic-release';
 
 export interface TrackVec3 {
   x: number;
@@ -23,7 +26,7 @@ export interface TrackPiece {
   position: TrackVec3;
   size: TrackVec3;
   rotation: TrackVec3;
-  surface: 'track' | 'goal';
+  surface: 'track' | 'goal' | 'magnetic';
 }
 
 export interface RecoveryCheckpoint {
@@ -62,7 +65,7 @@ const DEG = Math.PI / 180;
 const THICKNESS = 0.5;
 const FLAT_Y = -THICKNESS / 2;
 
-function box(
+export function trackBox(
   id: string,
   section: TrackSectionId,
   x: number,
@@ -91,37 +94,37 @@ function box(
 
 const pieces: TrackPiece[] = [
   // A — Calibration Deck: broad and forgiving so the player can read cause/effect.
-  box('a-deck', 'calibration', 0, FLAT_Y, -31.5, 8.5, 11),
-  box('a-exit', 'calibration', -0.2, FLAT_Y, -23.5, 7.2, 6.5, 0, -5),
+  trackBox('a-deck', 'calibration', 0, FLAT_Y, -31.5, 8.5, 11),
+  trackBox('a-exit', 'calibration', -0.2, FLAT_Y, -23.5, 7.2, 6.5, 0, -5),
 
   // B — Wide S-Curve: no guard rails; the challenge is anticipatory correction.
-  box('b-s1', 's-curve', -1.1, FLAT_Y, -18.4, 6.6, 6.6, 0, -14),
-  box('b-s2', 's-curve', -2.6, FLAT_Y, -12.9, 6.4, 6.4, 0, -14),
-  box('b-s3', 's-curve', -2.3, FLAT_Y, -7.5, 6.2, 6.4, 0, 8),
-  box('b-s4', 's-curve', -0.5, FLAT_Y, -2.2, 6.0, 6.4, 0, 17),
-  box('b-s5', 's-curve', 1.5, FLAT_Y, 3.0, 5.8, 6.2, 0, 12),
+  trackBox('b-s1', 's-curve', -1.1, FLAT_Y, -18.4, 6.6, 6.6, 0, -14),
+  trackBox('b-s2', 's-curve', -2.6, FLAT_Y, -12.9, 6.4, 6.4, 0, -14),
+  trackBox('b-s3', 's-curve', -2.3, FLAT_Y, -7.5, 6.2, 6.4, 0, 8),
+  trackBox('b-s4', 's-curve', -0.5, FLAT_Y, -2.2, 6.0, 6.4, 0, 17),
+  trackBox('b-s5', 's-curve', 1.5, FLAT_Y, 3.0, 5.8, 6.2, 0, 12),
 
   // C — Narrow Rail: same physics, much less lateral margin.
-  box('c-n1', 'narrow-rail', 2.5, FLAT_Y, 8.9, 2.8, 7.6),
-  box('c-n2', 'narrow-rail', 2.5, FLAT_Y, 16.0, 2.5, 7.2),
+  trackBox('c-n1', 'narrow-rail', 2.5, FLAT_Y, 8.9, 2.8, 7.6),
+  trackBox('c-n2', 'narrow-rail', 2.5, FLAT_Y, 16.0, 2.5, 7.2),
 
   // D — Momentum Dip + Gap: enter the dip, build speed, commit to the launch.
-  box('d-dip-in', 'momentum-gap', 2.5, -0.58, 22.0, 3.2, 6.2, 7),
-  box('d-dip-floor', 'momentum-gap', 2.5, -1.02, 26.8, 3.2, 4.4),
-  box('d-launch', 'momentum-gap', 2.5, -0.60, 31.3, 3.2, 5.8, -11),
+  trackBox('d-dip-in', 'momentum-gap', 2.5, -0.58, 22.0, 3.2, 6.2, 7),
+  trackBox('d-dip-floor', 'momentum-gap', 2.5, -1.02, 26.8, 3.2, 4.4),
+  trackBox('d-launch', 'momentum-gap', 2.5, -0.60, 31.3, 3.2, 5.8, -11),
   // Intentional authored gap between launch and landing: no hidden floor or scripted impulse.
-  box('d-landing', 'momentum-gap', 2.5, FLAT_Y, 38.4, 3.8, 5.0),
+  trackBox('d-landing', 'momentum-gap', 2.5, FLAT_Y, 38.4, 3.8, 5.0),
 
   // E — Banked Turn: the rail supplies the physical banking; steering rules do not change.
-  box('e-b1', 'banked-turn', 3.3, FLAT_Y, 43.2, 3.8, 6.0, 0, 10, -6),
-  box('e-b2', 'banked-turn', 5.6, FLAT_Y, 48.1, 3.8, 6.0, 0, 24, -10),
-  box('e-b3', 'banked-turn', 9.0, FLAT_Y, 51.9, 3.8, 6.0, 0, 38, -12),
-  box('e-b4', 'banked-turn', 13.1, FLAT_Y, 54.3, 3.9, 6.0, 0, 55, -10),
-  box('e-b5', 'banked-turn', 17.4, FLAT_Y, 55.5, 4.1, 6.0, 0, 72, -6),
+  trackBox('e-b1', 'banked-turn', 3.3, FLAT_Y, 43.2, 3.8, 6.0, 0, 10, -6),
+  trackBox('e-b2', 'banked-turn', 5.6, FLAT_Y, 48.1, 3.8, 6.0, 0, 24, -10),
+  trackBox('e-b3', 'banked-turn', 9.0, FLAT_Y, 51.9, 3.8, 6.0, 0, 38, -12),
+  trackBox('e-b4', 'banked-turn', 13.1, FLAT_Y, 54.3, 3.9, 6.0, 0, 55, -10),
+  trackBox('e-b5', 'banked-turn', 17.4, FLAT_Y, 55.5, 4.1, 6.0, 0, 72, -6),
 
   // F — Goal Brake Zone: enough runway to deliberately cancel momentum.
-  box('f-brake', 'goal-brake', 22.0, FLAT_Y, 55.5, 5.2, 7.2, 0, 90),
-  box('f-goal', 'goal-brake', 28.0, FLAT_Y, 55.5, 6.2, 7.2, 0, 90, 0, 'goal'),
+  trackBox('f-brake', 'goal-brake', 22.0, FLAT_Y, 55.5, 5.2, 7.2, 0, 90),
+  trackBox('f-goal', 'goal-brake', 28.0, FLAT_Y, 55.5, 6.2, 7.2, 0, 90, 0, 'goal'),
 ];
 
 const checkpoints: RecoveryCheckpoint[] = [
@@ -196,4 +199,7 @@ export const TRACK_SECTION_LABELS: Record<TrackSectionId, string> = {
   'momentum-gap': 'MOMENTUM DIP + GAP',
   'banked-turn': 'BANKED TURN',
   'goal-brake': 'GOAL BRAKE ZONE',
+  'magnetic-intro': 'MAGNETIC ENTRY',
+  'magnetic-overhang': 'MAGNETIC OVERHANG',
+  'magnetic-release': 'MAGNETIC RELEASE',
 };
