@@ -1,6 +1,7 @@
 import { BlurFilter, Container, Graphics, GraphicsContext } from 'pixi.js';
 import type { Point2D } from '../input/SwipeClassifier';
 import type { SplitEvolutionPath, SplitEvolutionStage } from '../progression/SplitEvolutionSystem';
+import { SplitParticleEnvelope } from './SplitParticleEnvelope';
 import {
   SPLIT_RUNTIME_SVG_BY_KEY,
   getSplitRuntimeGlyphSpec,
@@ -18,6 +19,7 @@ interface SplitMaterialGlyph {
   hot: Graphics | null;
   motionPrimary: Graphics | null;
   motionSecondary: Graphics | null;
+  particles: SplitParticleEnvelope;
   spec: SplitRuntimeGlyphSpec;
 }
 
@@ -70,6 +72,8 @@ function motionEnvelope(phase: number): number {
 
 export class SplitRuntimeSvg extends Container {
   private readonly glyphs = new Map<SplitRuntimeGlyphKey, SplitMaterialGlyph>();
+  private activeGlyphKey: SplitRuntimeGlyphKey | null = null;
+  private lastPresentationTime: number | null = null;
 
   constructor() {
     super();
@@ -100,6 +104,11 @@ export class SplitRuntimeSvg extends Container {
 
       const motionPrimary = spec.motion.primaryAlpha > 0 ? createMotionGraphic(spec.motion.kind) : null;
       const motionSecondary = spec.motion.secondaryAlpha > 0 ? createMotionGraphic(spec.motion.kind) : null;
+      const particles = new SplitParticleEnvelope(spec.particles, {
+        x: spec.pivotX,
+        y: spec.pivotY,
+        forwardTipY: spec.motion.kind === 'lance-forward' ? spec.motion.travelEnd : spec.pivotY,
+      });
 
       if (spec.material.glowEnabled) {
         hot = new Graphics(context);
@@ -115,6 +124,7 @@ export class SplitRuntimeSvg extends Container {
       root.addChild(body);
       if (motionPrimary) root.addChild(motionPrimary);
       if (motionSecondary) root.addChild(motionSecondary);
+      root.addChild(particles);
       if (hot) root.addChild(hot);
 
       this.glyphs.set(key, {
@@ -125,6 +135,7 @@ export class SplitRuntimeSvg extends Container {
         hot,
         motionPrimary,
         motionSecondary,
+        particles,
         spec,
       });
       this.addChild(root);
@@ -142,14 +153,30 @@ export class SplitRuntimeSvg extends Container {
     overdrive: boolean,
   ): void {
     for (const glyph of this.glyphs.values()) glyph.root.visible = false;
-    if (!splitActive) return;
+    const dt = this.presentationDelta(presentationTime);
+
+    if (!splitActive) {
+      this.deactivateParticles();
+      return;
+    }
 
     const speed = Math.hypot(ballVelocity.x, ballVelocity.y);
-    if (!(speed > 0)) return;
+    if (!(speed > 0)) {
+      this.deactivateParticles();
+      return;
+    }
 
     const spec = getSplitRuntimeGlyphSpec(path, stage);
     const glyph = this.glyphs.get(spec.key);
-    if (!glyph) return;
+    if (!glyph) {
+      this.deactivateParticles();
+      return;
+    }
+
+    if (this.activeGlyphKey !== spec.key) {
+      this.resetParticleEnvelopes();
+      this.activeGlyphKey = spec.key;
+    }
 
     glyph.root.visible = true;
     glyph.root.pivot.set(spec.pivotX, spec.pivotY);
@@ -183,6 +210,8 @@ export class SplitRuntimeSvg extends Container {
       reducedMotion,
       overdrive,
     );
+
+    glyph.particles.update(dt, reducedMotion, overdrive);
   }
 
   private presentMotionLayer(
@@ -218,5 +247,28 @@ export class SplitRuntimeSvg extends Container {
     const y = spec.motion.travelStart + (spec.motion.travelEnd - spec.motion.travelStart) * travel;
     graphic.position.set(32, y);
     graphic.scale.set(0.9 + envelope * 0.24, 0.9 + phase * 0.16);
+  }
+
+  private presentationDelta(presentationTime: number): number {
+    if (!Number.isFinite(presentationTime)) return 0;
+    if (this.lastPresentationTime === null) {
+      this.lastPresentationTime = presentationTime;
+      return 0;
+    }
+
+    const delta = presentationTime - this.lastPresentationTime;
+    this.lastPresentationTime = presentationTime;
+    if (!(delta > 0) || delta > 0.2) return 0;
+    return Math.min(0.05, delta);
+  }
+
+  private deactivateParticles(): void {
+    if (this.activeGlyphKey === null) return;
+    this.resetParticleEnvelopes();
+    this.activeGlyphKey = null;
+  }
+
+  private resetParticleEnvelopes(): void {
+    for (const glyph of this.glyphs.values()) glyph.particles.reset();
   }
 }

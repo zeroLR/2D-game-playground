@@ -67,4 +67,29 @@ describe('Split runtime SVG alignment', () => {
     expect(lanceT2.secondaryAlpha).toBeGreaterThan(0);
     expect(lanceT2.travelEnd).toBeLessThan(lanceT1.travelEnd);
   });
+
+  it('keeps Base particle-free and gives evolved paths distinct particle languages', () => {
+    expect(getSplitRuntimeGlyphSpec('prism', 0).particles.kind).toBe('none');
+    expect(getSplitRuntimeGlyphSpec('prism', 1).particles.kind).toBe('prism-crystal');
+    expect(getSplitRuntimeGlyphSpec('prism', 2).particles.kind).toBe('prism-crystal');
+    expect(getSplitRuntimeGlyphSpec('lance', 1).particles.kind).toBe('lance-fleck');
+    expect(getSplitRuntimeGlyphSpec('lance', 2).particles.kind).toBe('lance-fleck');
+  });
+
+  it('caps particle growth while making T2 richer than T1', () => {
+    const prismT1 = getSplitRuntimeGlyphSpec('prism', 1).particles;
+    const prismT2 = getSplitRuntimeGlyphSpec('prism', 2).particles;
+    const lanceT1 = getSplitRuntimeGlyphSpec('lance', 1).particles;
+    const lanceT2 = getSplitRuntimeGlyphSpec('lance', 2).particles;
+
+    expect(prismT2.maxActive).toBeGreaterThan(prismT1.maxActive);
+    expect(prismT2.emitInterval).toBeLessThan(prismT1.emitInterval);
+    expect(lanceT2.maxActive).toBeGreaterThan(lanceT1.maxActive);
+    expect(lanceT2.emitInterval).toBeLessThan(lanceT1.emitInterval);
+
+    expect(prismT2.maxActive).toBeLessThanOrEqual(12);
+    expect(lanceT2.maxActive).toBeLessThanOrEqual(10);
+    expect(lanceT1.tipSparkEvery).toBeGreaterThan(0);
+    expect(lanceT2.tipSparkEvery).toBeGreaterThan(0);
+  });
 });
