@@ -113,39 +113,63 @@ P2 changes the unit of design from a linear mechanic-validation track to a compa
 
 ### P2.1 — Compact Puzzle Room Grammar
 
-**Status:** implementation complete; real-phone spatial-read gate pending.
+**Status:** **PASS on real phone**.
 
-**Goal:** prove one room can create a readable spatial plan without a minimap, waypoint arrow, or explanatory HUD.
+Accepted result:
 
-Implemented first-room contract:
+- elevated goal and folded route are understandable without minimap / waypoint / tutorial text;
+- elevation and moving / magnetic surfaces read as route structure rather than decoration;
+- returning through the same chamber at a different height is spatially coherent;
+- the space reads as one puzzle room rather than a longer obstacle course;
+- height-aware route camera and checkpoint logic support stacked traversal without breaking the existing route-forward control contract.
 
-- [x] elevated goal is visible / spatially inferable from the lower start but has no direct lower connection;
-- [x] route folds west, north, upward, east, south, then back toward the original chamber instead of extending as a corridor;
-- [x] lower and upper traversal deliberately reuse overlapping X/Z space;
-- [x] static Magnetic Rail teaches the bank into one moving magnetic lift;
-- [x] the lift raises the player 4.8 world units using the accepted Moving + Magnetic composition;
-- [x] the upper route includes one separate ordinary moving bridge so timing remains part of the room plan;
-- [x] the final upper return crosses previously seen lower space before reaching the original visible goal;
-- [x] material grammar remains cyan = magnetic, amber = moving, both = composed;
-- [x] camera route selection is height-aware when upper/lower track footprints overlap;
-- [x] checkpoint / section progress is height-aware so stacked routes cannot trigger each other by X/Z alone;
-- [x] recovery checkpoints shorten retries without adding solution markers;
-- [x] no minimap, objective arrow, tutorial text, switch, key, friction surface, jump, or third mechanic is introduced.
-
-P2.1 phone gate:
-
-- [ ] player can identify a plausible route from the room itself before completing it;
-- [ ] player understands that elevation / rail orientation are part of the route, not decorative geometry;
-- [ ] revisiting the same chamber from another height or direction feels spatially coherent;
-- [ ] failure is attributed to route planning, timing, or momentum rather than not knowing what the game wants;
-- [ ] the room feels like a **puzzle space**, not a longer obstacle course;
-- [ ] accepted Magnetic + Moving vocabulary remains readable when multiple candidate surfaces are visible at once.
-
-**Gate rule:** do not enter P2.2 merely because the room is completable. P2.1 passes only when the player can form a spatial plan from the room itself and recognizes the return over previously seen space.
+**Spatial grammar decision:** KEEP. The project can now author multiple rooms from this grammar before adding another gameplay rule.
 
 ### P2.2 — Authored Spatial Puzzle Set
 
-Only after P2.1 passes, author a small level set that varies spatial relationships rather than adding mechanics. Reuse the same grammar to test teach → vary → compose → mastery progression.
+**Status:** implementation active; real-phone progression gate pending.
+
+**Goal:** prove the accepted room grammar can support a short teach → vary → mastery progression through spatial relationship changes alone.
+
+#### Room A — Teach
+
+- reuse the accepted P2.1 room;
+- goal visible near spawn;
+- lower route → moving magnetic lift → upper moving bridge → return over known space;
+- establishes the baseline grammar and visual language.
+
+#### Room B — Vary
+
+- move the ordinary moving-bridge timing problem **before** the elevation change;
+- cross the floor first, then discover the magnetic lift on the far side;
+- return above the floor-level path toward a goal near the starting side;
+- tests whether reordering known relationships creates a distinct plan without a new mechanic.
+
+#### Room C — Mastery
+
+- use a moving magnetic lift to reach the upper route;
+- later use a second moving magnetic surface as a lateral shuttle;
+- fold the upper return around the chamber toward the start-side goal;
+- combines the two accepted Moving × Magnetic relationships inside one larger mental map.
+
+#### P2.2 constraints
+
+- exactly the existing ordinary / magnetic / moving / moving-magnetic vocabulary;
+- no switch, key, friction surface, jump, detach input, countdown HUD, minimap, waypoint, or text tutorial;
+- room difficulty should increase through topology, ordering, and composition rather than longer corridors or narrower rails;
+- every room remains directly selectable for diagnosis through stable `?stage=` ids.
+
+#### P2.2 phone gate
+
+- [ ] Room A teaches the spatial grammar without explanation;
+- [ ] Room B feels related but requires a different plan because timing now precedes elevation;
+- [ ] Room C reads as mastery of already-known relationships rather than a hidden new rule;
+- [ ] moving / magnetic world language remains readable as multiple candidate surfaces appear together;
+- [ ] each completed room can be summarized as a small set of spatial relationships rather than a memorized sequence of platforms;
+- [ ] later-room difficulty comes from planning further ahead, not from raw execution difficulty alone;
+- [ ] after Room C, the current vocabulary still feels capable of producing more authored spatial puzzles without immediately requiring a third mechanic.
+
+**Gate rule:** do not enter P3 merely because three rooms are completable. P2.2 passes only if the set feels like a coherent authored progression and Room C demonstrates planning over several known relationships at once.
 
 ---
 
@@ -153,4 +177,4 @@ Only after P2.1 passes, author a small level set that varies spatial relationshi
 
 After spatial puzzle structure is stable, establish the premium kinetic-toy identity through restrained materials, lighting, rolling/contact audio, meaningful haptics where supported, and diegetic state cues rather than persistent HUD.
 
-The immediate gameplay gate is **P2.1 Compact Puzzle Room on a real phone**. P1 vocabulary expansion remains intentionally paused.
+The immediate gameplay gate is **P2.2 A → B → C authored progression on a real phone**. P1 vocabulary expansion remains intentionally paused.
