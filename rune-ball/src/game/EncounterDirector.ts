@@ -48,6 +48,8 @@ export type EncounterDirective =
       total: number;
     };
 
+const INTERMISSION_EPSILON_SECONDS = 0.000001;
+
 export class EncounterDirector {
   private readonly sequence: EncounterSequenceDefinition;
   private phase: EncounterPhase = 'idle';
@@ -119,7 +121,8 @@ export class EncounterDirector {
 
     const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
     this.intermissionSecondsRemaining = Math.max(0, this.intermissionSecondsRemaining - dt);
-    if (this.intermissionSecondsRemaining > 0) return [];
+    if (this.intermissionSecondsRemaining > INTERMISSION_EPSILON_SECONDS) return [];
+    this.intermissionSecondsRemaining = 0;
 
     this.index += 1;
     this.phase = 'active';
