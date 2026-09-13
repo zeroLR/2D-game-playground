@@ -16,10 +16,11 @@ export interface TrackProgressSnapshot {
   complete: boolean;
 }
 
-function distanceSquaredXZ(a: TrackVec3, b: TrackVec3): number {
+function distanceSquared3D(a: TrackVec3, b: TrackVec3): number {
   const dx = a.x - b.x;
+  const dy = a.y - b.y;
   const dz = a.z - b.z;
-  return dx * dx + dz * dz;
+  return dx * dx + dy * dy + dz * dz;
 }
 
 function insideGoal(position: TrackVec3, track: ValidationTrackDefinition): boolean {
@@ -81,7 +82,7 @@ export class TrackProgress {
     for (let index = this.checkpointIndex + 1; index < this.track.checkpoints.length; index += 1) {
       const checkpoint = this.track.checkpoints[index];
       const radiusSquared = checkpoint.triggerRadius * checkpoint.triggerRadius;
-      if (distanceSquaredXZ(position, checkpoint.trigger) <= radiusSquared) {
+      if (distanceSquared3D(position, checkpoint.trigger) <= radiusSquared) {
         this.checkpointIndex = index;
       }
     }
@@ -92,7 +93,7 @@ export class TrackProgress {
     let nearestDistance = Number.POSITIVE_INFINITY;
 
     for (const piece of this.track.pieces) {
-      const distance = distanceSquaredXZ(position, piece.position);
+      const distance = distanceSquared3D(position, piece.position);
       if (distance < nearestDistance) {
         nearestDistance = distance;
         nearestSection = piece.section;
