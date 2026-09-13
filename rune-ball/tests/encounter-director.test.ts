@@ -8,6 +8,7 @@ const sequence: EncounterSequenceDefinition = {
   intermissionSeconds: 0.5,
   encounters: [
     {
+      kind: 'formation',
       id: 'opening',
       title: 'OPENING VECTOR',
       objective: 'Break the opening formation.',
@@ -17,12 +18,25 @@ const sequence: EncounterSequenceDefinition = {
       ],
     },
     {
-      id: 'relay',
-      title: 'RELAY ARRAY',
-      objective: 'Break the relay formation.',
-      targets: [
-        { kind: 'armored', anchor: { x: 0.5, y: 0.5 } },
-      ],
+      kind: 'boss',
+      id: 'sentinel',
+      title: 'FRACTURE SENTINEL',
+      objective: 'Break the Sentinel.',
+      boss: {
+        id: 'fracture-sentinel',
+        title: 'FRACTURE SENTINEL',
+        coreAnchor: { x: 0.5, y: 0.42 },
+        coreRadius: 30,
+        phases: [
+          {
+            id: 'aegis-ring',
+            title: 'AEGIS RING',
+            objective: 'Break the Wards.',
+            exposureSeconds: 3,
+            wards: [{ kind: 'crystal', anchor: { x: 0.5, y: 0.25 } }],
+          },
+        ],
+      },
     },
   ],
 };
@@ -39,47 +53,49 @@ describe('EncounterDirector', () => {
       type: 'encounter-start',
       index: 0,
       total: 2,
-      encounter: { id: 'opening', title: 'OPENING VECTOR' },
+      encounter: { kind: 'formation', id: 'opening', title: 'OPENING VECTOR' },
     });
+    expect(director.snapshot.currentKind).toBe('formation');
     expect(director.snapshot.currentObjective).toBe('Break the opening formation.');
   });
 
-  it('requires a clear, preserves a short intermission, then advances to the next encounter', () => {
+  it('uses objective completion rather than target count to advance encounters', () => {
     const director = new EncounterDirector(sequence);
     director.start();
 
-    expect(director.update(1, 2)).toEqual([]);
-    expect(director.update(0, 0)).toEqual([
+    expect(director.update(1, false)).toEqual([]);
+    expect(director.update(0, true)).toEqual([
       { type: 'encounter-clear', index: 0, total: 2, encounterId: 'opening' },
     ]);
     expect(director.snapshot.phase).toBe('intermission');
 
-    expect(director.update(0.49, 0)).toEqual([]);
-    expect(director.update(0.01, 0)).toMatchObject([
-      { type: 'encounter-start', index: 1, total: 2, encounter: { id: 'relay' } },
+    expect(director.update(0.49, false)).toEqual([]);
+    expect(director.update(0.01, false)).toMatchObject([
+      { type: 'encounter-start', index: 1, total: 2, encounter: { kind: 'boss', id: 'sentinel' } },
     ]);
     expect(director.snapshot.phase).toBe('active');
+    expect(director.snapshot.currentKind).toBe('boss');
   });
 
-  it('emits stage clear only after the final encounter is empty', () => {
+  it('emits stage clear only after the final encounter objective completes', () => {
     const director = new EncounterDirector(sequence);
     director.start();
-    director.update(0, 0);
-    director.update(0.5, 0);
+    director.update(0, true);
+    director.update(0.5, false);
 
-    expect(director.update(0, 0)).toEqual([
-      { type: 'encounter-clear', index: 1, total: 2, encounterId: 'relay' },
+    expect(director.update(0, true)).toEqual([
+      { type: 'encounter-clear', index: 1, total: 2, encounterId: 'sentinel' },
       { type: 'stage-clear', total: 2 },
     ]);
     expect(director.snapshot.phase).toBe('complete');
-    expect(director.update(10, 0)).toEqual([]);
+    expect(director.update(10, true)).toEqual([]);
   });
 
-  it('rejects empty authored sequences and empty encounters', () => {
+  it('rejects empty authored sequences and empty formation encounters', () => {
     expect(() => new EncounterDirector({ intermissionSeconds: 0.5, encounters: [] })).toThrow();
     expect(() => new EncounterDirector({
       intermissionSeconds: 0.5,
-      encounters: [{ id: 'empty', title: 'EMPTY', objective: 'None', targets: [] }],
+      encounters: [{ kind: 'formation', id: 'empty', title: 'EMPTY', objective: 'None', targets: [] }],
     })).toThrow();
   });
 });
