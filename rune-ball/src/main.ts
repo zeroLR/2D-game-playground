@@ -14,6 +14,7 @@ import { readPlayerProfile, writePlayerProfile, type PlayerProfile } from './pro
 import type { ChainEvolutionPath } from './progression/ChainEvolutionSystem';
 import type { SplitEvolutionPath } from './progression/SplitEvolutionSystem';
 import type { VortexEvolutionPath } from './progression/VortexEvolutionSystem';
+import { BossCoreOverlay } from './presentation/BossCoreOverlay';
 import { DestructionScene } from './presentation/DestructionScene';
 import { GameShell } from './presentation/GameShell';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
@@ -24,6 +25,7 @@ import './style.css';
 import './session.css';
 import './settings.css';
 import './evolution.css';
+import './boss.css';
 import './product-shell.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
@@ -88,6 +90,7 @@ function bootstrap(): void {
   let scene: DestructionScene | null = null;
   let chrome: SessionChrome | null = null;
   let causality: RuneCausalityOverlay | null = null;
+  let bossOverlay: BossCoreOverlay | null = null;
   let evolutionStatus: RuneEvolutionStatus | null = null;
   let loop: FixedStepLoop | null = null;
   let resizeObserver: ResizeObserver | null = null;
@@ -150,6 +153,7 @@ function bootstrap(): void {
   const onGameplayEvent = (event: DestructionEvent): void => {
     session.registerEvent(event);
     causality?.handle(event);
+    bossOverlay?.handle(event);
     evolutionStatus?.handle(event);
   };
 
@@ -188,12 +192,13 @@ function bootstrap(): void {
   };
 
   const prepareRun = (): void => {
-    if (!app || !scene || !chrome || !causality || !evolutionStatus || !loop) {
+    if (!app || !scene || !chrome || !causality || !bossOverlay || !evolutionStatus || !loop) {
       throw new Error('Gameplay runtime was not fully prepared before run start.');
     }
 
     session.reset();
     causality.reset();
+    bossOverlay.reset();
     resultHandled = false;
     if (runHasStarted) replaceScene();
     else runHasStarted = true;
@@ -217,6 +222,7 @@ function bootstrap(): void {
   const returnHome = (): void => {
     session.reset();
     causality?.reset();
+    bossOverlay?.reset();
     resultHandled = false;
     evolutionStatus?.setVisible(false);
     chrome?.render(session.snapshot);
@@ -240,6 +246,9 @@ function bootstrap(): void {
     scene = createScene();
     nextApp.stage.addChild(scene);
     causality = new RuneCausalityOverlay(host);
+    bossOverlay = new BossCoreOverlay(host);
+    bossOverlay.setViewport(nextApp.screen.width, nextApp.screen.height);
+    bossOverlay.setReducedMotion(preferences.reducedMotion);
     evolutionStatus = new RuneEvolutionStatus(host, selectedPath, selectedSplitPath, selectedChainPath);
     evolutionStatus.setVisible(false);
 
@@ -286,6 +295,7 @@ function bootstrap(): void {
       nextApp.renderer.resize(width, height);
       scene?.setViewport(width, height);
       chrome?.setViewport(width, height);
+      bossOverlay?.setViewport(width, height);
     });
     resizeObserver.observe(host);
     runtimeLoaded = true;
@@ -397,6 +407,7 @@ function bootstrap(): void {
       if (screen !== 'run') {
         chrome?.setVisible(false);
         evolutionStatus?.setVisible(false);
+        bossOverlay?.reset();
       }
       syncRuntimePause();
     },
@@ -415,6 +426,7 @@ function bootstrap(): void {
       preferences = { ...preferences, reducedMotion: enabled };
       applyMotionPreference(enabled);
       scene?.setReducedMotion(enabled);
+      bossOverlay?.setReducedMotion(enabled);
       persistPreferences();
     },
     onOpenChange: (open) => {
