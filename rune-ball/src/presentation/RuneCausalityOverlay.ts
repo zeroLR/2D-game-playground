@@ -8,6 +8,7 @@ const MAX_TRANSIENTS = 24;
 export class RuneCausalityOverlay {
   private readonly root: SVGSVGElement;
   private readonly timers = new Set<number>();
+  private modifierMarker: SVGGElement | null = null;
   private eliteMarker: SVGGElement | null = null;
 
   constructor(host: HTMLElement) {
@@ -21,7 +22,11 @@ export class RuneCausalityOverlay {
   handle(event: DestructionEvent): void {
     switch (event.type) {
       case 'encounter-started':
+        this.clearModifierMarker();
         if (event.encounterKind !== 'elite') this.clearEliteMarker();
+        break;
+      case 'encounter-modifier-started':
+        this.showDriftField(event.center, event.radius, event.direction);
         break;
       case 'elite-started':
         this.showEliteMarker(event.position, event.radius);
@@ -71,6 +76,7 @@ export class RuneCausalityOverlay {
   reset(): void {
     for (const timer of this.timers) window.clearTimeout(timer);
     this.timers.clear();
+    this.modifierMarker = null;
     this.eliteMarker = null;
     this.root.replaceChildren();
   }
@@ -78,6 +84,74 @@ export class RuneCausalityOverlay {
   destroy(): void {
     this.reset();
     this.root.remove();
+  }
+
+  private showDriftField(
+    center: Point2D,
+    radius: number,
+    direction: 'clockwise' | 'counterclockwise',
+  ): void {
+    this.clearModifierMarker();
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.modifier = 'drift-field';
+    group.style.color = '#6fe9ff';
+    group.style.opacity = '0.24';
+
+    for (const scale of [0.68, 1]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', center.x.toFixed(2));
+      ring.setAttribute('cy', center.y.toFixed(2));
+      ring.setAttribute('r', (radius * scale).toFixed(2));
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', 'currentColor');
+      ring.setAttribute('stroke-width', scale === 1 ? '1.4' : '1');
+      ring.setAttribute('stroke-dasharray', scale === 1 ? '10 18' : '4 22');
+      group.append(ring);
+    }
+
+    const directionSign = direction === 'clockwise' ? 1 : -1;
+    for (let index = 0; index < 6; index += 1) {
+      const angle = index * Math.PI / 3;
+      const radial = { x: Math.cos(angle), y: Math.sin(angle) };
+      const tangent = {
+        x: -Math.sin(angle) * directionSign,
+        y: Math.cos(angle) * directionSign,
+      };
+      const orbitRadius = radius * 0.84;
+      const point = {
+        x: center.x + radial.x * orbitRadius,
+        y: center.y + radial.y * orbitRadius,
+      };
+      const start = { x: point.x - tangent.x * 12, y: point.y - tangent.y * 12 };
+      const end = { x: point.x + tangent.x * 12, y: point.y + tangent.y * 12 };
+      const wingA = {
+        x: end.x - tangent.x * 7 + radial.x * 5,
+        y: end.y - tangent.y * 7 + radial.y * 5,
+      };
+      const wingB = {
+        x: end.x - tangent.x * 7 - radial.x * 5,
+        y: end.y - tangent.y * 7 - radial.y * 5,
+      };
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute(
+        'd',
+        `M ${start.x} ${start.y} L ${end.x} ${end.y} M ${wingA.x} ${wingA.y} L ${end.x} ${end.y} L ${wingB.x} ${wingB.y}`,
+      );
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      group.append(path);
+    }
+
+    this.root.prepend(group);
+    this.modifierMarker = group;
+  }
+
+  private clearModifierMarker(): void {
+    this.modifierMarker?.remove();
+    this.modifierMarker = null;
   }
 
   private showEliteMarker(point: Point2D, radius: number): void {
@@ -340,7 +414,7 @@ export class RuneCausalityOverlay {
 
   private addTransient(node: SVGElement, lifetimeMs: number): void {
     while (this.transientChildCount() >= MAX_TRANSIENTS) {
-      const oldestTransient = [...this.root.children].find((child) => child !== this.eliteMarker);
+      const oldestTransient = [...this.root.children].find((child) => !this.isPersistent(child));
       if (!oldestTransient) break;
       oldestTransient.remove();
     }
@@ -353,6 +427,10 @@ export class RuneCausalityOverlay {
   }
 
   private transientChildCount(): number {
-    return [...this.root.children].filter((child) => child !== this.eliteMarker).length;
+    return [...this.root.children].filter((child) => !this.isPersistent(child)).length;
+  }
+
+  private isPersistent(child: Element): boolean {
+    return child === this.modifierMarker || child === this.eliteMarker;
   }
 }
