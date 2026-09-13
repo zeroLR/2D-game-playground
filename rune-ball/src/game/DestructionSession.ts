@@ -40,7 +40,7 @@ import {
   type ChainLinkKind,
   type ChainPropagationMode,
 } from '../progression/ChainEvolutionTuning';
-import { buildChainResolutionTimeline } from '../progression/ChainResolutionTimeline';
+import { buildChainResolutionTimeline, selectDetonationZoneTargetIds } from '../progression/ChainResolutionTimeline';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
@@ -59,7 +59,7 @@ export type DestructionEvent =
   | { type: 'chain-evolution-progress'; path: ChainEvolutionPath; stage: ChainEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
   | { type: 'chain-evolved'; path: ChainEvolutionPath; stage: 1 | 2; stageName: string; qualifiedUses: number; nextThreshold: number | null; center: Point2D }
   | { type: 'rune-failed'; rune: RuneKind; reason: 'charge' | 'busy'; center: Point2D }
-  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[]; links: { from: Point2D; to: Point2D }[]; path: ChainEvolutionPath; stage: ChainEvolutionStage; mode: ChainPropagationMode; terminalCenter: Point2D | null; terminalRadius: number }
+  | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[]; links: { from: Point2D; to: Point2D }[]; zones: { center: Point2D; radius: number }[]; path: ChainEvolutionPath; stage: ChainEvolutionStage; mode: ChainPropagationMode; terminalCenter: Point2D | null; terminalRadius: number }
   | { type: 'chain-hop'; from: Point2D; to: Point2D; path: ChainEvolutionPath; stage: ChainEvolutionStage; kind: ChainLinkKind }
   | { type: 'chain-detonated'; center: Point2D; radius: number; targets: Point2D[]; path: ChainEvolutionPath; stage: ChainEvolutionStage }
   | { type: 'overdrive-enter'; duration: number }
@@ -100,8 +100,7 @@ interface PendingDetonation {
   remainingSeconds: number;
   center: Point2D;
   radius: number;
-  targetIds: number[];
-  targetPositions: Point2D[];
+  targetLimit: number;
   path: ChainEvolutionPath;
   stage: ChainEvolutionStage;
 }
@@ -434,8 +433,9 @@ export class DestructionSession {
         path: evolutionBeforeCast.path,
         stage: evolutionBeforeCast.stage,
         mode: plan.mode,
-        terminalCenter: plan.terminalCenter ? { ...plan.terminalCenter } : null,
-        terminalRadius: plan.terminalRadius,
+        zones: timeline.detonationZones.map((zone) => ({ center: { ...zone.center }, radius: zone.radius })),
+        terminalCenter: plan.mode === 'detonation' ? null : plan.terminalCenter ? { ...plan.terminalCenter } : null,
+        terminalRadius: plan.mode === 'detonation' ? 0 : plan.terminalRadius,
       });
       if (this.flow.registerChain(eventTargetIds.length)) this.enterOverdrive(events);
 
@@ -455,17 +455,12 @@ export class DestructionSession {
         });
       }
 
-      if (timeline.detonation) {
-        const targetPositions = timeline.detonation.targetIds
-          .map((id) => positionsById.get(id))
-          .filter((position): position is Point2D => Boolean(position))
-          .map((position) => ({ ...position }));
+      for (const zone of timeline.detonationZones) {
         this.pendingDetonations.push({
-          remainingSeconds: timeline.detonation.delaySeconds,
-          center: { ...timeline.detonation.center },
-          radius: timeline.detonation.radius,
-          targetIds: [...timeline.detonation.targetIds],
-          targetPositions,
+          remainingSeconds: zone.delaySeconds,
+          center: { ...zone.center },
+          radius: zone.radius,
+          targetLimit: zone.targetLimit,
           path: evolutionBeforeCast.path,
           stage: evolutionBeforeCast.stage,
         });
@@ -536,15 +531,28 @@ export class DestructionSession {
         continue;
       }
 
+      const liveSnapshot = this.targets.snapshot;
+      const targetIds = selectDetonationZoneTargetIds(
+        action.center,
+        action.radius,
+        action.targetLimit,
+        liveSnapshot,
+      );
+      const positionsById = new Map(liveSnapshot.map((target) => [target.id, target.position]));
+      const targetPositions = targetIds
+        .map((id) => positionsById.get(id))
+        .filter((position): position is Point2D => Boolean(position))
+        .map((position) => ({ ...position }));
+
       events.push({
         type: 'chain-detonated',
         center: { ...action.center },
         radius: action.radius,
-        targets: action.targetPositions.map((position) => ({ ...position })),
+        targets: targetPositions,
         path: action.path,
         stage: action.stage,
       });
-      for (const targetId of action.targetIds) {
+      for (const targetId of targetIds) {
         this.resolveTargetHit(targetId, 'chain', false, events, damagedThisStep);
       }
     }

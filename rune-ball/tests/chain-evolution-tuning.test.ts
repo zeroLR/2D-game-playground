@@ -49,7 +49,7 @@ describe('ChainEvolutionTuning', () => {
     expect(plan.links.some((link) => link.kind === 'fork')).toBe(true);
   });
 
-  it('makes Detonation endpoint placement matter and scales Critical Mass with route length', () => {
+  it('keeps Detonation route topology while retiring preselected terminal splash targets', () => {
     const t1 = planChainPropagation(
       { x: 0, y: 0 },
       [target(1, 100, 0), target(2, 200, 0), target(3, 300, 0), target(4, 365, 20)],
@@ -64,9 +64,12 @@ describe('ChainEvolutionTuning', () => {
     );
 
     expect(t1.mode).toBe('detonation');
-    expect(t1.terminalCenter).toEqual({ x: 300, y: 0 });
-    expect(t1.terminalTargetIds).toContain(4);
-    expect(t2.terminalRadius).toBeGreaterThan(t1.terminalRadius);
+    expect(t1.routeTargetIds).toEqual([1, 2, 3]);
+    expect(t1.terminalTargetIds).toEqual([]);
+    expect(t1.terminalRadius).toBe(0);
+    expect(t2.routeTargetIds).toEqual([1, 2, 3, 4]);
+    expect(t2.terminalTargetIds).toEqual([]);
+    expect(t2.terminalRadius).toBe(0);
     expect(t2.qualificationCount).toBe(4);
   });
 });

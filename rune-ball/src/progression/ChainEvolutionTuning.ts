@@ -83,9 +83,9 @@ export function getChainCastProfile(
         maxHops: 3,
         forkRadius: 0,
         maxForks: 0,
-        terminalBaseRadius: 62,
-        terminalRadiusPerHop: 8,
-        terminalTargetLimit: 2,
+        terminalBaseRadius: 0,
+        terminalRadiusPerHop: 0,
+        terminalTargetLimit: 0,
       }
     : {
         mode: 'detonation',
@@ -93,9 +93,9 @@ export function getChainCastProfile(
         maxHops: 4,
         forkRadius: 0,
         maxForks: 0,
-        terminalBaseRadius: 70,
-        terminalRadiusPerHop: 10,
-        terminalTargetLimit: 3,
+        terminalBaseRadius: 0,
+        terminalRadiusPerHop: 0,
+        terminalTargetLimit: 0,
       };
 }
 

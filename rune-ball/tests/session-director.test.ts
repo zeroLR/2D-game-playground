@@ -74,6 +74,7 @@ describe('SessionDirector', () => {
         { from: { x: 0, y: 0 }, to: { x: 1, y: 1 } },
         { from: { x: 1, y: 1 }, to: { x: 2, y: 2 } },
       ],
+      zones: [],
       path: 'relay',
       stage: 1,
       mode: 'relay',
