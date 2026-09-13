@@ -4,49 +4,48 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P1.4 — Composition Generalization / System Depth Gate**
+**P1 complete / P2.1 — Compact Puzzle Room Grammar next**
 
-P1.1 Magnetic Rail is accepted core vocabulary. P1.2 established deterministic kinematic rail motion. P1.3 proved the first combined surface: a moving magnetic shuttle can act as one physical object instead of two sequential set pieces.
+The current Physical Puzzle Vocabulary is intentionally small:
 
-P1.4 does **not** add another mechanic. It asks whether the same Moving + Magnetic vocabulary can produce a second, meaningfully different puzzle.
+- **Magnetic Rail** changes the local down direction while preserving the same tilt controls;
+- **Moving Rail** changes the world on deterministic physical cycles;
+- the two rules can act on the same collider and remain collision-authoritative in Cannon.
 
-The active route is:
+P1.4 has now passed its system-depth gate on a real phone. The key evidence is that the same Moving + Magnetic vocabulary produced two materially different decisions:
 
-`ordinary approach → magnetic bank to 36° → vertical moving magnetic lift → elevated magnetic receiver → magnetic unwind → elevated ordinary brake / goal`
+- **P1.3 lateral magnetic shuttle** → read lateral alignment and choose when to transfer;
+- **P1.4 vertical magnetic lift** → control position while being transported and prepare momentum before leaving the lift.
 
-The lift is simultaneously:
+That distinction is enough to stop adding mechanics for now. The product question shifts from "what other physical rule can we add?" to **"can this vocabulary create compact, readable spatial puzzles?"**
 
-- **magnetic**, so passive down remains attached to the 36° surface;
-- **kinematic**, moving 4.6 world units vertically on a deterministic eight-second cycle;
-- physically authoritative in Cannon for contact, velocity, and magnetic field position;
-- rendered from the same live simulation pose.
+## P2.1 direction
 
-Unlike P1.3's lateral alignment puzzle, the intended decision is to **hold position on a short rising surface, read the upper docking window, and prepare forward momentum before the receiver becomes reachable**.
+The next prototype should be one compact 3D puzzle room rather than another linear validation track.
 
-## P1.4 phone gate
+Target structure:
 
-On a real phone, verify that:
+`goal visible / inferable from start → route folds through one chamber → magnetic + moving surfaces change elevation / access → player revisits or crosses previously seen space → goal`
 
-1. the sphere remains attached while the magnetic surface rises and descends;
-2. vertical platform motion feels physically believable rather than jittery or springy;
-3. the upper receiver is readable from world geometry without a height meter or countdown;
-4. staying on the short lift requires understandable braking / position control;
-5. successful transfer requires preparing forward momentum before or during the upper docking window;
-6. a missed transfer causes a different hold / timing / momentum decision on retry;
-7. the puzzle feels materially different from P1.3's sideways shuttle despite using exactly the same vocabulary.
+The room should:
 
-The system-depth gate passes only if #7 is true. If the solution reduces to "wait until aligned, then hold forward" again, the composition has not generalized enough.
+- reuse the same physical vocabulary without switches, keys, friction gimmicks, or new controls;
+- communicate route possibilities through geometry, material language, movement, and elevation;
+- make at least one previously seen area readable from a new height or direction;
+- remain understandable without a minimap, waypoint arrow, or text tutorial;
+- feel like a spatial puzzle rather than a longer obstacle course.
+
+P2.1 passes when the player can form a plausible mental route from the room itself and failures are about planning / timing / momentum rather than unclear objectives.
 
 ## Regression modes
 
-- default: **P1.4 Vertical Magnetic Lift**
-- `?stage=p1-composition`: accepted **P1.3 Magnetic Shuttle** composition
+The current default build still runs **P1.4 Vertical Magnetic Lift** until the P2.1 room is implemented.
+
+- `?stage=p1-composition`: accepted **P1.3 Magnetic Shuttle**
 - `?stage=p1-moving`: isolated **P1.2 Moving Rail**
 - `?stage=p1-magnetic`: accepted **P1.1 Magnetic Rail**
 - `?stage=p0`: frozen **P0** validation route
 - append `&debug=1` for telemetry and Traditional Chinese tuning controls
-
-Moving magnetic surfaces now show both cyan magnetic bands and amber movement bands so composed physical rules remain readable directly from the world.
 
 ## Phone controls
 
@@ -57,7 +56,7 @@ Moving magnetic surfaces now show both cyan magnetic bands and amber movement ba
 5. Use **RECENTER** when your natural holding pose changes.
 6. Use **RESTART** to restart the active route and reset its authored motion cycle.
 
-No new player input is introduced for P1.4.
+No new player input is planned for P2.1.
 
 ## Commands
 
