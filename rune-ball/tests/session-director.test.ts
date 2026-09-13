@@ -55,6 +55,7 @@ describe('SessionDirector', () => {
     director.registerEvent({
       type: 'encounter-started',
       encounterId: 'opening-vector',
+      encounterKind: 'formation',
       index: 0,
       total: 3,
       title: 'OPENING VECTOR',
@@ -71,6 +72,69 @@ describe('SessionDirector', () => {
 
     expect(director.update(1)).toBe('results');
     expect(director.snapshot.outcome).toBe('cleared');
+  });
+
+  it('tracks Boss phase, exposure countdown and defeat without creating another timer system', () => {
+    const director = new SessionDirector({ totalSeconds: 30, finalReleaseSeconds: 3 });
+    director.start();
+    director.registerEvent({
+      type: 'encounter-started',
+      encounterId: 'sentinel',
+      encounterKind: 'boss',
+      index: 3,
+      total: 4,
+      title: 'FRACTURE SENTINEL',
+      objective: 'Break the Boss.',
+    });
+    director.registerEvent({
+      type: 'boss-phase-started',
+      bossId: 'fracture-sentinel',
+      bossTitle: 'FRACTURE SENTINEL',
+      phaseId: 'aegis-ring',
+      phaseIndex: 0,
+      total: 2,
+      title: 'AEGIS RING',
+      objective: 'Break the Wards.',
+      position: { x: 160, y: 240 },
+      radius: 32,
+    });
+    director.registerEvent({
+      type: 'boss-exposed',
+      bossId: 'fracture-sentinel',
+      phaseIndex: 0,
+      total: 2,
+      duration: 4,
+      position: { x: 160, y: 240 },
+      radius: 32,
+    });
+
+    director.update(1.25);
+    expect(director.snapshot.boss).toMatchObject({
+      phaseNumber: 1,
+      totalPhases: 2,
+      phaseTitle: 'AEGIS RING',
+      state: 'exposed',
+    });
+    expect(director.snapshot.boss?.exposureSecondsRemaining).toBeCloseTo(2.75);
+
+    director.registerEvent({
+      type: 'boss-core-hit',
+      bossId: 'fracture-sentinel',
+      phaseIndex: 0,
+      total: 2,
+      source: 'ball',
+      position: { x: 160, y: 240 },
+    });
+    director.registerEvent({
+      type: 'boss-defeated',
+      bossId: 'fracture-sentinel',
+      phases: 2,
+      position: { x: 160, y: 240 },
+    });
+
+    expect(director.snapshot.stats.bossPhasesBroken).toBe(1);
+    expect(director.snapshot.stats.bossDefeated).toBe(true);
+    expect(director.snapshot.boss?.state).toBe('defeated');
   });
 
   it('does not consume time while paused', () => {
@@ -124,6 +188,8 @@ describe('SessionDirector', () => {
     expect(stats.overdriveReached).toBe(true);
     expect(stats.overdriveBreaks).toBe(1);
     expect(stats.encountersCleared).toBe(0);
+    expect(stats.bossPhasesBroken).toBe(0);
+    expect(stats.bossDefeated).toBe(false);
   });
 
   it('counts a ball break as Rune-authored when Vortex influenced it', () => {
@@ -144,10 +210,13 @@ describe('SessionDirector', () => {
     expect(director.snapshot.phase).toBe('ready');
     expect(director.snapshot.outcome).toBeNull();
     expect(director.snapshot.encounter).toBeNull();
+    expect(director.snapshot.boss).toBeNull();
     expect(director.snapshot.elapsedSeconds).toBe(0);
     expect(director.snapshot.stats.score).toBe(0);
     expect(director.snapshot.stats.breaks).toBe(0);
     expect(director.snapshot.stats.runesCast).toBe(0);
     expect(director.snapshot.stats.encountersCleared).toBe(0);
+    expect(director.snapshot.stats.bossPhasesBroken).toBe(0);
+    expect(director.snapshot.stats.bossDefeated).toBe(false);
   });
 });
