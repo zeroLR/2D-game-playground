@@ -34,7 +34,7 @@ describe('SessionDirector', () => {
     expect(director.snapshot.secondsRemaining).toBeCloseTo(8.5);
   });
 
-  it('enters final release before results and clamps the run at zero', () => {
+  it('enters final release before results and clamps a timeout run at zero', () => {
     const director = new SessionDirector({ totalSeconds: 10, finalReleaseSeconds: 2 });
     director.start();
 
@@ -45,6 +45,32 @@ describe('SessionDirector', () => {
     expect(director.update(2)).toBe('results');
     expect(director.snapshot.phase).toBe('results');
     expect(director.snapshot.secondsRemaining).toBe(0);
+    expect(director.snapshot.outcome).toBe('timeout');
+  });
+
+  it('ends an authored stage from stage clear instead of waiting for the timer', () => {
+    const director = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
+    director.start();
+    director.update(12);
+    director.registerEvent({
+      type: 'encounter-started',
+      encounterId: 'opening-vector',
+      index: 0,
+      total: 3,
+      title: 'OPENING VECTOR',
+      objective: 'Clear the formation.',
+    });
+    director.registerEvent({ type: 'encounter-cleared', encounterId: 'opening-vector', index: 0, total: 3 });
+    director.registerEvent({ type: 'stage-cleared', encounters: 3 });
+
+    expect(director.snapshot.phase).toBe('final-release');
+    expect(director.snapshot.outcome).toBe('cleared');
+    expect(director.snapshot.secondsRemaining).toBeCloseTo(1);
+    expect(director.snapshot.encounter).toMatchObject({ number: 1, total: 3, title: 'OPENING VECTOR' });
+    expect(director.snapshot.stats.encountersCleared).toBe(1);
+
+    expect(director.update(1)).toBe('results');
+    expect(director.snapshot.outcome).toBe('cleared');
   });
 
   it('does not consume time while paused', () => {
@@ -97,6 +123,7 @@ describe('SessionDirector', () => {
     expect(stats.chainLinks).toBe(2);
     expect(stats.overdriveReached).toBe(true);
     expect(stats.overdriveBreaks).toBe(1);
+    expect(stats.encountersCleared).toBe(0);
   });
 
   it('counts a ball break as Rune-authored when Vortex influenced it', () => {
@@ -110,13 +137,17 @@ describe('SessionDirector', () => {
     const director = new SessionDirector({ totalSeconds: 10, finalReleaseSeconds: 2 });
     director.start();
     director.registerEvent(breakEvent(4, 250, 'split'));
+    director.registerEvent({ type: 'encounter-cleared', encounterId: 'opening', index: 0, total: 2 });
     director.update(10);
     director.reset();
 
     expect(director.snapshot.phase).toBe('ready');
+    expect(director.snapshot.outcome).toBeNull();
+    expect(director.snapshot.encounter).toBeNull();
     expect(director.snapshot.elapsedSeconds).toBe(0);
     expect(director.snapshot.stats.score).toBe(0);
     expect(director.snapshot.stats.breaks).toBe(0);
     expect(director.snapshot.stats.runesCast).toBe(0);
+    expect(director.snapshot.stats.encountersCleared).toBe(0);
   });
 });
