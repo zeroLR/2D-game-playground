@@ -20,6 +20,8 @@ export class SessionChrome {
   private readonly hint: HTMLElement;
   private readonly startPrompt: HTMLElement;
   private readonly results: HTMLElement;
+  private readonly resultsEyebrow: HTMLElement;
+  private readonly resultsTitle: HTMLElement;
   private readonly score: HTMLElement;
   private readonly maxCombo: HTMLElement;
   private readonly breaks: HTMLElement;
@@ -134,6 +136,8 @@ export class SessionChrome {
     this.hint = hint;
     this.startPrompt = startPrompt;
     this.results = results;
+    this.resultsEyebrow = eyebrow;
+    this.resultsTitle = title;
     this.score = score;
     this.maxCombo = maxCombo;
     this.breaks = breaks;
@@ -167,21 +171,26 @@ export class SessionChrome {
           this.results.hidden = true;
           break;
         case 'final-release':
-          this.phase.textContent = 'FINAL RELEASE';
-          this.hint.textContent = 'CASH OUT THE LAST CHAIN';
+          this.phase.textContent = snapshot.outcome === 'cleared' ? 'STAGE CLEAR' : 'FINAL RELEASE';
+          this.hint.textContent = snapshot.outcome === 'cleared' ? 'FORMATION COLLAPSED' : 'CASH OUT THE LAST CHAIN';
           this.startPrompt.hidden = true;
           this.results.hidden = true;
           break;
         case 'results':
-          this.phase.textContent = 'COMPLETE';
+          this.phase.textContent = snapshot.outcome === 'cleared' ? 'CLEARED' : 'EXPIRED';
           this.hint.textContent = '';
           this.startPrompt.hidden = true;
-          this.showResults(snapshot.stats);
+          this.showResults(snapshot.stats, snapshot.outcome === 'cleared');
           break;
       }
     }
 
-    if (snapshot.phase === 'results') this.showResults(snapshot.stats);
+    if (snapshot.phase === 'playing' && snapshot.encounter) {
+      this.phase.textContent = `ENCOUNTER ${snapshot.encounter.number}/${snapshot.encounter.total}`;
+      this.hint.textContent = snapshot.encounter.title;
+    }
+
+    if (snapshot.phase === 'results') this.showResults(snapshot.stats, snapshot.outcome === 'cleared');
   }
 
   setViewport(width: number, height: number): void {
@@ -197,7 +206,9 @@ export class SessionChrome {
     this.root.remove();
   }
 
-  private showResults(stats: SessionStats): void {
+  private showResults(stats: SessionStats, cleared: boolean): void {
+    this.resultsEyebrow.textContent = cleared ? 'AUTHORED STAGE // COMPLETE' : 'ARCANE RUN // EXPIRED';
+    this.resultsTitle.textContent = cleared ? 'STAGE CLEAR' : 'FIELD COLLAPSED';
     this.score.textContent = stats.score.toLocaleString('en-US');
     this.maxCombo.textContent = stats.maxCombo.toString();
     this.breaks.textContent = stats.breaks.toString();
