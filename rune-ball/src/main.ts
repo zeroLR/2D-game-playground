@@ -1,7 +1,7 @@
 import { AudioDirector } from './audio/AudioDirector';
 import { createRenderer } from './bootstrap/create-renderer';
 import { StageLoadingScreen } from './bootstrap/StageLoadingScreen';
-import { getStage, type StageId } from './content/StageCatalog';
+import { DEFAULT_STAGE_ID, getStage, type StageId } from './content/StageCatalog';
 import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { SessionDirector } from './game/SessionDirector';
@@ -91,7 +91,8 @@ function bootstrap(): void {
   let evolutionStatus: RuneEvolutionStatus | null = null;
   let loop: FixedStepLoop | null = null;
   let resizeObserver: ResizeObserver | null = null;
-  let session = new SessionDirector({ totalSeconds: 75, finalReleaseSeconds: 3 });
+  let activeStage = getStage(DEFAULT_STAGE_ID);
+  let session = new SessionDirector({ totalSeconds: activeStage.durationSeconds, finalReleaseSeconds: 3 });
   let shell: GameShell;
   let runtimeLoadPromise: Promise<void> | null = null;
   let runtimeLoaded = false;
@@ -150,7 +151,10 @@ function bootstrap(): void {
     session.registerEvent(event);
     causality?.handle(event);
     evolutionStatus?.handle(event);
-    if (event.type === 'rune-activated' && session.start()) chrome?.render(session.snapshot);
+  };
+
+  const onPlayerAction = (): void => {
+    if (session.start()) chrome?.render(session.snapshot);
   };
 
   const createScene = (): DestructionScene => {
@@ -160,7 +164,14 @@ function bootstrap(): void {
       currentApp.screen.width,
       currentApp.screen.height,
       audio,
-      { onGameplayEvent, vortexEvolutionPath: selectedPath, splitEvolutionPath: selectedSplitPath, chainEvolutionPath: selectedChainPath },
+      {
+        onPlayerAction,
+        onGameplayEvent,
+        vortexEvolutionPath: selectedPath,
+        splitEvolutionPath: selectedSplitPath,
+        chainEvolutionPath: selectedChainPath,
+        encounterSequence: activeStage.encounterSequence,
+      },
     );
     nextScene.setReducedMotion(preferences.reducedMotion);
     return nextScene;
@@ -327,6 +338,8 @@ function bootstrap(): void {
     if (stageLoadInFlight) return;
     stageLoadInFlight = true;
     const stage = getStage(stageId);
+    activeStage = stage;
+    session = new SessionDirector({ totalSeconds: stage.durationSeconds, finalReleaseSeconds: 3 });
     host.dataset.activeStage = stageId;
     host.dataset.bootstrapState = 'stage-loading';
     console.info(`[Rune Ball] Loading stage ${stageId} with Vortex ${selectedPath} / Split ${selectedSplitPath} / Chain ${selectedChainPath}.`);
