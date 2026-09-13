@@ -111,13 +111,20 @@ describe('DestructionSession authored encounters', () => {
     expect(session.update(0).some((event) => event.type === 'encounter-started')).toBe(false);
   });
 
-  it('applies encounter-wide drift without turning it into target AI', () => {
+  it('applies encounter-wide drift and publishes a world-space modifier signature', () => {
     const session = new DestructionSession(BOUNDS, { encounterSequence: DRIFT_SEQUENCE });
     const before = session.snapshot.targets[0].position;
 
-    session.update(0.1);
+    const events = session.update(0.1);
     const after = session.snapshot.targets[0].position;
 
+    expect(events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'encounter-modifier-started',
+        kind: 'drift-field',
+        direction: 'clockwise',
+      }),
+    ]));
     expect(session.snapshot.encounterRules).toMatchObject({
       modifierKinds: ['drift-field'],
       driftDirection: 'clockwise',
