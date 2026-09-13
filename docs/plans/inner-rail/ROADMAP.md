@@ -10,8 +10,9 @@ flowchart LR
     P11 --> P12[P1.2 Moving Rail]
     P12 --> P13[P1.3 First Composition]
     P13 --> P14[P1.4 Composition Generalization]
-    P14 --> P2[P2 Spatial Puzzle Levels]
-    P2 --> P3[P3 Sensory / Art Vertical Slice]
+    P14 --> P21[P2.1 Compact Puzzle Room Grammar]
+    P21 --> P22[P2.2 Authored Spatial Puzzle Set]
+    P22 --> P3[P3 Sensory / Art Vertical Slice]
 ```
 
 Every slice ends in an observable gameplay gate. New rules are kept only when they create a decision that the existing vocabulary cannot already produce.
@@ -41,7 +42,9 @@ Remaining formal P0 evidence:
 
 ## P1 — Physical Puzzle Vocabulary
 
-**Status:** active; system-depth validation in progress.
+**Status:** **COMPLETE for current vertical-slice scope**.
+
+P1 is closed without adding a third mechanic. Magnetic + Moving already demonstrate distinct decisions individually and in composition; adding more vocabulary now would increase feature count before spatial level design has tested the depth of the accepted system.
 
 ### P1.1 — Magnetic Rail
 
@@ -59,9 +62,9 @@ Full 90°+ inversion remains an extension rather than a requirement.
 
 ### P1.2 — Moving Rail
 
-**Status:** implementation complete; isolated route retained for regression.
+**Status:** implementation accepted as reusable vocabulary; isolated route retained for regression.
 
-Implemented contract:
+Accepted implementation contract:
 
 - deterministic kinematic rail motion;
 - Cannon owns the live transform / collision velocity;
@@ -69,70 +72,77 @@ Implemented contract:
 - no countdown HUD, random timing, scripted impulse, or new player input;
 - restart resets the authored cycle while checkpoint recovery leaves live timing intact.
 
-The user elected to proceed directly to composition before formally closing the isolated P1.2 phone gate. The isolated route remains available through `?stage=p1-moving` for diagnosis.
+The isolated route remains available through `?stage=p1-moving` for diagnosis.
 
 ### P1.3 — Moving Rail × Magnetic Rail Composition
 
-**Status:** **accepted for progression on real phone**.
+**Status:** **ACCEPTED on real phone**.
 
-The first composition placed both rules on the same physical collider: a 48° magnetic shuttle moving laterally between two magnetic lanes.
+The first composition places both rules on the same physical collider: a 48° magnetic shuttle moving laterally between two magnetic lanes.
 
 Accepted product result:
 
-- moving magnetic attachment is usable enough on-device to continue;
+- moving magnetic attachment remains usable on-device;
 - the composition reads as one physical object rather than two sequential mechanics;
-- no new input, detach command, countdown HUD, hidden floor, or scripted route force is required;
-- collision, kinematic velocity, render pose, and magnetic field sampling share one live simulation transform.
-
-This establishes a valid first composition, but one successful set piece is not yet evidence of systemic depth.
+- player decision centers on reading lateral alignment and choosing when to commit;
+- collision, kinematic velocity, render pose, and magnetic field sampling share one live simulation transform;
+- no new input, detach command, countdown HUD, hidden floor, or scripted route force is required.
 
 ### P1.4 — Composition Generalization / System Depth Gate
 
-**Status:** implementation active; real-phone gate pending.
+**Status:** **PASS on real phone**.
 
-**Goal:** prove the accepted Moving + Magnetic vocabulary can generate a second puzzle with a materially different decision structure before adding any third mechanic.
+The second composition uses the same Moving + Magnetic vocabulary as a vertical magnetic lift instead of a lateral shuttle.
 
-#### Second puzzle contract
+Accepted phone result:
 
-- use one 36° magnetic surface that is also a vertically translating kinematic lift;
-- lift travel is 4.6 world units on a deterministic eight-second cycle;
-- the lift starts docked to the lower magnetic lane and reaches an elevated magnetic receiver halfway through the cycle;
-- player must hold position on a short moving surface, then prepare forward momentum before the upper docking window;
-- moving magnetic surfaces communicate both properties through composed cyan magnetic bands + amber motion bands;
-- elevated checkpoints / goal cues are positioned from authored world height rather than assuming a flat track;
-- no new mechanic, player input, UI meter, countdown, hidden floor, or scripted impulse is introduced;
-- P1.3 remains selectable through `?stage=p1-composition` for direct A/B comparison.
+- P1.3 is understood primarily as **waiting for lateral alignment and choosing the transfer moment**;
+- P1.4 is understood as **controlling position while being transported, then preparing momentum before leaving the lift**;
+- the two puzzles therefore create materially different decision structures despite sharing the same mechanics;
+- no third mechanic, new input, countdown, height meter, hidden floor, or scripted impulse is needed to create that distinction.
 
-#### P1.4 phone gate
-
-- [ ] magnetic attachment remains stable through vertical motion;
-- [ ] lift contact feels physically trustworthy without bounce / jitter / tunneling;
-- [ ] upper receiver and lift cycle are readable from world geometry alone;
-- [ ] the short lift creates an understandable need to brake / hold position while being transported;
-- [ ] the player prepares forward momentum for the upper transfer rather than simply waiting passively;
-- [ ] failure causes a different hold / timing / momentum decision on retry;
-- [ ] the puzzle feels materially different from P1.3's lateral alignment problem despite using the same two vocabulary rules.
-
-**System-depth decision:** if the second puzzle collapses to the same "wait for alignment, then go" solution, do not add more mechanics yet. Rework the composition space until the existing rules demonstrate real combinatorial depth.
+**System-depth decision:** PASS. The accepted vocabulary is sufficiently composable to move into spatial puzzle level design. Do not add a third mechanic until P2 demonstrates an actual content gap that the current system cannot solve.
 
 ---
 
 ## P2 — Spatial Puzzle Levels
 
-Enter P2 only after P1.4 proves the current vocabulary can generate multiple distinct puzzle structures.
+**Status:** active next phase.
 
-Turn accepted vocabulary into compact 3D mental-map puzzles rather than long race tracks:
+P2 changes the unit of design from a linear mechanic-validation track to a compact 3D puzzle room. The goal is to make players understand **where to go and why** from world geometry, then use the accepted physics vocabulary to execute that plan.
 
-- one spatial concept taught at a time;
-- visible geometry should preview routes without minimap dependence;
-- reuse and crossing of previously visited space is preferred over content length;
-- combine rules only when each rule has already demonstrated a readable decision;
-- build a small authored level set from reusable puzzle grammar before adding more vocabulary.
+### P2.1 — Compact Puzzle Room Grammar
+
+**Goal:** prove one room can create a readable spatial plan without a minimap, waypoint arrow, or explanatory HUD.
+
+First-room contract:
+
+- goal is visible or spatially inferable near the start, but not directly reachable;
+- route folds vertically and reuses the same chamber instead of extending as a long corridor;
+- ordinary track, Magnetic Rail, Moving Rail, and their accepted composition are the only gameplay vocabulary;
+- at least one later traversal crosses, overlooks, or revisits previously seen space so the player builds a mental map;
+- moving/magnetic material language remains diegetic and consistent;
+- camera remains route-forward and does not solve navigation automatically;
+- recovery checkpoints shorten retries without revealing the solution;
+- no minimap, objective arrow, text tutorial, switch, key, friction surface, or third mechanic is introduced.
+
+P2.1 phone gate:
+
+- [ ] player can identify a plausible route from the room itself before completing it;
+- [ ] player understands that elevation / rail orientation are part of the route, not decorative geometry;
+- [ ] revisiting the same chamber from another height or direction feels spatially coherent;
+- [ ] failure is attributed to route planning, timing, or momentum rather than not knowing what the game wants;
+- [ ] the room feels like a **puzzle space**, not a longer obstacle course;
+- [ ] accepted Magnetic + Moving vocabulary remains readable when multiple candidate surfaces are visible at once.
+
+### P2.2 — Authored Spatial Puzzle Set
+
+Only after P2.1 passes, author a small level set that varies spatial relationships rather than adding mechanics. Reuse the same grammar to test teach → vary → compose → mastery progression.
 
 ---
 
 ## P3 — Sensory / Art Vertical Slice
 
-After gameplay vocabulary is stable, establish the premium kinetic-toy identity through restrained materials, lighting, rolling/contact audio, meaningful haptics where supported, and diegetic state cues rather than persistent HUD.
+After spatial puzzle structure is stable, establish the premium kinetic-toy identity through restrained materials, lighting, rolling/contact audio, meaningful haptics where supported, and diegetic state cues rather than persistent HUD.
 
-The immediate gameplay gate is **P1.4 Vertical Magnetic Lift on a real phone**.
+The immediate product direction is **P2.1 — Compact Puzzle Room Grammar**. P1 vocabulary expansion is intentionally paused.
