@@ -2,6 +2,7 @@ import type { DestructionEvent } from './DestructionSession';
 import type { RuneKind } from '../rune/RuneTypes';
 
 export type SessionPhase = 'ready' | 'playing' | 'final-release' | 'results';
+export type SessionOutcome = 'cleared' | 'timeout' | null;
 
 export interface RuneUsageSummary {
   vortex: number;
@@ -20,10 +21,20 @@ export interface SessionStats {
   chainLinks: number;
   overdriveReached: boolean;
   overdriveBreaks: number;
+  encountersCleared: number;
+}
+
+export interface EncounterProgressSnapshot {
+  number: number;
+  total: number;
+  title: string;
+  objective: string;
 }
 
 export interface SessionSnapshot {
   phase: SessionPhase;
+  outcome: SessionOutcome;
+  encounter: EncounterProgressSnapshot | null;
   elapsedSeconds: number;
   secondsRemaining: number;
   phaseSecondsRemaining: number;
@@ -38,6 +49,7 @@ export interface SessionDirectorOptions {
 
 const DEFAULT_TOTAL_SECONDS = 75;
 const DEFAULT_FINAL_RELEASE_SECONDS = 3;
+const EARLY_CLEAR_SETTLE_SECONDS = 1;
 
 function emptyRuneUsage(): RuneUsageSummary {
   return { vortex: 0, split: 0, chain: 0 };
@@ -55,6 +67,7 @@ function emptyStats(): SessionStats {
     chainLinks: 0,
     overdriveReached: false,
     overdriveBreaks: 0,
+    encountersCleared: 0,
   };
 }
 
@@ -63,6 +76,8 @@ export class SessionDirector {
   private readonly finalReleaseSeconds: number;
   private readonly playingSeconds: number;
   private phase: SessionPhase = 'ready';
+  private outcome: SessionOutcome = null;
+  private encounter: EncounterProgressSnapshot | null = null;
   private elapsedSeconds = 0;
   private paused = false;
   private overdriveActive = false;
@@ -92,6 +107,8 @@ export class SessionDirector {
 
     return {
       phase: this.phase,
+      outcome: this.outcome,
+      encounter: this.encounter ? { ...this.encounter } : null,
       elapsedSeconds: this.elapsedSeconds,
       secondsRemaining,
       phaseSecondsRemaining,
@@ -121,6 +138,7 @@ export class SessionDirector {
 
     if (this.elapsedSeconds >= this.totalSeconds) {
       this.phase = 'results';
+      this.outcome ??= 'timeout';
       this.overdriveActive = false;
       return 'results';
     }
@@ -144,6 +162,20 @@ export class SessionDirector {
         if (event.runeInfluence !== null) this.stats.runeBreaks += 1;
         if (this.overdriveActive) this.stats.overdriveBreaks += 1;
         break;
+      case 'encounter-started':
+        this.encounter = {
+          number: event.index + 1,
+          total: event.total,
+          title: event.title,
+          objective: event.objective,
+        };
+        break;
+      case 'encounter-cleared':
+        this.stats.encountersCleared += 1;
+        break;
+      case 'stage-cleared':
+        this.completeStage();
+        break;
       case 'rune-activated':
         this.registerRune(event.rune);
         break;
@@ -165,10 +197,22 @@ export class SessionDirector {
 
   reset(): void {
     this.phase = 'ready';
+    this.outcome = null;
+    this.encounter = null;
     this.elapsedSeconds = 0;
     this.paused = false;
     this.overdriveActive = false;
     this.stats = emptyStats();
+  }
+
+  private completeStage(): void {
+    if (this.outcome === 'cleared' || this.phase === 'results') return;
+    this.outcome = 'cleared';
+    if (this.phase === 'playing') {
+      const settleSeconds = Math.min(this.finalReleaseSeconds, EARLY_CLEAR_SETTLE_SECONDS);
+      this.elapsedSeconds = Math.max(this.elapsedSeconds, this.totalSeconds - settleSeconds);
+      this.phase = 'final-release';
+    }
   }
 
   private registerRune(rune: RuneKind): void {
