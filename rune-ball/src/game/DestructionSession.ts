@@ -1,5 +1,11 @@
 import { BallModel, type ArenaBounds, type BallSnapshot, type WallSide } from './BallModel';
 import { ComboModel, type ComboSnapshot } from './ComboModel';
+import {
+  EncounterDirector,
+  type EncounterDirective,
+  type EncounterSequenceDefinition,
+  type EncounterSnapshot,
+} from './EncounterDirector';
 import { TargetSystem, type TargetKind, type TargetState } from './TargetSystem';
 import type { Point2D, SwipeDirection } from '../input/SwipeClassifier';
 import { FlowSystem, type FlowSnapshot } from '../progression/FlowSystem';
@@ -50,6 +56,9 @@ export type DestructionEvent =
   | { type: 'target-hit'; targetId: number; kind: TargetKind; position: Point2D; armorBroken: boolean; source: ImpactSource }
   | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource; runeInfluence: RuneKind | null }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
+  | { type: 'encounter-started'; encounterId: string; index: number; total: number; title: string; objective: string }
+  | { type: 'encounter-cleared'; encounterId: string; index: number; total: number }
+  | { type: 'stage-cleared'; encounters: number }
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
   | { type: 'vortex-evolution-progress'; path: VortexEvolutionPath; stage: VortexEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
@@ -76,6 +85,7 @@ export interface DestructionSnapshot {
   vortexEvolution: VortexEvolutionSnapshot;
   splitEvolution: SplitEvolutionSnapshot;
   chainEvolution: ChainEvolutionSnapshot;
+  encounter: EncounterSnapshot | null;
   splitEchoes: Point2D[];
 }
 
@@ -83,6 +93,7 @@ export interface DestructionSessionOptions {
   vortexEvolutionPath?: VortexEvolutionPath;
   splitEvolutionPath?: SplitEvolutionPath;
   chainEvolutionPath?: ChainEvolutionPath;
+  encounterSequence?: EncounterSequenceDefinition;
 }
 
 const BASE_TARGET_COUNT = 8;
@@ -116,6 +127,8 @@ export class DestructionSession {
   private readonly vortexEvolution: VortexEvolutionSystem;
   private readonly splitEvolution: SplitEvolutionSystem;
   private readonly chainEvolution: ChainEvolutionSystem;
+  private readonly encounterDirector: EncounterDirector | null;
+  private startupEvents: DestructionEvent[] = [];
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
@@ -127,10 +140,21 @@ export class DestructionSession {
 
   constructor(bounds: ArenaBounds, options: DestructionSessionOptions = {}) {
     this.ball = new BallModel(bounds);
-    this.targets = new TargetSystem(bounds, BASE_TARGET_COUNT);
+    this.encounterDirector = options.encounterSequence
+      ? new EncounterDirector(options.encounterSequence)
+      : null;
+    this.targets = new TargetSystem(
+      bounds,
+      this.encounterDirector ? 0 : BASE_TARGET_COUNT,
+      { autoRespawn: this.encounterDirector === null },
+    );
     this.vortexEvolution = new VortexEvolutionSystem(options.vortexEvolutionPath ?? 'gravity-well');
     this.splitEvolution = new SplitEvolutionSystem(options.splitEvolutionPath ?? 'prism');
     this.chainEvolution = new ChainEvolutionSystem(options.chainEvolutionPath ?? 'relay');
+
+    if (this.encounterDirector) {
+      this.applyEncounterDirectives(this.encounterDirector.start(), this.startupEvents);
+    }
   }
 
   get snapshot(): DestructionSnapshot {
@@ -145,6 +169,7 @@ export class DestructionSession {
       vortexEvolution: this.vortexEvolution.snapshot,
       splitEvolution: this.splitEvolution.snapshot,
       chainEvolution: this.chainEvolution.snapshot,
+      encounter: this.encounterDirector?.snapshot ?? null,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball, this.activeSplitProfile) : [],
     };
   }
@@ -220,7 +245,9 @@ export class DestructionSession {
   }
 
   update(dtSeconds: number): DestructionEvent[] {
-    const events: DestructionEvent[] = [];
+    const events: DestructionEvent[] = this.startupEvents.splice(0);
+    this.advanceEncounterDirector(dtSeconds, events);
+
     if (this.flow.update(dtSeconds)) {
       this.syncOverdriveState(false);
       events.push({ type: 'overdrive-exit' });
@@ -329,6 +356,7 @@ export class DestructionSession {
       this.activeSplitOverlaps.clear();
     }
 
+    this.advanceEncounterDirector(0, events);
     return events;
   }
 
@@ -580,6 +608,56 @@ export class DestructionSession {
     this.pendingDetonations = remainingDetonations;
   }
 
+  private advanceEncounterDirector(dtSeconds: number, events: DestructionEvent[]): void {
+    if (!this.encounterDirector) return;
+    this.applyEncounterDirectives(
+      this.encounterDirector.update(dtSeconds, this.targets.snapshot.length),
+      events,
+    );
+  }
+
+  private applyEncounterDirectives(directives: readonly EncounterDirective[], events: DestructionEvent[]): void {
+    for (const directive of directives) {
+      switch (directive.type) {
+        case 'encounter-start': {
+          events.push({
+            type: 'encounter-started',
+            encounterId: directive.encounter.id,
+            index: directive.index,
+            total: directive.total,
+            title: directive.encounter.title,
+            objective: directive.encounter.objective,
+          });
+          for (const spawn of directive.encounter.targets) {
+            const target = this.targets.spawn(spawn.kind, spawn.anchor);
+            events.push({
+              type: 'target-spawn',
+              targetId: target.id,
+              kind: target.kind,
+              position: { ...target.position },
+            });
+          }
+          this.activeOverlaps.clear();
+          this.activeSplitOverlaps.clear();
+          break;
+        }
+        case 'encounter-clear':
+          events.push({
+            type: 'encounter-cleared',
+            encounterId: directive.encounterId,
+            index: directive.index,
+            total: directive.total,
+          });
+          this.activeOverlaps.clear();
+          this.activeSplitOverlaps.clear();
+          break;
+        case 'stage-clear':
+          events.push({ type: 'stage-cleared', encounters: directive.total });
+          break;
+      }
+    }
+  }
+
   private vortexProfileForCurrentStage(): VortexCastProfile {
     const evolution = this.vortexEvolution.snapshot;
     return getVortexCastProfile(evolution.path, evolution.stage);
@@ -615,7 +693,9 @@ export class DestructionSession {
 
   private syncOverdriveState(active: boolean): void {
     this.runes.setOverdriveActive(active);
-    this.targets.setDesiredCount(active ? OVERDRIVE_TARGET_COUNT : BASE_TARGET_COUNT);
+    if (!this.encounterDirector) {
+      this.targets.setDesiredCount(active ? OVERDRIVE_TARGET_COUNT : BASE_TARGET_COUNT);
+    }
   }
 
   private splitEchoPositions(ball: BallSnapshot, profile: SplitCastProfile): Point2D[] {
