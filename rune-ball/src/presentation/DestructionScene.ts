@@ -82,8 +82,7 @@ interface ChainBeat {
   origin: Point2D;
   targets: Point2D[];
   links: { from: Point2D; to: Point2D }[];
-  terminalCenter: Point2D | null;
-  terminalRadius: number;
+  zones: { center: Point2D; radius: number }[];
   life: number;
   duration: number;
 }
@@ -618,8 +617,7 @@ export class DestructionScene extends Container {
               origin: { ...event.origin },
               targets: event.targets.map((point) => ({ ...point })),
               links: event.links.map((link) => ({ from: { ...link.from }, to: { ...link.to } })),
-              terminalCenter: event.terminalCenter ? { ...event.terminalCenter } : null,
-              terminalRadius: event.terminalRadius,
+              zones: event.zones.map((zone) => ({ center: { ...zone.center }, radius: zone.radius })),
               life: duration,
               duration,
             },
@@ -639,8 +637,7 @@ export class DestructionScene extends Container {
             origin: { ...event.from },
             targets: [{ ...event.to }],
             links: [{ from: { ...event.from }, to: { ...event.to } }],
-            terminalCenter: null,
-            terminalRadius: 0,
+            zones: [],
             life: CHAIN_RELAY_FX_SECONDS,
             duration: CHAIN_RELAY_FX_SECONDS,
           },
@@ -655,8 +652,7 @@ export class DestructionScene extends Container {
             origin: { ...event.center },
             targets: event.targets.map((point) => ({ ...point })),
             links: [],
-            terminalCenter: { ...event.center },
-            terminalRadius: event.radius,
+            zones: [{ center: { ...event.center }, radius: event.radius }],
             life: CHAIN_DETONATION_FX_SECONDS,
             duration: CHAIN_DETONATION_FX_SECONDS,
           },
@@ -968,35 +964,40 @@ export class DestructionScene extends Container {
             .circle(link.to.x, link.to.y, 5 + progress * 4)
             .stroke({ color: COLORS.cyan, width: 1.4, alpha: 0.28 + chargePulse * 0.30 });
         }
-        if (beat.terminalCenter && beat.terminalRadius > 0) {
-          const chargeRadius = beat.terminalRadius * (1.06 - progress * 0.32);
+        for (const zone of beat.zones) {
+          const chargeRadius = zone.radius * (1.08 - progress * 0.18);
           this.runeFx
-            .circle(beat.terminalCenter.x, beat.terminalCenter.y, chargeRadius)
-            .stroke({ color: COLORS.magenta, width: 2.2 + progress * 1.4, alpha: 0.24 + progress * 0.48 });
+            .circle(zone.center.x, zone.center.y, chargeRadius)
+            .fill({ color: COLORS.violet, alpha: 0.025 + progress * 0.055 })
+            .stroke({ color: COLORS.magenta, width: 1.8 + progress * 1.1, alpha: 0.28 + progress * 0.50 });
           this.runeFx
-            .circle(beat.terminalCenter.x, beat.terminalCenter.y, 5 + progress * 7)
-            .fill({ color: COLORS.white, alpha: 0.24 + progress * 0.58 });
+            .circle(zone.center.x, zone.center.y, Math.max(7, chargeRadius * (0.44 - progress * 0.14)))
+            .stroke({ color: COLORS.cyan, width: 1.4, alpha: 0.24 + progress * 0.42 });
+          this.runeFx
+            .circle(zone.center.x, zone.center.y, 4 + progress * 5)
+            .fill({ color: COLORS.white, alpha: 0.20 + progress * 0.62 });
         }
         continue;
       }
 
       if (beat.mode === 'detonation') {
-        if (beat.terminalCenter && beat.terminalRadius > 0) {
-          const radius = 10 + beat.terminalRadius * Math.min(1, progress * 1.25);
+        for (const zone of beat.zones) {
+          const radius = 8 + zone.radius * Math.min(1, progress * 1.35);
           this.runeFx
-            .circle(beat.terminalCenter.x, beat.terminalCenter.y, radius)
-            .stroke({ color: overdrive ? COLORS.white : COLORS.magenta, width: 5 - progress * 2.5, alpha: alpha * 0.92 });
+            .circle(zone.center.x, zone.center.y, radius)
+            .fill({ color: COLORS.magenta, alpha: alpha * 0.055 })
+            .stroke({ color: overdrive ? COLORS.white : COLORS.magenta, width: 4.5 - progress * 2.2, alpha: alpha * 0.90 });
           this.runeFx
-            .circle(beat.terminalCenter.x, beat.terminalCenter.y, radius * 0.72)
-            .stroke({ color: COLORS.cyan, width: 2.5, alpha: alpha * 0.62 });
-          for (let index = 0; index < 6; index += 1) {
-            const angle = index * Math.PI / 3;
-            const inner = 12 + progress * 10;
-            const outer = 28 + progress * beat.terminalRadius * 0.72;
+            .circle(zone.center.x, zone.center.y, radius * 0.70)
+            .stroke({ color: COLORS.cyan, width: 2.2, alpha: alpha * 0.60 });
+          for (let index = 0; index < 4; index += 1) {
+            const angle = index * Math.PI / 2;
+            const inner = 10 + progress * 8;
+            const outer = 22 + progress * zone.radius * 0.66;
             this.runeFx
-              .moveTo(beat.terminalCenter.x + Math.cos(angle) * inner, beat.terminalCenter.y + Math.sin(angle) * inner)
-              .lineTo(beat.terminalCenter.x + Math.cos(angle) * outer, beat.terminalCenter.y + Math.sin(angle) * outer)
-              .stroke({ color: index % 2 === 0 ? COLORS.white : COLORS.violet, width: 2, alpha: alpha * 0.54 });
+              .moveTo(zone.center.x + Math.cos(angle) * inner, zone.center.y + Math.sin(angle) * inner)
+              .lineTo(zone.center.x + Math.cos(angle) * outer, zone.center.y + Math.sin(angle) * outer)
+              .stroke({ color: index % 2 === 0 ? COLORS.white : COLORS.violet, width: 1.8, alpha: alpha * 0.50 });
           }
         }
         continue;

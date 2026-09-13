@@ -1,10 +1,15 @@
+import type { TargetState } from '../game/TargetSystem';
 import type { Point2D } from '../input/SwipeClassifier';
 import type { ChainEvolutionStage } from './RuneEvolutionCatalog';
 import type { ChainLinkKind, ChainPropagationPlan } from './ChainEvolutionTuning';
 
 export const RELAY_HOP_CADENCE_SECONDS = 0.075;
-export const FUSE_DETONATION_DELAY_T1_SECONDS = 0.44;
-export const FUSE_DETONATION_DELAY_T2_SECONDS = 0.36;
+export const FUSE_ZONE_DELAY_T1_SECONDS = 0.48;
+export const FUSE_ZONE_DELAY_T2_SECONDS = 0.40;
+export const FUSE_ZONE_RADIUS_T1 = 48;
+export const FUSE_ZONE_RADIUS_T2 = 56;
+export const FUSE_ZONE_TARGET_LIMIT_T1 = 2;
+export const FUSE_ZONE_TARGET_LIMIT_T2 = 3;
 
 export interface RelayTimelineAction {
   delaySeconds: number;
@@ -14,17 +19,17 @@ export interface RelayTimelineAction {
   kind: ChainLinkKind;
 }
 
-export interface DetonationTimelineAction {
+export interface DetonationZoneTimelineAction {
   delaySeconds: number;
   center: Point2D;
   radius: number;
-  targetIds: number[];
+  targetLimit: number;
 }
 
 export interface ChainResolutionTimeline {
   immediateTargetIds: number[];
   relayActions: RelayTimelineAction[];
-  detonation: DetonationTimelineAction | null;
+  detonationZones: DetonationZoneTimelineAction[];
 }
 
 export function buildChainResolutionTimeline(
@@ -35,7 +40,7 @@ export function buildChainResolutionTimeline(
     return {
       immediateTargetIds: [...plan.allTargetIds],
       relayActions: [],
-      detonation: null,
+      detonationZones: [],
     };
   }
 
@@ -49,25 +54,45 @@ export function buildChainResolutionTimeline(
         to: { ...link.to },
         kind: link.kind,
       })),
-      detonation: null,
+      detonationZones: [],
     };
   }
 
-  const endpointId = plan.routeTargetIds.at(-1) ?? null;
-  const targetIds = endpointId === null
-    ? []
-    : [endpointId, ...plan.terminalTargetIds];
+  const delaySeconds = stage === 2 ? FUSE_ZONE_DELAY_T2_SECONDS : FUSE_ZONE_DELAY_T1_SECONDS;
+  const radius = stage === 2 ? FUSE_ZONE_RADIUS_T2 : FUSE_ZONE_RADIUS_T1;
+  const targetLimit = stage === 2 ? FUSE_ZONE_TARGET_LIMIT_T2 : FUSE_ZONE_TARGET_LIMIT_T1;
 
   return {
     immediateTargetIds: [],
     relayActions: [],
-    detonation: plan.terminalCenter && targetIds.length > 0
-      ? {
-          delaySeconds: stage === 2 ? FUSE_DETONATION_DELAY_T2_SECONDS : FUSE_DETONATION_DELAY_T1_SECONDS,
-          center: { ...plan.terminalCenter },
-          radius: plan.terminalRadius,
-          targetIds,
-        }
-      : null,
+    detonationZones: plan.links
+      .filter((link) => link.kind === 'route')
+      .map((link) => ({
+        delaySeconds,
+        center: { ...link.to },
+        radius,
+        targetLimit,
+      })),
   };
+}
+
+export function selectDetonationZoneTargetIds(
+  center: Point2D,
+  radius: number,
+  targetLimit: number,
+  targets: readonly TargetState[],
+): number[] {
+  const safeRadius = Math.max(0, Number.isFinite(radius) ? radius : 0);
+  const safeLimit = Math.max(0, Math.floor(Number.isFinite(targetLimit) ? targetLimit : 0));
+  if (safeRadius <= 0 || safeLimit <= 0) return [];
+
+  return targets
+    .map((target) => ({
+      id: target.id,
+      distance: Math.hypot(target.position.x - center.x, target.position.y - center.y),
+    }))
+    .filter((candidate) => candidate.distance <= safeRadius)
+    .sort((left, right) => left.distance - right.distance || left.id - right.id)
+    .slice(0, safeLimit)
+    .map((candidate) => candidate.id);
 }
