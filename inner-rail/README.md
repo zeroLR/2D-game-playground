@@ -4,7 +4,7 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P2.2 — Authored Spatial Puzzle Set**
+**P2.2.1 — Progressive Guardrail Pass**
 
 P2.1 Compact Puzzle Room Grammar passed on a real phone: the elevated goal, folded route, height change, and later return through previously seen chamber space read as one spatial puzzle rather than a longer obstacle course.
 
@@ -14,7 +14,19 @@ The accepted gameplay vocabulary remains intentionally small:
 - **Moving Rail** changes the world on deterministic physical cycles;
 - the two rules can act on the same collider as a moving magnetic surface.
 
-P2.2 now asks whether this same vocabulary and room grammar can support a small authored progression without adding another mechanic.
+P2.2 now asks whether this same vocabulary and room grammar can support a small authored progression without adding another mechanic. P2.2.1 adds a safety layer because current phone handling is still demanding enough that accidental edge falls can obscure the spatial-puzzle test.
+
+## Progressive guardrail strategy
+
+Guardrails are **assistance geometry, not a new gameplay mechanic**. They exist to keep the current validation focused on route planning, timing, and momentum rather than precision edge control.
+
+The authored set now uses a deliberate protection gradient:
+
+1. **Room A — Teach** uses full rails on ordinary traversal and moving platforms, with lower curbs on static magnetic banks.
+2. **Room B — Vary** keeps full rails on the main timing / moving transitions, mixes in curbs on ordinary route segments, and leaves the upper return less protected.
+3. **Room C — Mastery** keeps full rails only on critical moving magnetic transfers and uses curbs on selected setup / turn pieces; long mastery return segments remain exposed.
+
+The safety layer is generated from room policy rather than baked into the puzzle topology, so later tuning can reduce or remove protection without rebuilding the rooms. Moving guardrails inherit the same deterministic motion as their parent platform. Guardrails never become magnetic surfaces or goal semantics.
 
 ## Authored room set
 
@@ -25,15 +37,18 @@ Test the rooms in this order:
    - lower route folds around the chamber;
    - moving magnetic lift changes elevation;
    - ordinary moving bridge introduces an upper timing decision;
-   - the route returns above previously seen space.
+   - the route returns above previously seen space;
+   - generous rails keep attention on learning the room grammar.
 2. **Room B — Vary** (`?stage=p2-room-b`)
    - timing happens first on a lower moving bridge;
    - the magnetic lift is found only after crossing to the far side;
-   - the upper route returns above the floor-level path toward the goal near the starting side.
+   - the upper route returns above the floor-level path toward the goal near the starting side;
+   - mixed rails / curbs begin restoring controlled edge risk.
 3. **Room C — Mastery** (`?stage=p2-room-c`)
    - vertical moving magnetic lift reaches the upper route;
    - a second moving magnetic surface acts as a lateral shuttle;
-   - the player must combine both known physical relationships with a larger mental map before returning toward the start-side goal.
+   - the player must combine both known physical relationships with a larger mental map before returning toward the start-side goal;
+   - only critical transfers retain full safety rails.
 
 The set deliberately varies **spatial relationships and ordering**, not vocabulary. There is still no minimap, objective arrow, tutorial text, switch, key, friction gimmick, jump, detach command, or new input.
 
@@ -47,7 +62,8 @@ On a real phone, play A → B → C and verify that:
 4. route preview, height, and moving/magnetic material language remain readable as room density increases;
 5. each room can be mentally summarized after completion in one or two spatial relationships;
 6. later rooms become harder through composition and topology, not merely longer tracks or narrower margins;
-7. by Room C, the player is planning several relationships ahead instead of reacting only to the next platform.
+7. by Room C, the player is planning several relationships ahead instead of reacting only to the next platform;
+8. the protection gradient reduces accidental falls without turning the rooms into closed corridors or erasing meaningful risk.
 
 Do not add a third gameplay mechanic unless this authored set exposes a concrete content gap that cannot be solved by varying the accepted grammar.
 
@@ -72,7 +88,7 @@ Do not add a third gameplay mechanic unless this authored set exposes a concrete
 5. Use **RECENTER** when your natural holding pose changes.
 6. Use **RESTART** to restart the active room and reset its authored motion cycles.
 
-No new player input is introduced for P2.2.
+No new player input is introduced for P2.2.1.
 
 ## Commands
 
