@@ -1,4 +1,9 @@
 import { BallModel, type ArenaBounds, type BallSnapshot, type WallSide } from './BallModel';
+import {
+  BossEncounterSystem,
+  type BossDirective,
+  type BossSnapshot,
+} from './BossEncounterSystem';
 import { ComboModel, type ComboSnapshot } from './ComboModel';
 import {
   EncounterDirector,
@@ -50,15 +55,22 @@ import { buildChainResolutionTimeline, selectDetonationZoneTargetIds } from '../
 import { resolveRuneSynergy, type RuneSynergyKind } from '../progression/RuneSynergy';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
+export type BossImpactSource = 'ball' | 'split';
 
 export type DestructionEvent =
   | { type: 'wall-hit'; side: WallSide; assisted: boolean; targetId: number | null }
   | { type: 'target-hit'; targetId: number; kind: TargetKind; position: Point2D; armorBroken: boolean; source: ImpactSource }
   | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource; runeInfluence: RuneKind | null }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
-  | { type: 'encounter-started'; encounterId: string; index: number; total: number; title: string; objective: string }
+  | { type: 'encounter-started'; encounterId: string; encounterKind: 'formation' | 'boss'; index: number; total: number; title: string; objective: string }
   | { type: 'encounter-cleared'; encounterId: string; index: number; total: number }
   | { type: 'stage-cleared'; encounters: number }
+  | { type: 'boss-phase-started'; bossId: string; bossTitle: string; phaseId: string; phaseIndex: number; total: number; title: string; objective: string; position: Point2D; radius: number }
+  | { type: 'boss-exposed'; bossId: string; phaseIndex: number; total: number; duration: number; position: Point2D; radius: number }
+  | { type: 'boss-core-blocked'; bossId: string; phaseIndex: number; total: number; source: BossImpactSource; position: Point2D }
+  | { type: 'boss-core-hit'; bossId: string; phaseIndex: number; total: number; source: BossImpactSource; position: Point2D }
+  | { type: 'boss-rearmed'; bossId: string; phaseIndex: number; total: number; title: string; objective: string }
+  | { type: 'boss-defeated'; bossId: string; phases: number; position: Point2D }
   | { type: 'combo-reset' }
   | { type: 'rune-activated'; rune: RuneKind; center: Point2D }
   | { type: 'vortex-evolution-progress'; path: VortexEvolutionPath; stage: VortexEvolutionStage; stageName: string; qualifiedUses: number; nextThreshold: number | null }
@@ -86,6 +98,7 @@ export interface DestructionSnapshot {
   splitEvolution: SplitEvolutionSnapshot;
   chainEvolution: ChainEvolutionSnapshot;
   encounter: EncounterSnapshot | null;
+  boss: BossSnapshot | null;
   splitEchoes: Point2D[];
 }
 
@@ -128,9 +141,13 @@ export class DestructionSession {
   private readonly splitEvolution: SplitEvolutionSystem;
   private readonly chainEvolution: ChainEvolutionSystem;
   private readonly encounterDirector: EncounterDirector | null;
+  private arenaBounds: ArenaBounds;
+  private bossSystem: BossEncounterSystem | null = null;
   private startupEvents: DestructionEvent[] = [];
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
+  private activeBossOverlap = false;
+  private activeSplitBossOverlap = false;
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
   private activeSplitProfile: SplitCastProfile = BASE_SPLIT_PROFILE;
   private splitCastQualified = false;
@@ -139,6 +156,7 @@ export class DestructionSession {
   private pendingDetonations: PendingDetonation[] = [];
 
   constructor(bounds: ArenaBounds, options: DestructionSessionOptions = {}) {
+    this.arenaBounds = bounds;
     this.ball = new BallModel(bounds);
     this.encounterDirector = options.encounterSequence
       ? new EncounterDirector(options.encounterSequence)
@@ -170,15 +188,20 @@ export class DestructionSession {
       splitEvolution: this.splitEvolution.snapshot,
       chainEvolution: this.chainEvolution.snapshot,
       encounter: this.encounterDirector?.snapshot ?? null,
+      boss: this.bossSystem?.snapshot ?? null,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball, this.activeSplitProfile) : [],
     };
   }
 
   setBounds(bounds: ArenaBounds): void {
+    this.arenaBounds = bounds;
     this.ball.setBounds(bounds);
     this.targets.setBounds(bounds);
+    this.bossSystem?.setBounds(bounds);
     this.activeOverlaps.clear();
     this.activeSplitOverlaps.clear();
+    this.activeBossOverlap = false;
+    this.activeSplitBossOverlap = false;
   }
 
   applyDirectionalRedirect(direction: SwipeDirection): void {
@@ -203,6 +226,7 @@ export class DestructionSession {
     if (rune === 'split') {
       this.activeSplitProfile = splitProfile;
       this.activeSplitOverlaps.clear();
+      this.activeSplitBossOverlap = false;
       this.splitCastQualified = false;
       this.splitCastVortexSynergyRewarded = false;
     }
@@ -247,6 +271,7 @@ export class DestructionSession {
   update(dtSeconds: number): DestructionEvent[] {
     const events: DestructionEvent[] = this.startupEvents.splice(0);
     this.advanceEncounterDirector(dtSeconds, events);
+    this.advanceBossSystem(dtSeconds, events);
 
     if (this.flow.update(dtSeconds)) {
       this.syncOverdriveState(false);
@@ -339,11 +364,13 @@ export class DestructionSession {
     }
     this.activeOverlaps = currentOverlaps;
 
+    let splitBossOverlap = false;
     const currentRuneState = this.runes.snapshot;
     if (currentRuneState.splitStrength > 0) {
       const echoIds = new Set<number>();
       for (const echo of this.splitEchoPositions(this.ball.snapshot, this.activeSplitProfile)) {
         for (const targetId of this.targets.collidingTargetIds(echo, this.activeSplitProfile.hitRadius)) echoIds.add(targetId);
+        if (this.bossSystem?.collidesWithCore(echo, this.activeSplitProfile.hitRadius)) splitBossOverlap = true;
       }
       const currentSplitOverlaps = new Set<number>(echoIds);
       for (const targetId of echoIds) {
@@ -356,6 +383,19 @@ export class DestructionSession {
       this.activeSplitOverlaps.clear();
     }
 
+    let bossCoreResolvedThisStep = false;
+    const ballBossOverlap = this.bossSystem?.collidesWithCore(ball.position, ball.radius) ?? false;
+    if (ballBossOverlap && !this.activeBossOverlap) {
+      bossCoreResolvedThisStep = this.resolveBossCoreHit('ball', events);
+    }
+    this.activeBossOverlap = ballBossOverlap;
+
+    if (splitBossOverlap && !this.activeSplitBossOverlap && !bossCoreResolvedThisStep) {
+      this.resolveBossCoreHit('split', events);
+    }
+    this.activeSplitBossOverlap = splitBossOverlap;
+
+    this.advanceBossSystem(0, events);
     this.advanceEncounterDirector(0, events);
     return events;
   }
@@ -608,37 +648,77 @@ export class DestructionSession {
     this.pendingDetonations = remainingDetonations;
   }
 
+  private resolveBossCoreHit(source: BossImpactSource, events: DestructionEvent[]): boolean {
+    const boss = this.bossSystem;
+    if (!boss || boss.snapshot.state === 'defeated' || boss.snapshot.state === 'idle') return false;
+
+    const before = boss.snapshot;
+    const directives = boss.hitCore();
+    if (directives.length === 0) return false;
+
+    if (directives[0]?.type === 'boss-core-blocked' && source === 'ball') {
+      this.ball.applyTargetDeflection(before.corePosition);
+    }
+
+    if (directives.some((directive) => directive.type === 'boss-core-hit')) {
+      this.runes.registerImpact(true);
+      if (this.flow.registerImpact(true)) this.enterOverdrive(events);
+    }
+
+    this.applyBossDirectives(directives, events, source);
+    return true;
+  }
+
+  private advanceBossSystem(dtSeconds: number, events: DestructionEvent[]): void {
+    if (!this.bossSystem) return;
+    this.applyBossDirectives(
+      this.bossSystem.update(dtSeconds, this.targets.snapshot.length),
+      events,
+    );
+  }
+
   private advanceEncounterDirector(dtSeconds: number, events: DestructionEvent[]): void {
     if (!this.encounterDirector) return;
     this.applyEncounterDirectives(
-      this.encounterDirector.update(dtSeconds, this.targets.snapshot.length),
+      this.encounterDirector.update(dtSeconds, this.encounterObjectiveComplete()),
       events,
     );
+  }
+
+  private encounterObjectiveComplete(): boolean {
+    const encounter = this.encounterDirector?.currentDefinition;
+    if (!encounter) return false;
+    if (encounter.kind === 'formation') return this.targets.snapshot.length === 0;
+    return this.bossSystem?.snapshot.state === 'defeated';
   }
 
   private applyEncounterDirectives(directives: readonly EncounterDirective[], events: DestructionEvent[]): void {
     for (const directive of directives) {
       switch (directive.type) {
         case 'encounter-start': {
+          const encounter = directive.encounter;
           events.push({
             type: 'encounter-started',
-            encounterId: directive.encounter.id,
+            encounterId: encounter.id,
+            encounterKind: encounter.kind,
             index: directive.index,
             total: directive.total,
-            title: directive.encounter.title,
-            objective: directive.encounter.objective,
+            title: encounter.title,
+            objective: encounter.objective,
           });
-          for (const spawn of directive.encounter.targets) {
-            const target = this.targets.spawn(spawn.kind, spawn.anchor);
-            events.push({
-              type: 'target-spawn',
-              targetId: target.id,
-              kind: target.kind,
-              position: { ...target.position },
-            });
-          }
+
           this.activeOverlaps.clear();
           this.activeSplitOverlaps.clear();
+          this.activeBossOverlap = false;
+          this.activeSplitBossOverlap = false;
+
+          if (encounter.kind === 'formation') {
+            this.bossSystem = null;
+            for (const spawn of encounter.targets) this.spawnTarget(spawn.kind, spawn.anchor, events);
+          } else {
+            this.bossSystem = new BossEncounterSystem(this.arenaBounds, encounter.boss);
+            this.applyBossDirectives(this.bossSystem.start(), events);
+          }
           break;
         }
         case 'encounter-clear':
@@ -650,12 +730,114 @@ export class DestructionSession {
           });
           this.activeOverlaps.clear();
           this.activeSplitOverlaps.clear();
+          this.activeBossOverlap = false;
+          this.activeSplitBossOverlap = false;
           break;
         case 'stage-clear':
           events.push({ type: 'stage-cleared', encounters: directive.total });
           break;
       }
     }
+  }
+
+  private applyBossDirectives(
+    directives: readonly BossDirective[],
+    events: DestructionEvent[],
+    source?: BossImpactSource,
+  ): void {
+    const boss = this.bossSystem;
+    if (!boss) return;
+
+    for (const directive of directives) {
+      const snapshot = boss.snapshot;
+      switch (directive.type) {
+        case 'boss-phase-start':
+          events.push({
+            type: 'boss-phase-started',
+            bossId: snapshot.id,
+            bossTitle: snapshot.title,
+            phaseId: directive.phase.id,
+            phaseIndex: directive.phaseIndex,
+            total: directive.total,
+            title: directive.phase.title,
+            objective: directive.phase.objective,
+            position: { ...snapshot.corePosition },
+            radius: snapshot.coreRadius,
+          });
+          for (const ward of directive.phase.wards) this.spawnTarget(ward.kind, ward.anchor, events);
+          this.activeOverlaps.clear();
+          this.activeSplitOverlaps.clear();
+          this.activeBossOverlap = false;
+          this.activeSplitBossOverlap = false;
+          break;
+        case 'boss-exposed':
+          events.push({
+            type: 'boss-exposed',
+            bossId: snapshot.id,
+            phaseIndex: directive.phaseIndex,
+            total: directive.total,
+            duration: directive.duration,
+            position: { ...snapshot.corePosition },
+            radius: snapshot.coreRadius,
+          });
+          break;
+        case 'boss-core-blocked':
+          if (!source) break;
+          events.push({
+            type: 'boss-core-blocked',
+            bossId: snapshot.id,
+            phaseIndex: directive.phaseIndex,
+            total: directive.total,
+            source,
+            position: { ...snapshot.corePosition },
+          });
+          break;
+        case 'boss-core-hit':
+          if (!source) break;
+          events.push({
+            type: 'boss-core-hit',
+            bossId: snapshot.id,
+            phaseIndex: directive.phaseIndex,
+            total: directive.total,
+            source,
+            position: { ...snapshot.corePosition },
+          });
+          break;
+        case 'boss-rearmed':
+          events.push({
+            type: 'boss-rearmed',
+            bossId: snapshot.id,
+            phaseIndex: directive.phaseIndex,
+            total: directive.total,
+            title: directive.phase.title,
+            objective: directive.phase.objective,
+          });
+          for (const ward of directive.phase.wards) this.spawnTarget(ward.kind, ward.anchor, events);
+          this.activeOverlaps.clear();
+          this.activeSplitOverlaps.clear();
+          this.activeBossOverlap = false;
+          this.activeSplitBossOverlap = false;
+          break;
+        case 'boss-defeated':
+          events.push({
+            type: 'boss-defeated',
+            bossId: snapshot.id,
+            phases: directive.phases,
+            position: { ...snapshot.corePosition },
+          });
+          break;
+      }
+    }
+  }
+
+  private spawnTarget(kind: TargetKind, anchor: Point2D, events: DestructionEvent[]): void {
+    const target = this.targets.spawn(kind, anchor);
+    events.push({
+      type: 'target-spawn',
+      targetId: target.id,
+      kind: target.kind,
+      position: { ...target.position },
+    });
   }
 
   private vortexProfileForCurrentStage(): VortexCastProfile {
