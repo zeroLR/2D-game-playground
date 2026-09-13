@@ -18,6 +18,30 @@ describe('TargetSystem', () => {
     }
   });
 
+  it('supports authored anchors without automatically refilling the formation', () => {
+    const system = new TargetSystem(bounds, 0, { autoRespawn: false });
+    expect(system.snapshot).toHaveLength(0);
+
+    const spawned = system.spawn('armored', { x: 0.5, y: 0.4 });
+    expect(spawned.kind).toBe('armored');
+    expect(spawned.position.x).toBeCloseTo(150);
+    expect(spawned.position.y).toBeCloseTo(200);
+
+    system.hit(spawned.id);
+    expect(system.snapshot).toHaveLength(1);
+    system.hit(spawned.id);
+    expect(system.snapshot).toHaveLength(0);
+    expect(system.update(10)).toEqual([]);
+  });
+
+  it('clamps authored normalized anchors to the playable arena', () => {
+    const system = new TargetSystem(bounds, 0, { autoRespawn: false });
+    const target = system.spawn('crystal', { x: -2, y: 3 });
+
+    expect(target.position.x).toBe(bounds.left + target.radius);
+    expect(target.position.y).toBe(bounds.bottom - target.radius);
+  });
+
   it('keeps the initial target ring away from the central interaction lane', () => {
     const system = new TargetSystem(bounds, 8);
     const targets = system.snapshot;

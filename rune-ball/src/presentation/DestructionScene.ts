@@ -1,6 +1,7 @@
 import { Container, FederatedPointerEvent, Graphics, Rectangle, Text } from 'pixi.js';
 import { AudioDirector } from '../audio/AudioDirector';
 import { type ArenaBounds, type WallSide } from '../game/BallModel';
+import type { EncounterSequenceDefinition } from '../game/EncounterDirector';
 import { DestructionSession, type DestructionEvent } from '../game/DestructionSession';
 import type { TargetState } from '../game/TargetSystem';
 import type { VortexEvolutionPath } from '../progression/VortexEvolutionSystem';
@@ -100,6 +101,7 @@ export interface DestructionSceneCallbacks {
   vortexEvolutionPath?: VortexEvolutionPath;
   splitEvolutionPath?: SplitEvolutionPath;
   chainEvolutionPath?: ChainEvolutionPath;
+  encounterSequence?: EncounterSequenceDefinition;
 }
 
 export class DestructionScene extends Container {
@@ -215,6 +217,7 @@ export class DestructionScene extends Container {
       vortexEvolutionPath: callbacks.vortexEvolutionPath,
       splitEvolutionPath: callbacks.splitEvolutionPath,
       chainEvolutionPath: callbacks.chainEvolutionPath,
+      encounterSequence: callbacks.encounterSequence,
     });
     this.reducedMotion = typeof window !== 'undefined'
       && typeof window.matchMedia === 'function'
@@ -551,6 +554,10 @@ export class DestructionScene extends Container {
       }
       case 'target-spawn':
         this.targetSpawnLives.set(event.targetId, TARGET_SPAWN_SECONDS);
+        break;
+      case 'encounter-started':
+      case 'encounter-cleared':
+      case 'stage-cleared':
         break;
       case 'rune-activated':
         this.pushCapped(
