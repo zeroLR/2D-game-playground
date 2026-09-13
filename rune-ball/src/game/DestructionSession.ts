@@ -69,6 +69,7 @@ export type DestructionEvent =
   | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource; runeInfluence: RuneKind | null }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
   | { type: 'encounter-started'; encounterId: string; encounterKind: 'formation' | 'elite' | 'boss'; index: number; total: number; title: string; objective: string }
+  | { type: 'encounter-modifier-started'; kind: 'drift-field'; direction: 'clockwise' | 'counterclockwise'; center: Point2D; radius: number }
   | { type: 'encounter-cleared'; encounterId: string; index: number; total: number }
   | { type: 'stage-cleared'; encounters: number }
   | { type: 'elite-started'; title: string; trait: EliteTrait; targetId: number; position: Point2D; radius: number }
@@ -766,6 +767,21 @@ export class DestructionSession {
               modifiers: encounter.modifiers,
               elite: encounter.kind === 'elite' ? encounter.elite : undefined,
             });
+            const rules = this.encounterRules.snapshot;
+            if (rules.driftDirection) {
+              const center = this.arenaCenter();
+              const radius = Math.min(
+                this.arenaBounds.right - this.arenaBounds.left,
+                this.arenaBounds.bottom - this.arenaBounds.top,
+              ) * 0.36;
+              events.push({
+                type: 'encounter-modifier-started',
+                kind: 'drift-field',
+                direction: rules.driftDirection,
+                center,
+                radius,
+              });
+            }
             for (const spawn of encounter.targets) {
               const target = this.spawnTarget(spawn.kind, spawn.anchor, events, spawn.role ?? 'standard');
               if (target.role !== 'elite') continue;
