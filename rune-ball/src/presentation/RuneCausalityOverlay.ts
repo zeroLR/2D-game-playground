@@ -8,6 +8,7 @@ const MAX_TRANSIENTS = 24;
 export class RuneCausalityOverlay {
   private readonly root: SVGSVGElement;
   private readonly timers = new Set<number>();
+  private eliteMarker: SVGGElement | null = null;
 
   constructor(host: HTMLElement) {
     const root = document.createElementNS(SVG_NS, 'svg');
@@ -19,6 +20,19 @@ export class RuneCausalityOverlay {
 
   handle(event: DestructionEvent): void {
     switch (event.type) {
+      case 'encounter-started':
+        if (event.encounterKind !== 'elite') this.clearEliteMarker();
+        break;
+      case 'elite-started':
+        this.showEliteMarker(event.position, event.radius);
+        break;
+      case 'elite-hit-blocked':
+        this.spawnEliteBlock(event.position, event.radius);
+        break;
+      case 'elite-defeated':
+        this.clearEliteMarker();
+        this.spawnEliteBreak(event.position);
+        break;
       case 'rune-activated':
         this.spawnSignature(event.rune, event.center, 'cast');
         break;
@@ -57,12 +71,96 @@ export class RuneCausalityOverlay {
   reset(): void {
     for (const timer of this.timers) window.clearTimeout(timer);
     this.timers.clear();
+    this.eliteMarker = null;
     this.root.replaceChildren();
   }
 
   destroy(): void {
     this.reset();
     this.root.remove();
+  }
+
+  private showEliteMarker(point: Point2D, radius: number): void {
+    this.clearEliteMarker();
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.elite = 'rune-ward';
+    group.style.color = '#6fe9ff';
+    group.style.opacity = '0.86';
+
+    const outer = document.createElementNS(SVG_NS, 'circle');
+    outer.setAttribute('cx', point.x.toFixed(2));
+    outer.setAttribute('cy', point.y.toFixed(2));
+    outer.setAttribute('r', (radius + 18).toFixed(2));
+    outer.setAttribute('stroke-dasharray', '5 7');
+    outer.classList.add('rune-causality-ring');
+    group.append(outer);
+
+    const inner = document.createElementNS(SVG_NS, 'circle');
+    inner.setAttribute('cx', point.x.toFixed(2));
+    inner.setAttribute('cy', point.y.toFixed(2));
+    inner.setAttribute('r', (radius + 9).toFixed(2));
+    inner.setAttribute('stroke-width', '3');
+    inner.classList.add('rune-causality-ring');
+    group.append(inner);
+
+    const markSize = radius + 13;
+    const mark = document.createElementNS(SVG_NS, 'path');
+    mark.setAttribute(
+      'd',
+      `M ${point.x} ${point.y - markSize} L ${point.x + markSize} ${point.y} L ${point.x} ${point.y + markSize} L ${point.x - markSize} ${point.y} Z`,
+    );
+    mark.setAttribute('stroke-dasharray', '3 8');
+    mark.classList.add('rune-causality-glyph');
+    group.append(mark);
+
+    this.root.prepend(group);
+    this.eliteMarker = group;
+  }
+
+  private clearEliteMarker(): void {
+    this.eliteMarker?.remove();
+    this.eliteMarker = null;
+  }
+
+  private spawnEliteBlock(point: Point2D, radius: number): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.style.color = '#d756ff';
+    group.classList.add('rune-causality-chain');
+
+    for (const scale of [1, 1.45, 1.9]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', Math.max(18, radius * scale).toFixed(2));
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+
+    const slash = document.createElementNS(SVG_NS, 'line');
+    slash.setAttribute('x1', (point.x - radius * 0.75).toFixed(2));
+    slash.setAttribute('y1', (point.y + radius * 0.75).toFixed(2));
+    slash.setAttribute('x2', (point.x + radius * 0.75).toFixed(2));
+    slash.setAttribute('y2', (point.y - radius * 0.75).toFixed(2));
+    slash.classList.add('rune-causality-link');
+    group.append(slash);
+
+    this.addTransient(group, 520);
+  }
+
+  private spawnEliteBreak(point: Point2D): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.style.color = '#f0fbff';
+    group.classList.add('rune-causality-chain');
+
+    for (const radius of [22, 40, 62]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', radius.toString());
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+    this.addTransient(group, 650);
   }
 
   private spawnSignature(rune: RuneKind, point: Point2D, variant: 'cast' | 'break'): void {
@@ -241,12 +339,20 @@ export class RuneCausalityOverlay {
   }
 
   private addTransient(node: SVGElement, lifetimeMs: number): void {
-    while (this.root.childElementCount >= MAX_TRANSIENTS) this.root.firstElementChild?.remove();
+    while (this.transientChildCount() >= MAX_TRANSIENTS) {
+      const oldestTransient = [...this.root.children].find((child) => child !== this.eliteMarker);
+      if (!oldestTransient) break;
+      oldestTransient.remove();
+    }
     this.root.append(node);
     const timer = window.setTimeout(() => {
       node.remove();
       this.timers.delete(timer);
     }, lifetimeMs);
     this.timers.add(timer);
+  }
+
+  private transientChildCount(): number {
+    return [...this.root.children].filter((child) => child !== this.eliteMarker).length;
   }
 }
