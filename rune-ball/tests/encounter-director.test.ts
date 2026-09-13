@@ -12,6 +12,7 @@ const sequence: EncounterSequenceDefinition = {
       id: 'opening',
       title: 'OPENING VECTOR',
       objective: 'Break the opening formation.',
+      modifiers: [{ kind: 'drift-field', direction: 'clockwise', turnsPerSecond: 0.015 }],
       targets: [
         { kind: 'crystal', anchor: { x: 0.25, y: 0.3 } },
         { kind: 'crystal', anchor: { x: 0.75, y: 0.3 } },
@@ -89,6 +90,29 @@ describe('EncounterDirector', () => {
     ]);
     expect(director.snapshot.phase).toBe('complete');
     expect(director.update(10, true)).toEqual([]);
+  });
+
+  it('accepts exactly one elite target role in an elite encounter', () => {
+    const eliteSequence: EncounterSequenceDefinition = {
+      intermissionSeconds: 0,
+      encounters: [{
+        kind: 'elite',
+        id: 'warden',
+        title: 'FRACTURE WARDEN',
+        objective: 'Break the Warden with Rune energy.',
+        elite: { title: 'FRACTURE WARDEN', trait: 'rune-ward' },
+        targets: [
+          { kind: 'crystal', role: 'elite', anchor: { x: 0.5, y: 0.5 } },
+          { kind: 'crystal', anchor: { x: 0.3, y: 0.5 } },
+        ],
+      }],
+    };
+
+    expect(new EncounterDirector(eliteSequence).snapshot.phase).toBe('idle');
+    expect(() => new EncounterDirector({
+      ...eliteSequence,
+      encounters: [{ ...eliteSequence.encounters[0], targets: [{ kind: 'crystal', anchor: { x: 0.5, y: 0.5 } }] }],
+    })).toThrow(/exactly one elite/);
   });
 
   it('rejects empty authored sequences and empty formation encounters', () => {
