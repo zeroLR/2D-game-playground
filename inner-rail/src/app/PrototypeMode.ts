@@ -1,3 +1,4 @@
+import { COMPACT_PUZZLE_ROOM_TRACK } from '../track/CompactPuzzleRoomTrack.js';
 import { COMPOSED_VOCABULARY_TRACK } from '../track/ComposedVocabularyTrack.js';
 import { GENERALIZED_COMPOSITION_TRACK } from '../track/GeneralizedCompositionTrack.js';
 import { MAGNETIC_VOCABULARY_TRACK } from '../track/MagneticVocabularyTrack.js';
@@ -12,7 +13,13 @@ export interface PrototypePresentation {
 }
 
 export interface PrototypeMode {
-  id: 'p0' | 'p1-magnetic' | 'p1-moving' | 'p1-composition' | 'p1-generalization';
+  id:
+    | 'p0'
+    | 'p1-magnetic'
+    | 'p1-moving'
+    | 'p1-composition'
+    | 'p1-generalization'
+    | 'p2-room';
   track: ValidationTrackDefinition;
   validationEnabled: boolean;
   presentation: PrototypePresentation;
@@ -71,16 +78,28 @@ const P1_GENERALIZATION_MODE: PrototypeMode = {
   track: GENERALIZED_COMPOSITION_TRACK,
   validationEnabled: false,
   presentation: {
-    milestoneLabel: 'P1.4 / COMPOSITION GENERALIZATION',
+    milestoneLabel: 'P1.4 / COMPOSITION GENERALIZATION · ACCEPTED',
     kicker: 'SYSTEM DEPTH GATE',
     title: 'Ride upward. Prepare before the upper dock arrives.',
-    body: 'Board the short 36° magnetic lift at the lower dock. Hold your position while the same surface rises, then prepare forward momentum so you can transfer onto the upper magnetic receiver during its docking window. No new mechanic or input is added.',
+    body: 'Accepted second composition: control position on the vertical magnetic lift and prepare momentum before leaving for the upper receiver.',
+  },
+};
+
+const P2_ROOM_MODE: PrototypeMode = {
+  id: 'p2-room',
+  track: COMPACT_PUZZLE_ROOM_TRACK,
+  validationEnabled: false,
+  presentation: {
+    milestoneLabel: 'P2.1 / COMPACT PUZZLE ROOM',
+    kicker: 'SPATIAL PUZZLE GRAMMAR',
+    title: 'You can see the goal. Find the route that reaches its height.',
+    body: 'Read the room before committing. The route folds around the same chamber, rises on the magnetic lift, crosses the upper moving bridge, then returns over previously seen space. No minimap, waypoint, switch, or new control is added.',
   },
 };
 
 /**
- * P1.4 is the active prototype. Earlier isolated and first-composition routes
- * remain available for regression and direct A/B comparison.
+ * P2.1 is the active prototype. P0/P1 routes remain selectable for regression
+ * so spatial-design changes can be separated from physics vocabulary changes.
  */
 export function resolvePrototypeMode(search: string): PrototypeMode {
   const stage = new URLSearchParams(search).get('stage');
@@ -88,5 +107,6 @@ export function resolvePrototypeMode(search: string): PrototypeMode {
   if (stage === 'p1-magnetic') return P1_MAGNETIC_MODE;
   if (stage === 'p1-moving') return P1_MOVING_MODE;
   if (stage === 'p1-composition') return P1_COMPOSITION_MODE;
-  return P1_GENERALIZATION_MODE;
+  if (stage === 'p1-generalization') return P1_GENERALIZATION_MODE;
+  return P2_ROOM_MODE;
 }

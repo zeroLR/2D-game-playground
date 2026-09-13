@@ -10,7 +10,14 @@ export type TrackSectionId =
   | 'magnetic-release'
   | 'moving-intro'
   | 'moving-crossing'
-  | 'moving-release';
+  | 'moving-release'
+  | 'room-entry'
+  | 'room-lower-route'
+  | 'room-lift'
+  | 'room-upper-route'
+  | 'room-upper-crossing'
+  | 'room-upper-return'
+  | 'room-goal';
 
 export interface TrackVec3 {
   x: number;
@@ -219,4 +226,11 @@ export const TRACK_SECTION_LABELS: Record<TrackSectionId, string> = {
   'moving-intro': 'MOVING RAIL APPROACH',
   'moving-crossing': 'MOVING RAIL CROSSING',
   'moving-release': 'MOVING RAIL EXIT',
+  'room-entry': 'ROOM ENTRY',
+  'room-lower-route': 'LOWER LOOP',
+  'room-lift': 'MAGNETIC LIFT',
+  'room-upper-route': 'UPPER RECEIVER',
+  'room-upper-crossing': 'UPPER MOVING CROSSING',
+  'room-upper-return': 'UPPER RETURN',
+  'room-goal': 'GOAL OVERLOOK',
 };

@@ -4,43 +4,54 @@ Mobile web prototype for a first-person kinetic puzzle where device tilt changes
 
 ## Current milestone
 
-**P1 complete / P2.1 — Compact Puzzle Room Grammar next**
+**P2.1 — Compact Puzzle Room Grammar**
 
-The current Physical Puzzle Vocabulary is intentionally small:
+P1 is closed for the current vertical-slice scope. The accepted vocabulary remains intentionally small:
 
 - **Magnetic Rail** changes the local down direction while preserving the same tilt controls;
 - **Moving Rail** changes the world on deterministic physical cycles;
-- the two rules can act on the same collider and remain collision-authoritative in Cannon.
+- the two rules can act on the same collider as a moving magnetic surface.
 
-P1.4 has now passed its system-depth gate on a real phone. The key evidence is that the same Moving + Magnetic vocabulary produced two materially different decisions:
+P2.1 changes the design unit from a linear mechanic-validation track into one compact 3D puzzle room.
 
-- **P1.3 lateral magnetic shuttle** → read lateral alignment and choose when to transfer;
-- **P1.4 vertical magnetic lift** → control position while being transported and prepare momentum before leaving the lift.
+## Active room
 
-That distinction is enough to stop adding mechanics for now. The product question shifts from "what other physical rule can we add?" to **"can this vocabulary create compact, readable spatial puzzles?"**
+The default route is:
 
-## P2.1 direction
+`goal visible above the lower route → west lower loop → 24° moving magnetic lift → upper receiver → timed upper moving bridge → south return → elevated goal above previously seen space`
 
-The next prototype should be one compact 3D puzzle room rather than another linear validation track.
+The goal beacon is deliberately visible near the start, but there is no direct lower connection. The intended spatial read is:
 
-Target structure:
+1. recognize the elevated destination;
+2. follow the lower route around the chamber rather than toward the goal directly;
+3. use the magnetic lift to change elevation;
+4. cross the upper moving bridge;
+5. return over the same chamber from above and reach the goal from the correct height.
 
-`goal visible / inferable from start → route folds through one chamber → magnetic + moving surfaces change elevation / access → player revisits or crosses previously seen space → goal`
+No minimap, waypoint arrow, tutorial text, switch, key, friction gimmick, jump, or new input is introduced.
 
-The room should:
+### Spatial-stack support
 
-- reuse the same physical vocabulary without switches, keys, friction gimmicks, or new controls;
-- communicate route possibilities through geometry, material language, movement, and elevation;
-- make at least one previously seen area readable from a new height or direction;
-- remain understandable without a minimap, waypoint arrow, or text tutorial;
-- feel like a spatial puzzle rather than a longer obstacle course.
+P2 introduces vertically reused X/Z space. Route-facing camera selection and recovery/section progress are therefore height-aware when upper and lower pieces overlap. This preserves the existing route-forward camera contract while preventing an upper route from inheriting the yaw or checkpoint of the floor below.
 
-P2.1 passes when the player can form a plausible mental route from the room itself and failures are about planning / timing / momentum rather than unclear objectives.
+## P2.1 phone gate
+
+On a real phone, verify that:
+
+1. the elevated goal is visible or spatially inferable near the start;
+2. a plausible route can be formed from world geometry before the room is completed;
+3. elevation and rail orientation read as part of the solution rather than decoration;
+4. passing through previously seen space from the upper level feels spatially coherent;
+5. the magnetic lift and moving bridge remain readable when several candidate surfaces are visible together;
+6. failures feel attributable to route planning, timing, or momentum—not uncertainty about the objective;
+7. the room feels like one puzzle space rather than a longer obstacle course.
+
+P2.1 passes only when the room itself teaches the plan without adding navigation UI.
 
 ## Regression modes
 
-The current default build still runs **P1.4 Vertical Magnetic Lift** until the P2.1 room is implemented.
-
+- default: **P2.1 Compact Puzzle Room**
+- `?stage=p1-generalization`: accepted **P1.4 Vertical Magnetic Lift**
 - `?stage=p1-composition`: accepted **P1.3 Magnetic Shuttle**
 - `?stage=p1-moving`: isolated **P1.2 Moving Rail**
 - `?stage=p1-magnetic`: accepted **P1.1 Magnetic Rail**
@@ -54,9 +65,9 @@ The current default build still runs **P1.4 Vertical Magnetic Lift** until the P
 3. Tilt forward/back/left/right to redirect effective gravity.
 4. Return toward neutral to coast; tilt against momentum to brake or reverse.
 5. Use **RECENTER** when your natural holding pose changes.
-6. Use **RESTART** to restart the active route and reset its authored motion cycle.
+6. Use **RESTART** to restart the active route and reset its authored motion cycles.
 
-No new player input is planned for P2.1.
+No new player input is introduced for P2.1.
 
 ## Commands
 

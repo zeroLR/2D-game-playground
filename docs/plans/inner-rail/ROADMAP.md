@@ -107,24 +107,30 @@ Accepted phone result:
 
 ## P2 — Spatial Puzzle Levels
 
-**Status:** active next phase.
+**Status:** active.
 
 P2 changes the unit of design from a linear mechanic-validation track to a compact 3D puzzle room. The goal is to make players understand **where to go and why** from world geometry, then use the accepted physics vocabulary to execute that plan.
 
 ### P2.1 — Compact Puzzle Room Grammar
 
+**Status:** implementation complete; real-phone spatial-read gate pending.
+
 **Goal:** prove one room can create a readable spatial plan without a minimap, waypoint arrow, or explanatory HUD.
 
-First-room contract:
+Implemented first-room contract:
 
-- goal is visible or spatially inferable near the start, but not directly reachable;
-- route folds vertically and reuses the same chamber instead of extending as a long corridor;
-- ordinary track, Magnetic Rail, Moving Rail, and their accepted composition are the only gameplay vocabulary;
-- at least one later traversal crosses, overlooks, or revisits previously seen space so the player builds a mental map;
-- moving/magnetic material language remains diegetic and consistent;
-- camera remains route-forward and does not solve navigation automatically;
-- recovery checkpoints shorten retries without revealing the solution;
-- no minimap, objective arrow, text tutorial, switch, key, friction surface, or third mechanic is introduced.
+- [x] elevated goal is visible / spatially inferable from the lower start but has no direct lower connection;
+- [x] route folds west, north, upward, east, south, then back toward the original chamber instead of extending as a corridor;
+- [x] lower and upper traversal deliberately reuse overlapping X/Z space;
+- [x] static Magnetic Rail teaches the bank into one moving magnetic lift;
+- [x] the lift raises the player 4.8 world units using the accepted Moving + Magnetic composition;
+- [x] the upper route includes one separate ordinary moving bridge so timing remains part of the room plan;
+- [x] the final upper return crosses previously seen lower space before reaching the original visible goal;
+- [x] material grammar remains cyan = magnetic, amber = moving, both = composed;
+- [x] camera route selection is height-aware when upper/lower track footprints overlap;
+- [x] checkpoint / section progress is height-aware so stacked routes cannot trigger each other by X/Z alone;
+- [x] recovery checkpoints shorten retries without adding solution markers;
+- [x] no minimap, objective arrow, tutorial text, switch, key, friction surface, jump, or third mechanic is introduced.
 
 P2.1 phone gate:
 
@@ -134,6 +140,8 @@ P2.1 phone gate:
 - [ ] failure is attributed to route planning, timing, or momentum rather than not knowing what the game wants;
 - [ ] the room feels like a **puzzle space**, not a longer obstacle course;
 - [ ] accepted Magnetic + Moving vocabulary remains readable when multiple candidate surfaces are visible at once.
+
+**Gate rule:** do not enter P2.2 merely because the room is completable. P2.1 passes only when the player can form a spatial plan from the room itself and recognizes the return over previously seen space.
 
 ### P2.2 — Authored Spatial Puzzle Set
 
@@ -145,4 +153,4 @@ Only after P2.1 passes, author a small level set that varies spatial relationshi
 
 After spatial puzzle structure is stable, establish the premium kinetic-toy identity through restrained materials, lighting, rolling/contact audio, meaningful haptics where supported, and diegetic state cues rather than persistent HUD.
 
-The immediate product direction is **P2.1 — Compact Puzzle Room Grammar**. P1 vocabulary expansion is intentionally paused.
+The immediate gameplay gate is **P2.1 Compact Puzzle Room on a real phone**. P1 vocabulary expansion remains intentionally paused.
