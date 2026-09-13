@@ -20,12 +20,21 @@ function profileCount(track: ValidationTrackDefinition, profile: 'curb' | 'rail'
   ).length;
 }
 
+function protectionCoverage(track: ValidationTrackDefinition): number {
+  const basePieceCount = track.pieces.filter((piece) => !isGuardrailPiece(piece)).length;
+  const protectedSourceCount = guardrails(track).length / 2;
+  return basePieceCount === 0 ? 0 : protectedSourceCount / basePieceCount;
+}
+
 const roomAGuards = guardrails(GUARDED_SPATIAL_PUZZLE_ROOM_A_TRACK);
 const roomBGuards = guardrails(GUARDED_SPATIAL_PUZZLE_ROOM_B_TRACK);
 const roomCGuards = guardrails(GUARDED_SPATIAL_PUZZLE_ROOM_C_TRACK);
+const roomACoverage = protectionCoverage(GUARDED_SPATIAL_PUZZLE_ROOM_A_TRACK);
+const roomBCoverage = protectionCoverage(GUARDED_SPATIAL_PUZZLE_ROOM_B_TRACK);
+const roomCCoverage = protectionCoverage(GUARDED_SPATIAL_PUZZLE_ROOM_C_TRACK);
 
-assert(roomAGuards.length > roomBGuards.length, 'Teach room should carry more protection than Vary.');
-assert(roomBGuards.length > roomCGuards.length, 'Vary room should carry more protection than Mastery.');
+assert(roomACoverage > roomBCoverage, 'Teach room should protect a larger share of its route than Vary.');
+assert(roomBCoverage > roomCCoverage, 'Vary room should protect a larger share of its route than Mastery.');
 assert(profileCount(GUARDED_SPATIAL_PUZZLE_ROOM_A_TRACK, 'rail') > 0, 'Room A needs full safety rails.');
 assert(profileCount(GUARDED_SPATIAL_PUZZLE_ROOM_B_TRACK, 'curb') > 0, 'Room B should mix rails with lower curbs.');
 assert(profileCount(GUARDED_SPATIAL_PUZZLE_ROOM_C_TRACK, 'rail') > 0, 'Room C must still protect critical moving transfers.');
