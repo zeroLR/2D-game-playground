@@ -2,10 +2,12 @@ import type { ArenaBounds } from './BallModel';
 import type { Point2D } from '../input/SwipeClassifier';
 
 export type TargetKind = 'crystal' | 'armored';
+export type TargetRole = 'standard' | 'elite';
 
 export interface TargetState {
   id: number;
   kind: TargetKind;
+  role: TargetRole;
   position: Point2D;
   radius: number;
   hp: number;
@@ -46,6 +48,7 @@ const DEFAULT_TARGET_COUNT = 8;
 const RESPAWN_DELAY_SECONDS = 0.24;
 const REBOUND_TARGET_MAX_ANGLE_RADIANS = Math.PI * 0.42;
 const CHASE_SPAWN_LOOKAHEAD = 4;
+const EMPTY_TARGET_IDS: ReadonlySet<number> = new Set<number>();
 
 export class TargetSystem {
   private bounds: ArenaBounds;
@@ -83,8 +86,8 @@ export class TargetSystem {
     if (this.autoRespawn && this.targets.size < this.desiredCount) this.respawnTimer = 0;
   }
 
-  spawn(kind: TargetKind, anchor: Point2D): TargetState {
-    const target = this.spawnAuthored(kind, anchor);
+  spawn(kind: TargetKind, anchor: Point2D, role: TargetRole = 'standard'): TargetState {
+    const target = this.spawnAuthored(kind, anchor, role);
     return { ...target, position: { ...target.position } };
   }
 
@@ -163,13 +166,19 @@ export class TargetSystem {
       .map((candidate) => candidate.id);
   }
 
-  applyVortex(center: Point2D, radius: number, pullFactor: number): number[] {
+  applyVortex(
+    center: Point2D,
+    radius: number,
+    pullFactor: number,
+    excluded: ReadonlySet<number> = EMPTY_TARGET_IDS,
+  ): number[] {
     const safeRadius = Math.max(1, radius);
     const safeFactor = this.clamp(Number.isFinite(pullFactor) ? pullFactor : 0, 0, 0.45);
     if (safeFactor <= 0) return [];
 
     const affected: number[] = [];
     for (const target of this.targets.values()) {
+      if (excluded.has(target.id)) continue;
       const dx = center.x - target.position.x;
       const dy = center.y - target.position.y;
       const distance = Math.hypot(dx, dy);
@@ -192,14 +201,21 @@ export class TargetSystem {
     return affected;
   }
 
-  applyOrbit(center: Point2D, radius: number, orbitFactor: number, inwardFactor: number): number[] {
+  applyOrbit(
+    center: Point2D,
+    radius: number,
+    orbitFactor: number,
+    inwardFactor: number,
+    excluded: ReadonlySet<number> = EMPTY_TARGET_IDS,
+  ): number[] {
     const safeRadius = Math.max(1, radius);
-    const safeOrbit = this.clamp(Number.isFinite(orbitFactor) ? orbitFactor : 0, 0, 0.12);
+    const safeOrbit = this.clamp(Number.isFinite(orbitFactor) ? orbitFactor : 0, -0.12, 0.12);
     const safeInward = this.clamp(Number.isFinite(inwardFactor) ? inwardFactor : 0, 0, 0.12);
-    if (safeOrbit <= 0 && safeInward <= 0) return [];
+    if (Math.abs(safeOrbit) <= 0 && safeInward <= 0) return [];
 
     const affected: number[] = [];
     for (const target of this.targets.values()) {
+      if (excluded.has(target.id)) continue;
       const dx = center.x - target.position.x;
       const dy = center.y - target.position.y;
       const distance = Math.hypot(dx, dy);
@@ -257,10 +273,10 @@ export class TargetSystem {
     const kind: TargetKind = sequenceIndex % 4 === 3 ? 'armored' : 'crystal';
     const radius = this.radiusForKind(kind);
     const anchorIndex = this.chooseAnchor(radius, chaseContext);
-    return this.spawnAuthored(kind, SPAWN_ANCHORS[anchorIndex]);
+    return this.spawnAuthored(kind, SPAWN_ANCHORS[anchorIndex], 'standard');
   }
 
-  private spawnAuthored(kind: TargetKind, anchor: Point2D): TargetState {
+  private spawnAuthored(kind: TargetKind, anchor: Point2D, role: TargetRole): TargetState {
     const radius = this.radiusForKind(kind);
     const maxHp = kind === 'armored' ? 2 : 1;
     const position = this.positionForAnchor(anchor, radius);
@@ -268,6 +284,7 @@ export class TargetSystem {
     const target: TargetState = {
       id: this.nextId,
       kind,
+      role,
       position,
       radius,
       hp: maxHp,

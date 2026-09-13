@@ -14,7 +14,7 @@ import {
 import type { ChainPropagationPlan } from '../src/progression/ChainEvolutionTuning';
 
 function target(id: number, x: number, y: number): TargetState {
-  return { id, kind: 'crystal', position: { x, y }, radius: 16, hp: 1, maxHp: 1 };
+  return { id, kind: 'crystal', role: 'standard', position: { x, y }, radius: 16, hp: 1, maxHp: 1 };
 }
 
 function basePlan(): ChainPropagationPlan {

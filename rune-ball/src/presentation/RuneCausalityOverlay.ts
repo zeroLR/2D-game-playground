@@ -8,6 +8,8 @@ const MAX_TRANSIENTS = 24;
 export class RuneCausalityOverlay {
   private readonly root: SVGSVGElement;
   private readonly timers = new Set<number>();
+  private modifierMarker: SVGGElement | null = null;
+  private eliteMarker: SVGGElement | null = null;
 
   constructor(host: HTMLElement) {
     const root = document.createElementNS(SVG_NS, 'svg');
@@ -19,6 +21,23 @@ export class RuneCausalityOverlay {
 
   handle(event: DestructionEvent): void {
     switch (event.type) {
+      case 'encounter-started':
+        this.clearModifierMarker();
+        if (event.encounterKind !== 'elite') this.clearEliteMarker();
+        break;
+      case 'encounter-modifier-started':
+        this.showDriftField(event.center, event.radius, event.direction);
+        break;
+      case 'elite-started':
+        this.showEliteMarker(event.position, event.radius);
+        break;
+      case 'elite-hit-blocked':
+        this.spawnEliteBlock(event.position, event.radius);
+        break;
+      case 'elite-defeated':
+        this.clearEliteMarker();
+        this.spawnEliteBreak(event.position);
+        break;
       case 'rune-activated':
         this.spawnSignature(event.rune, event.center, 'cast');
         break;
@@ -57,12 +76,165 @@ export class RuneCausalityOverlay {
   reset(): void {
     for (const timer of this.timers) window.clearTimeout(timer);
     this.timers.clear();
+    this.modifierMarker = null;
+    this.eliteMarker = null;
     this.root.replaceChildren();
   }
 
   destroy(): void {
     this.reset();
     this.root.remove();
+  }
+
+  private showDriftField(
+    center: Point2D,
+    radius: number,
+    direction: 'clockwise' | 'counterclockwise',
+  ): void {
+    this.clearModifierMarker();
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.modifier = 'drift-field';
+    group.style.color = '#6fe9ff';
+    group.style.opacity = '0.24';
+
+    for (const scale of [0.68, 1]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', center.x.toFixed(2));
+      ring.setAttribute('cy', center.y.toFixed(2));
+      ring.setAttribute('r', (radius * scale).toFixed(2));
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', 'currentColor');
+      ring.setAttribute('stroke-width', scale === 1 ? '1.4' : '1');
+      ring.setAttribute('stroke-dasharray', scale === 1 ? '10 18' : '4 22');
+      group.append(ring);
+    }
+
+    const directionSign = direction === 'clockwise' ? 1 : -1;
+    for (let index = 0; index < 6; index += 1) {
+      const angle = index * Math.PI / 3;
+      const radial = { x: Math.cos(angle), y: Math.sin(angle) };
+      const tangent = {
+        x: -Math.sin(angle) * directionSign,
+        y: Math.cos(angle) * directionSign,
+      };
+      const orbitRadius = radius * 0.84;
+      const point = {
+        x: center.x + radial.x * orbitRadius,
+        y: center.y + radial.y * orbitRadius,
+      };
+      const start = { x: point.x - tangent.x * 12, y: point.y - tangent.y * 12 };
+      const end = { x: point.x + tangent.x * 12, y: point.y + tangent.y * 12 };
+      const wingA = {
+        x: end.x - tangent.x * 7 + radial.x * 5,
+        y: end.y - tangent.y * 7 + radial.y * 5,
+      };
+      const wingB = {
+        x: end.x - tangent.x * 7 - radial.x * 5,
+        y: end.y - tangent.y * 7 - radial.y * 5,
+      };
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute(
+        'd',
+        `M ${start.x} ${start.y} L ${end.x} ${end.y} M ${wingA.x} ${wingA.y} L ${end.x} ${end.y} L ${wingB.x} ${wingB.y}`,
+      );
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      group.append(path);
+    }
+
+    this.root.prepend(group);
+    this.modifierMarker = group;
+  }
+
+  private clearModifierMarker(): void {
+    this.modifierMarker?.remove();
+    this.modifierMarker = null;
+  }
+
+  private showEliteMarker(point: Point2D, radius: number): void {
+    this.clearEliteMarker();
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.dataset.elite = 'rune-ward';
+    group.style.color = '#6fe9ff';
+    group.style.opacity = '0.86';
+
+    const outer = document.createElementNS(SVG_NS, 'circle');
+    outer.setAttribute('cx', point.x.toFixed(2));
+    outer.setAttribute('cy', point.y.toFixed(2));
+    outer.setAttribute('r', (radius + 18).toFixed(2));
+    outer.setAttribute('stroke-dasharray', '5 7');
+    outer.classList.add('rune-causality-ring');
+    group.append(outer);
+
+    const inner = document.createElementNS(SVG_NS, 'circle');
+    inner.setAttribute('cx', point.x.toFixed(2));
+    inner.setAttribute('cy', point.y.toFixed(2));
+    inner.setAttribute('r', (radius + 9).toFixed(2));
+    inner.setAttribute('stroke-width', '3');
+    inner.classList.add('rune-causality-ring');
+    group.append(inner);
+
+    const markSize = radius + 13;
+    const mark = document.createElementNS(SVG_NS, 'path');
+    mark.setAttribute(
+      'd',
+      `M ${point.x} ${point.y - markSize} L ${point.x + markSize} ${point.y} L ${point.x} ${point.y + markSize} L ${point.x - markSize} ${point.y} Z`,
+    );
+    mark.setAttribute('stroke-dasharray', '3 8');
+    mark.classList.add('rune-causality-glyph');
+    group.append(mark);
+
+    this.root.prepend(group);
+    this.eliteMarker = group;
+  }
+
+  private clearEliteMarker(): void {
+    this.eliteMarker?.remove();
+    this.eliteMarker = null;
+  }
+
+  private spawnEliteBlock(point: Point2D, radius: number): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.style.color = '#d756ff';
+    group.classList.add('rune-causality-chain');
+
+    for (const scale of [1, 1.45, 1.9]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', Math.max(18, radius * scale).toFixed(2));
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+
+    const slash = document.createElementNS(SVG_NS, 'line');
+    slash.setAttribute('x1', (point.x - radius * 0.75).toFixed(2));
+    slash.setAttribute('y1', (point.y + radius * 0.75).toFixed(2));
+    slash.setAttribute('x2', (point.x + radius * 0.75).toFixed(2));
+    slash.setAttribute('y2', (point.y - radius * 0.75).toFixed(2));
+    slash.classList.add('rune-causality-link');
+    group.append(slash);
+
+    this.addTransient(group, 520);
+  }
+
+  private spawnEliteBreak(point: Point2D): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.style.color = '#f0fbff';
+    group.classList.add('rune-causality-chain');
+
+    for (const radius of [22, 40, 62]) {
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', radius.toString());
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+    }
+    this.addTransient(group, 650);
   }
 
   private spawnSignature(rune: RuneKind, point: Point2D, variant: 'cast' | 'break'): void {
@@ -241,12 +413,24 @@ export class RuneCausalityOverlay {
   }
 
   private addTransient(node: SVGElement, lifetimeMs: number): void {
-    while (this.root.childElementCount >= MAX_TRANSIENTS) this.root.firstElementChild?.remove();
+    while (this.transientChildCount() >= MAX_TRANSIENTS) {
+      const oldestTransient = [...this.root.children].find((child) => !this.isPersistent(child));
+      if (!oldestTransient) break;
+      oldestTransient.remove();
+    }
     this.root.append(node);
     const timer = window.setTimeout(() => {
       node.remove();
       this.timers.delete(timer);
     }, lifetimeMs);
     this.timers.add(timer);
+  }
+
+  private transientChildCount(): number {
+    return [...this.root.children].filter((child) => !this.isPersistent(child)).length;
+  }
+
+  private isPersistent(child: Element): boolean {
+    return child === this.modifierMarker || child === this.eliteMarker;
   }
 }

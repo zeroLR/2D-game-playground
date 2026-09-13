@@ -1,10 +1,12 @@
 import type { Point2D } from '../input/SwipeClassifier';
 import type { BossDefinition } from './BossEncounterSystem';
-import type { TargetKind } from './TargetSystem';
+import type { EliteDefinition, EncounterModifierDefinition } from './EncounterRuleSystem';
+import type { TargetKind, TargetRole } from './TargetSystem';
 
 export interface EncounterTargetSpawn {
   kind: TargetKind;
   anchor: Point2D;
+  role?: TargetRole;
 }
 
 interface EncounterBaseDefinition {
@@ -13,9 +15,18 @@ interface EncounterBaseDefinition {
   objective: string;
 }
 
-export interface FormationEncounterDefinition extends EncounterBaseDefinition {
-  kind: 'formation';
+interface TargetEncounterDefinition extends EncounterBaseDefinition {
   targets: readonly EncounterTargetSpawn[];
+  modifiers?: readonly EncounterModifierDefinition[];
+}
+
+export interface FormationEncounterDefinition extends TargetEncounterDefinition {
+  kind: 'formation';
+}
+
+export interface EliteEncounterDefinition extends TargetEncounterDefinition {
+  kind: 'elite';
+  elite: EliteDefinition;
 }
 
 export interface BossEncounterDefinition extends EncounterBaseDefinition {
@@ -23,7 +34,7 @@ export interface BossEncounterDefinition extends EncounterBaseDefinition {
   boss: BossDefinition;
 }
 
-export type EncounterDefinition = FormationEncounterDefinition | BossEncounterDefinition;
+export type EncounterDefinition = FormationEncounterDefinition | EliteEncounterDefinition | BossEncounterDefinition;
 
 export interface EncounterSequenceDefinition {
   intermissionSeconds: number;
@@ -77,8 +88,16 @@ export class EncounterDirector {
       throw new Error('EncounterDirector intermissionSeconds must be a non-negative finite number.');
     }
     for (const encounter of sequence.encounters) {
-      if (encounter.kind === 'formation' && encounter.targets.length === 0) {
-        throw new Error(`Formation encounter ${encounter.id} must contain at least one target.`);
+      if (encounter.kind === 'boss') continue;
+      if (encounter.targets.length === 0) {
+        throw new Error(`${encounter.kind} encounter ${encounter.id} must contain at least one target.`);
+      }
+      const eliteCount = encounter.targets.filter((target) => target.role === 'elite').length;
+      if (encounter.kind === 'formation' && eliteCount > 0) {
+        throw new Error(`Formation encounter ${encounter.id} cannot contain an elite target role.`);
+      }
+      if (encounter.kind === 'elite' && eliteCount !== 1) {
+        throw new Error(`Elite encounter ${encounter.id} must contain exactly one elite target role.`);
       }
     }
     this.sequence = sequence;

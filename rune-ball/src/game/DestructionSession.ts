@@ -11,7 +11,13 @@ import {
   type EncounterSequenceDefinition,
   type EncounterSnapshot,
 } from './EncounterDirector';
-import { TargetSystem, type TargetKind, type TargetState } from './TargetSystem';
+import {
+  EncounterRuleSystem,
+  type EncounterImpactSource,
+  type EncounterRuleSnapshot,
+  type EliteTrait,
+} from './EncounterRuleSystem';
+import { TargetSystem, type TargetKind, type TargetRole, type TargetState } from './TargetSystem';
 import type { Point2D, SwipeDirection } from '../input/SwipeClassifier';
 import { FlowSystem, type FlowSnapshot } from '../progression/FlowSystem';
 import {
@@ -54,7 +60,7 @@ import {
 import { buildChainResolutionTimeline, selectDetonationZoneTargetIds } from '../progression/ChainResolutionTimeline';
 import { resolveRuneSynergy, type RuneSynergyKind } from '../progression/RuneSynergy';
 
-export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
+export type ImpactSource = EncounterImpactSource;
 export type BossImpactSource = 'ball' | 'split';
 
 export type DestructionEvent =
@@ -62,9 +68,13 @@ export type DestructionEvent =
   | { type: 'target-hit'; targetId: number; kind: TargetKind; position: Point2D; armorBroken: boolean; source: ImpactSource }
   | { type: 'target-break'; targetId: number; kind: TargetKind; position: Point2D; combo: number; scoreAdded: number; source: ImpactSource; runeInfluence: RuneKind | null }
   | { type: 'target-spawn'; targetId: number; kind: TargetKind; position: Point2D }
-  | { type: 'encounter-started'; encounterId: string; encounterKind: 'formation' | 'boss'; index: number; total: number; title: string; objective: string }
+  | { type: 'encounter-started'; encounterId: string; encounterKind: 'formation' | 'elite' | 'boss'; index: number; total: number; title: string; objective: string }
+  | { type: 'encounter-modifier-started'; kind: 'drift-field'; direction: 'clockwise' | 'counterclockwise'; center: Point2D; radius: number }
   | { type: 'encounter-cleared'; encounterId: string; index: number; total: number }
   | { type: 'stage-cleared'; encounters: number }
+  | { type: 'elite-started'; title: string; trait: EliteTrait; targetId: number; position: Point2D; radius: number }
+  | { type: 'elite-hit-blocked'; trait: EliteTrait; targetId: number; source: ImpactSource; position: Point2D; radius: number }
+  | { type: 'elite-defeated'; title: string; trait: EliteTrait; targetId: number; position: Point2D }
   | { type: 'boss-phase-started'; bossId: string; bossTitle: string; phaseId: string; phaseIndex: number; total: number; title: string; objective: string; position: Point2D; radius: number }
   | { type: 'boss-exposed'; bossId: string; phaseIndex: number; total: number; duration: number; position: Point2D; radius: number }
   | { type: 'boss-core-blocked'; bossId: string; phaseIndex: number; total: number; source: BossImpactSource; position: Point2D }
@@ -98,6 +108,7 @@ export interface DestructionSnapshot {
   splitEvolution: SplitEvolutionSnapshot;
   chainEvolution: ChainEvolutionSnapshot;
   encounter: EncounterSnapshot | null;
+  encounterRules: EncounterRuleSnapshot | null;
   boss: BossSnapshot | null;
   splitEchoes: Point2D[];
 }
@@ -143,6 +154,7 @@ export class DestructionSession {
   private readonly encounterDirector: EncounterDirector | null;
   private arenaBounds: ArenaBounds;
   private bossSystem: BossEncounterSystem | null = null;
+  private encounterRules: EncounterRuleSystem | null = null;
   private startupEvents: DestructionEvent[] = [];
   private activeOverlaps = new Set<number>();
   private activeSplitOverlaps = new Set<number>();
@@ -188,6 +200,7 @@ export class DestructionSession {
       splitEvolution: this.splitEvolution.snapshot,
       chainEvolution: this.chainEvolution.snapshot,
       encounter: this.encounterDirector?.snapshot ?? null,
+      encounterRules: this.encounterRules?.snapshot ?? null,
       boss: this.bossSystem?.snapshot ?? null,
       splitEchoes: runes.splitStrength > 0 ? this.splitEchoPositions(ball, this.activeSplitProfile) : [],
     };
@@ -303,6 +316,9 @@ export class DestructionSession {
       }
     }
 
+    this.applyEncounterModifiers(dtSeconds);
+    const movementLockedTargets = this.encounterRules?.movementLockedTargetIds();
+
     if (runeState.vortexCenter && runeState.vortexStrength > 0) {
       const dt = Math.max(0, dtSeconds);
       if (this.activeVortexProfile.mode === 'orbit') {
@@ -311,12 +327,14 @@ export class DestructionSession {
           this.activeVortexProfile.radius,
           dt * this.activeVortexProfile.orbitPerSecond * runeState.vortexStrength,
           dt * this.activeVortexProfile.inwardPerSecond * runeState.vortexStrength,
+          movementLockedTargets,
         );
       } else {
         this.targets.applyVortex(
           runeState.vortexCenter,
           this.activeVortexProfile.radius,
           dt * this.activeVortexProfile.pullPerSecond * runeState.vortexStrength,
+          movementLockedTargets,
         );
       }
     }
@@ -408,6 +426,24 @@ export class DestructionSession {
     damagedThisStep: Set<number>,
   ): boolean {
     if (damagedThisStep.has(targetId)) return false;
+    const targetBeforeHit = this.targets.snapshot.find((target) => target.id === targetId);
+    if (!targetBeforeHit) return false;
+
+    const eliteTrait = this.encounterRules?.snapshot.eliteTrait ?? null;
+    if (eliteTrait && !this.encounterRules?.allowsDamage(targetBeforeHit, source)) {
+      damagedThisStep.add(targetId);
+      events.push({
+        type: 'elite-hit-blocked',
+        trait: eliteTrait,
+        targetId,
+        source,
+        position: { ...targetBeforeHit.position },
+        radius: targetBeforeHit.radius,
+      });
+      if (source === 'ball') this.ball.applyTargetDeflection(targetBeforeHit.position);
+      return false;
+    }
+
     const hit = this.targets.hit(targetId);
     if (!hit) return false;
 
@@ -475,6 +511,15 @@ export class DestructionSession {
         source,
         runeInfluence,
       });
+      if (hit.target.role === 'elite' && eliteTrait) {
+        events.push({
+          type: 'elite-defeated',
+          title: this.encounterRules?.eliteDefinition()?.title ?? 'ELITE',
+          trait: eliteTrait,
+          targetId,
+          position: { ...hit.target.position },
+        });
+      }
     } else {
       this.combo.registerContact();
       if (source === 'ball') this.ball.applyTargetDeflection(hit.target.position);
@@ -688,7 +733,7 @@ export class DestructionSession {
   private encounterObjectiveComplete(): boolean {
     const encounter = this.encounterDirector?.currentDefinition;
     if (!encounter) return false;
-    if (encounter.kind === 'formation') return this.targets.snapshot.length === 0;
+    if (encounter.kind === 'formation' || encounter.kind === 'elite') return this.targets.snapshot.length === 0;
     return this.bossSystem?.snapshot.state === 'defeated';
   }
 
@@ -712,12 +757,46 @@ export class DestructionSession {
           this.activeBossOverlap = false;
           this.activeSplitBossOverlap = false;
 
-          if (encounter.kind === 'formation') {
-            this.bossSystem = null;
-            for (const spawn of encounter.targets) this.spawnTarget(spawn.kind, spawn.anchor, events);
-          } else {
+          if (encounter.kind === 'boss') {
+            this.encounterRules = null;
             this.bossSystem = new BossEncounterSystem(this.arenaBounds, encounter.boss);
             this.applyBossDirectives(this.bossSystem.start(), events);
+          } else {
+            this.bossSystem = null;
+            this.encounterRules = new EncounterRuleSystem({
+              modifiers: encounter.modifiers,
+              elite: encounter.kind === 'elite' ? encounter.elite : undefined,
+            });
+            const rules = this.encounterRules.snapshot;
+            if (rules.driftDirection) {
+              const center = this.arenaCenter();
+              const radius = Math.min(
+                this.arenaBounds.right - this.arenaBounds.left,
+                this.arenaBounds.bottom - this.arenaBounds.top,
+              ) * 0.36;
+              events.push({
+                type: 'encounter-modifier-started',
+                kind: 'drift-field',
+                direction: rules.driftDirection,
+                center,
+                radius,
+              });
+            }
+            for (const spawn of encounter.targets) {
+              const target = this.spawnTarget(spawn.kind, spawn.anchor, events, spawn.role ?? 'standard');
+              if (target.role !== 'elite') continue;
+              this.encounterRules.bindEliteTarget(target);
+              const elite = this.encounterRules.eliteDefinition();
+              if (!elite) continue;
+              events.push({
+                type: 'elite-started',
+                title: elite.title,
+                trait: elite.trait,
+                targetId: target.id,
+                position: { ...target.position },
+                radius: target.radius,
+              });
+            }
           }
           break;
         }
@@ -830,14 +909,44 @@ export class DestructionSession {
     }
   }
 
-  private spawnTarget(kind: TargetKind, anchor: Point2D, events: DestructionEvent[]): void {
-    const target = this.targets.spawn(kind, anchor);
+  private spawnTarget(
+    kind: TargetKind,
+    anchor: Point2D,
+    events: DestructionEvent[],
+    role: TargetRole = 'standard',
+  ): TargetState {
+    const target = this.targets.spawn(kind, anchor, role);
     events.push({
       type: 'target-spawn',
       targetId: target.id,
       kind: target.kind,
       position: { ...target.position },
     });
+    return target;
+  }
+
+  private applyEncounterModifiers(dtSeconds: number): void {
+    const orbitFactor = this.encounterRules?.driftOrbitFactor(dtSeconds) ?? 0;
+    if (Math.abs(orbitFactor) <= 0) return;
+    const center = this.arenaCenter();
+    const radius = Math.hypot(
+      this.arenaBounds.right - this.arenaBounds.left,
+      this.arenaBounds.bottom - this.arenaBounds.top,
+    );
+    this.targets.applyOrbit(
+      center,
+      radius,
+      orbitFactor,
+      0,
+      this.encounterRules?.movementLockedTargetIds(),
+    );
+  }
+
+  private arenaCenter(): Point2D {
+    return {
+      x: (this.arenaBounds.left + this.arenaBounds.right) * 0.5,
+      y: (this.arenaBounds.top + this.arenaBounds.bottom) * 0.5,
+    };
   }
 
   private vortexProfileForCurrentStage(): VortexCastProfile {
