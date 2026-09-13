@@ -23,6 +23,10 @@ export interface ChaseContext {
   velocity: Point2D;
 }
 
+export interface TargetSystemOptions {
+  autoRespawn?: boolean;
+}
+
 const SPAWN_ANCHORS: Point2D[] = [
   { x: 0.16, y: 0.16 },
   { x: 0.84, y: 0.16 },
@@ -46,16 +50,21 @@ const CHASE_SPAWN_LOOKAHEAD = 4;
 export class TargetSystem {
   private bounds: ArenaBounds;
   private desiredCount: number;
+  private readonly autoRespawn: boolean;
   private readonly targets = new Map<number, TargetState>();
   private nextId = 1;
   private spawnCount = 0;
   private anchorCursor = 0;
   private respawnTimer = 0;
 
-  constructor(bounds: ArenaBounds, desiredCount = DEFAULT_TARGET_COUNT) {
+  constructor(bounds: ArenaBounds, desiredCount = DEFAULT_TARGET_COUNT, options: TargetSystemOptions = {}) {
     this.bounds = bounds;
-    this.desiredCount = Math.max(1, Math.floor(desiredCount));
-    while (this.targets.size < this.desiredCount) this.spawnNext();
+    this.autoRespawn = options.autoRespawn ?? true;
+    const minimumCount = this.autoRespawn ? 1 : 0;
+    this.desiredCount = Math.max(minimumCount, Math.floor(desiredCount));
+    if (this.autoRespawn) {
+      while (this.targets.size < this.desiredCount) this.spawnNext();
+    }
   }
 
   get snapshot(): TargetState[] {
@@ -66,8 +75,17 @@ export class TargetSystem {
   }
 
   setDesiredCount(desiredCount: number): void {
-    this.desiredCount = Math.max(1, Math.floor(Number.isFinite(desiredCount) ? desiredCount : DEFAULT_TARGET_COUNT));
-    if (this.targets.size < this.desiredCount) this.respawnTimer = 0;
+    const minimumCount = this.autoRespawn ? 1 : 0;
+    this.desiredCount = Math.max(
+      minimumCount,
+      Math.floor(Number.isFinite(desiredCount) ? desiredCount : DEFAULT_TARGET_COUNT),
+    );
+    if (this.autoRespawn && this.targets.size < this.desiredCount) this.respawnTimer = 0;
+  }
+
+  spawn(kind: TargetKind, anchor: Point2D): TargetState {
+    const target = this.spawnAuthored(kind, anchor);
+    return { ...target, position: { ...target.position } };
   }
 
   setBounds(bounds: ArenaBounds): void {
@@ -80,7 +98,7 @@ export class TargetSystem {
 
   update(dtSeconds: number, chaseContext?: ChaseContext): TargetState[] {
     const spawned: TargetState[] = [];
-    if (this.targets.size >= this.desiredCount) return spawned;
+    if (!this.autoRespawn || this.targets.size >= this.desiredCount) return spawned;
 
     const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
     this.respawnTimer = Math.max(0, this.respawnTimer - dt);
@@ -224,7 +242,7 @@ export class TargetSystem {
 
     if (destroyed) {
       this.targets.delete(targetId);
-      if (this.targets.size < this.desiredCount) {
+      if (this.autoRespawn && this.targets.size < this.desiredCount) {
         this.respawnTimer = Math.max(this.respawnTimer, RESPAWN_DELAY_SECONDS);
       }
     }
@@ -237,10 +255,15 @@ export class TargetSystem {
     this.spawnCount += 1;
 
     const kind: TargetKind = sequenceIndex % 4 === 3 ? 'armored' : 'crystal';
-    const radius = kind === 'armored' ? 20 : 16;
-    const maxHp = kind === 'armored' ? 2 : 1;
+    const radius = this.radiusForKind(kind);
     const anchorIndex = this.chooseAnchor(radius, chaseContext);
-    const position = this.positionForAnchor(SPAWN_ANCHORS[anchorIndex], radius);
+    return this.spawnAuthored(kind, SPAWN_ANCHORS[anchorIndex]);
+  }
+
+  private spawnAuthored(kind: TargetKind, anchor: Point2D): TargetState {
+    const radius = this.radiusForKind(kind);
+    const maxHp = kind === 'armored' ? 2 : 1;
+    const position = this.positionForAnchor(anchor, radius);
 
     const target: TargetState = {
       id: this.nextId,
@@ -254,6 +277,10 @@ export class TargetSystem {
     this.nextId += 1;
     this.targets.set(target.id, target);
     return target;
+  }
+
+  private radiusForKind(kind: TargetKind): number {
+    return kind === 'armored' ? 20 : 16;
   }
 
   private chooseAnchor(radius: number, chaseContext?: ChaseContext): number {
@@ -309,8 +336,16 @@ export class TargetSystem {
     const width = this.bounds.right - this.bounds.left;
     const height = this.bounds.bottom - this.bounds.top;
     return {
-      x: this.clamp(this.bounds.left + width * anchor.x, this.bounds.left + radius, this.bounds.right - radius),
-      y: this.clamp(this.bounds.top + height * anchor.y, this.bounds.top + radius, this.bounds.bottom - radius),
+      x: this.clamp(
+        this.bounds.left + width * this.clamp(anchor.x, 0, 1),
+        this.bounds.left + radius,
+        this.bounds.right - radius,
+      ),
+      y: this.clamp(
+        this.bounds.top + height * this.clamp(anchor.y, 0, 1),
+        this.bounds.top + radius,
+        this.bounds.bottom - radius,
+      ),
     };
   }
 
