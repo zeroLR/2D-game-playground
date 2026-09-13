@@ -172,7 +172,9 @@ export class SessionChrome {
           break;
         case 'final-release':
           this.phase.textContent = snapshot.outcome === 'cleared' ? 'STAGE CLEAR' : 'FINAL RELEASE';
-          this.hint.textContent = snapshot.outcome === 'cleared' ? 'FORMATION COLLAPSED' : 'CASH OUT THE LAST CHAIN';
+          this.hint.textContent = snapshot.outcome === 'cleared'
+            ? snapshot.stats.bossDefeated ? 'SENTINEL BROKEN' : 'FORMATION COLLAPSED'
+            : 'CASH OUT THE LAST CHAIN';
           this.startPrompt.hidden = true;
           this.results.hidden = true;
           break;
@@ -185,9 +187,16 @@ export class SessionChrome {
       }
     }
 
-    if (snapshot.phase === 'playing' && snapshot.encounter) {
-      this.phase.textContent = `ENCOUNTER ${snapshot.encounter.number}/${snapshot.encounter.total}`;
-      this.hint.textContent = snapshot.encounter.title;
+    if (snapshot.phase === 'playing') {
+      if (snapshot.boss && snapshot.boss.state !== 'defeated') {
+        this.phase.textContent = `BOSS ${snapshot.boss.phaseNumber}/${snapshot.boss.totalPhases}`;
+        this.hint.textContent = snapshot.boss.state === 'exposed'
+          ? `CORE EXPOSED · ${Math.max(1, Math.ceil(snapshot.boss.exposureSecondsRemaining))}`
+          : snapshot.boss.phaseTitle;
+      } else if (snapshot.encounter) {
+        this.phase.textContent = `ENCOUNTER ${snapshot.encounter.number}/${snapshot.encounter.total}`;
+        this.hint.textContent = snapshot.encounter.title;
+      }
     }
 
     if (snapshot.phase === 'results') this.showResults(snapshot.stats, snapshot.outcome === 'cleared');
