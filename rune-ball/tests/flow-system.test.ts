@@ -24,6 +24,14 @@ describe('FlowSystem', () => {
     expect(flow.snapshot.value).toBeCloseTo(8.5);
   });
 
+  it('rewards pair and Triad handoffs through the existing Flow economy', () => {
+    const flow = new FlowSystem();
+    flow.registerSynergy(2);
+    expect(flow.snapshot.value).toBe(3);
+    flow.registerSynergy(3);
+    expect(flow.snapshot.value).toBe(10);
+  });
+
   it('keeps Overdrive active for twelve seconds and exits deterministically', () => {
     const flow = new FlowSystem();
     for (let index = 0; index < 20 && !flow.snapshot.overdriveActive; index += 1) flow.registerImpact(true);
@@ -45,6 +53,7 @@ describe('FlowSystem', () => {
       expect(flow.registerImpact(true)).toBe(false);
       flow.registerRune();
       flow.registerChain(3);
+      flow.registerSynergy(index % 2 === 0 ? 2 : 3);
     }
 
     expect(flow.snapshot.overdriveUsed).toBe(true);

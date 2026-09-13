@@ -41,6 +41,7 @@ import {
   type ChainPropagationMode,
 } from '../progression/ChainEvolutionTuning';
 import { buildChainResolutionTimeline, selectDetonationZoneTargetIds } from '../progression/ChainResolutionTimeline';
+import { resolveRuneSynergy, type RuneSynergyKind } from '../progression/RuneSynergy';
 
 export type ImpactSource = 'ball' | 'split' | 'chain' | 'singularity';
 
@@ -62,6 +63,7 @@ export type DestructionEvent =
   | { type: 'chain-triggered'; origin: Point2D; targets: Point2D[]; links: { from: Point2D; to: Point2D }[]; zones: { center: Point2D; radius: number }[]; path: ChainEvolutionPath; stage: ChainEvolutionStage; mode: ChainPropagationMode; terminalCenter: Point2D | null; terminalRadius: number }
   | { type: 'chain-hop'; from: Point2D; to: Point2D; path: ChainEvolutionPath; stage: ChainEvolutionStage; kind: ChainLinkKind }
   | { type: 'chain-detonated'; center: Point2D; radius: number; targets: Point2D[]; path: ChainEvolutionPath; stage: ChainEvolutionStage }
+  | { type: 'rune-synergy'; kind: RuneSynergyKind; runes: RuneKind[]; center: Point2D }
   | { type: 'overdrive-enter'; duration: number }
   | { type: 'overdrive-exit' };
 
@@ -119,6 +121,7 @@ export class DestructionSession {
   private activeVortexProfile: VortexCastProfile = BASE_VORTEX_PROFILE;
   private activeSplitProfile: SplitCastProfile = BASE_SPLIT_PROFILE;
   private splitCastQualified = false;
+  private splitCastVortexSynergyRewarded = false;
   private pendingRelayHits: PendingRelayHit[] = [];
   private pendingDetonations: PendingDetonation[] = [];
 
@@ -176,6 +179,7 @@ export class DestructionSession {
       this.activeSplitProfile = splitProfile;
       this.activeSplitOverlaps.clear();
       this.splitCastQualified = false;
+      this.splitCastVortexSynergyRewarded = false;
     }
     events.push({ type: 'rune-activated', rune, center: { ...center } });
 
@@ -365,6 +369,7 @@ export class DestructionSession {
     }
 
     const runeStateAtImpact = this.runes.snapshot;
+    const insideActiveVortex = this.isInsideActiveVortex(hit.target.position, runeStateAtImpact);
     const runeInfluence: RuneKind | null = source === 'split'
       ? 'split'
       : source === 'singularity'
@@ -407,7 +412,10 @@ export class DestructionSession {
       if (source === 'ball') this.ball.applyTargetDeflection(hit.target.position);
     }
 
+    let chainTriggered = false;
+    let chainQualified = false;
     if (canTriggerChain && this.runes.consumeChain()) {
+      chainTriggered = true;
       const evolutionBeforeCast = this.chainEvolution.snapshot;
       const profile = getChainCastProfile(evolutionBeforeCast.path, evolutionBeforeCast.stage);
       const excluded = new Set<number>(damagedThisStep);
@@ -424,6 +432,7 @@ export class DestructionSession {
       const visibleLinks = plan.mode === 'detonation'
         ? plan.links.filter((link) => link.kind !== 'terminal')
         : plan.links;
+      chainQualified = plan.qualificationCount >= 2;
 
       events.push({
         type: 'chain-triggered',
@@ -466,7 +475,7 @@ export class DestructionSession {
         });
       }
 
-      if (plan.qualificationCount >= 2) {
+      if (chainQualified) {
         const advance = this.chainEvolution.registerQualifiedUse();
         const evolution = advance.snapshot;
         events.push({
@@ -489,6 +498,18 @@ export class DestructionSession {
           });
         }
       }
+    }
+
+    const synergy = resolveRuneSynergy({
+      splitImpact: source === 'split',
+      insideActiveVortex,
+      chainTriggered,
+      chainQualified,
+      vortexSplitAlreadyRewarded: this.splitCastVortexSynergyRewarded,
+    });
+    if (synergy) {
+      if (synergy.marksVortexSplitWindow) this.splitCastVortexSynergyRewarded = true;
+      this.registerRuneSynergy(synergy.kind, synergy.runes, hit.target.position, events);
     }
 
     return hit.destroyed;
@@ -567,6 +588,24 @@ export class DestructionSession {
   private splitProfileForCurrentStage(): SplitCastProfile {
     const evolution = this.splitEvolution.snapshot;
     return getSplitCastProfile(evolution.path, evolution.stage);
+  }
+
+  private isInsideActiveVortex(point: Point2D, runes: RuneSnapshot): boolean {
+    if (!runes.vortexCenter || runes.vortexStrength <= 0) return false;
+    const dx = point.x - runes.vortexCenter.x;
+    const dy = point.y - runes.vortexCenter.y;
+    return dx * dx + dy * dy <= this.activeVortexProfile.radius * this.activeVortexProfile.radius;
+  }
+
+  private registerRuneSynergy(
+    kind: RuneSynergyKind,
+    runes: readonly RuneKind[],
+    center: Point2D,
+    events: DestructionEvent[],
+  ): void {
+    events.push({ type: 'rune-synergy', kind, runes: [...runes], center: { ...center } });
+    const runeCount: 2 | 3 = kind === 'triad' ? 3 : 2;
+    if (this.flow.registerSynergy(runeCount)) this.enterOverdrive(events);
   }
 
   private enterOverdrive(events: DestructionEvent[]): void {

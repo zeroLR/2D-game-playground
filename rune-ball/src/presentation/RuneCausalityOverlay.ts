@@ -46,6 +46,9 @@ export class RuneCausalityOverlay {
       case 'chain-detonated':
         this.spawnChainDetonation(event.center, event.radius);
         break;
+      case 'rune-synergy':
+        this.spawnSynergy(event.runes, event.center, event.kind === 'triad');
+        break;
       default:
         break;
     }
@@ -171,6 +174,58 @@ export class RuneCausalityOverlay {
     }
 
     this.addTransient(group, 620);
+  }
+
+  private spawnSynergy(runes: RuneKind[], point: Point2D, triad: boolean): void {
+    const group = document.createElementNS(SVG_NS, 'g');
+    group.classList.add('rune-causality-chain');
+
+    const orbitRadius = triad ? 42 : 34;
+    const positions: Point2D[] = triad
+      ? [
+        { x: point.x, y: point.y - orbitRadius },
+        { x: point.x - orbitRadius * 0.82, y: point.y + orbitRadius * 0.54 },
+        { x: point.x + orbitRadius * 0.82, y: point.y + orbitRadius * 0.54 },
+      ]
+      : [
+        { x: point.x - orbitRadius * 0.78, y: point.y },
+        { x: point.x + orbitRadius * 0.78, y: point.y },
+      ];
+
+    for (let index = 0; index < runes.length; index += 1) {
+      const rune = runes[index];
+      const position = positions[index] ?? point;
+      const ring = document.createElementNS(SVG_NS, 'circle');
+      ring.dataset.rune = rune;
+      ring.setAttribute('cx', point.x.toFixed(2));
+      ring.setAttribute('cy', point.y.toFixed(2));
+      ring.setAttribute('r', (orbitRadius + index * 5).toFixed(2));
+      ring.classList.add('rune-causality-ring');
+      group.append(ring);
+
+      const glyph = document.createElementNS(SVG_NS, 'path');
+      glyph.dataset.rune = rune;
+      glyph.setAttribute('d', this.glyphPath(rune, position, triad ? 11 : 12));
+      glyph.classList.add('rune-causality-glyph');
+      group.append(glyph);
+    }
+
+    const linkCount = triad ? positions.length : 1;
+    for (let index = 0; index < linkCount; index += 1) {
+      const from = positions[index];
+      const to = triad ? positions[(index + 1) % positions.length] : positions[1];
+      if (!from || !to) continue;
+      const line = document.createElementNS(SVG_NS, 'line');
+      line.dataset.rune = runes[(index + 1) % runes.length] ?? runes[0];
+      line.setAttribute('x1', from.x.toFixed(2));
+      line.setAttribute('y1', from.y.toFixed(2));
+      line.setAttribute('x2', to.x.toFixed(2));
+      line.setAttribute('y2', to.y.toFixed(2));
+      line.classList.add('rune-causality-link');
+      group.append(line);
+    }
+
+    this.addTransient(group, triad ? 820 : 650);
   }
 
   private glyphPath(rune: RuneKind, point: Point2D, size: number): string {

@@ -16,6 +16,8 @@ const BREAK_FLOW = 5;
 const RUNE_FLOW = 4;
 const CHAIN_TARGET_FLOW = 1.5;
 const CHAIN_FLOW_CAP = 5;
+const PAIR_SYNERGY_FLOW = 3;
+const TRIAD_SYNERGY_FLOW = 7;
 
 export class FlowSystem {
   private value = 0;
@@ -59,6 +61,10 @@ export class FlowSystem {
   registerChain(targetCount: number): boolean {
     const count = Number.isFinite(targetCount) ? Math.max(0, Math.floor(targetCount)) : 0;
     return this.addFlow(Math.min(CHAIN_FLOW_CAP, count * CHAIN_TARGET_FLOW));
+  }
+
+  registerSynergy(runeCount: 2 | 3): boolean {
+    return this.addFlow(runeCount === 3 ? TRIAD_SYNERGY_FLOW : PAIR_SYNERGY_FLOW);
   }
 
   private addFlow(amount: number): boolean {
