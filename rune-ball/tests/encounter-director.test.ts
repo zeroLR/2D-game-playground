@@ -107,12 +107,20 @@ describe('EncounterDirector', () => {
         ],
       }],
     };
+    const invalidEliteSequence: EncounterSequenceDefinition = {
+      intermissionSeconds: 0,
+      encounters: [{
+        kind: 'elite',
+        id: 'warden-without-carrier',
+        title: 'FRACTURE WARDEN',
+        objective: 'Break the Warden with Rune energy.',
+        elite: { title: 'FRACTURE WARDEN', trait: 'rune-ward' },
+        targets: [{ kind: 'crystal', anchor: { x: 0.5, y: 0.5 } }],
+      }],
+    };
 
     expect(new EncounterDirector(eliteSequence).snapshot.phase).toBe('idle');
-    expect(() => new EncounterDirector({
-      ...eliteSequence,
-      encounters: [{ ...eliteSequence.encounters[0], targets: [{ kind: 'crystal', anchor: { x: 0.5, y: 0.5 } }] }],
-    })).toThrow(/exactly one elite/);
+    expect(() => new EncounterDirector(invalidEliteSequence)).toThrow(/exactly one elite/);
   });
 
   it('rejects empty authored sequences and empty formation encounters', () => {
