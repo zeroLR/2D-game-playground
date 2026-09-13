@@ -1,4 +1,5 @@
 import type { Point2D } from '../input/SwipeClassifier';
+import type { BossDefinition } from './BossEncounterSystem';
 import type { TargetKind } from './TargetSystem';
 
 export interface EncounterTargetSpawn {
@@ -6,12 +7,23 @@ export interface EncounterTargetSpawn {
   anchor: Point2D;
 }
 
-export interface EncounterDefinition {
+interface EncounterBaseDefinition {
   id: string;
   title: string;
   objective: string;
+}
+
+export interface FormationEncounterDefinition extends EncounterBaseDefinition {
+  kind: 'formation';
   targets: readonly EncounterTargetSpawn[];
 }
+
+export interface BossEncounterDefinition extends EncounterBaseDefinition {
+  kind: 'boss';
+  boss: BossDefinition;
+}
+
+export type EncounterDefinition = FormationEncounterDefinition | BossEncounterDefinition;
 
 export interface EncounterSequenceDefinition {
   intermissionSeconds: number;
@@ -25,6 +37,7 @@ export interface EncounterSnapshot {
   index: number;
   total: number;
   currentId: string | null;
+  currentKind: EncounterDefinition['kind'] | null;
   currentTitle: string | null;
   currentObjective: string | null;
   intermissionSecondsRemaining: number;
@@ -64,8 +77,8 @@ export class EncounterDirector {
       throw new Error('EncounterDirector intermissionSeconds must be a non-negative finite number.');
     }
     for (const encounter of sequence.encounters) {
-      if (encounter.targets.length === 0) {
-        throw new Error(`Encounter ${encounter.id} must contain at least one target.`);
+      if (encounter.kind === 'formation' && encounter.targets.length === 0) {
+        throw new Error(`Formation encounter ${encounter.id} must contain at least one target.`);
       }
     }
     this.sequence = sequence;
@@ -78,10 +91,15 @@ export class EncounterDirector {
       index: this.index,
       total: this.sequence.encounters.length,
       currentId: current?.id ?? null,
+      currentKind: current?.kind ?? null,
       currentTitle: current?.title ?? null,
       currentObjective: current?.objective ?? null,
       intermissionSecondsRemaining: this.intermissionSecondsRemaining,
     };
+  }
+
+  get currentDefinition(): EncounterDefinition | null {
+    return this.currentEncounter();
   }
 
   start(): EncounterDirective[] {
@@ -91,11 +109,11 @@ export class EncounterDirector {
     return [this.startDirective()];
   }
 
-  update(dtSeconds: number, activeTargetCount: number): EncounterDirective[] {
+  update(dtSeconds: number, objectiveComplete: boolean): EncounterDirective[] {
     if (this.phase === 'idle' || this.phase === 'complete') return [];
 
     if (this.phase === 'active') {
-      if (activeTargetCount > 0) return [];
+      if (!objectiveComplete) return [];
 
       const encounter = this.currentEncounter();
       if (!encounter) return [];
