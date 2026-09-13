@@ -28,6 +28,7 @@ export interface SessionStats {
 }
 
 export interface EncounterProgressSnapshot {
+  kind: 'formation' | 'elite' | 'boss';
   number: number;
   total: number;
   title: string;
@@ -186,6 +187,7 @@ export class SessionDirector {
         break;
       case 'encounter-started':
         this.encounter = {
+          kind: event.encounterKind,
           number: event.index + 1,
           total: event.total,
           title: event.title,
