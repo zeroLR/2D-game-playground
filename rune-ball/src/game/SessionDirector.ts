@@ -3,6 +3,7 @@ import type { RuneKind } from '../rune/RuneTypes';
 
 export type SessionPhase = 'ready' | 'playing' | 'final-release' | 'results';
 export type SessionOutcome = 'cleared' | 'timeout' | null;
+export type BossProgressState = 'shielded' | 'exposed' | 'defeated';
 
 export interface RuneUsageSummary {
   vortex: number;
@@ -22,6 +23,8 @@ export interface SessionStats {
   overdriveReached: boolean;
   overdriveBreaks: number;
   encountersCleared: number;
+  bossPhasesBroken: number;
+  bossDefeated: boolean;
 }
 
 export interface EncounterProgressSnapshot {
@@ -31,10 +34,22 @@ export interface EncounterProgressSnapshot {
   objective: string;
 }
 
+export interface BossProgressSnapshot {
+  id: string;
+  title: string;
+  phaseNumber: number;
+  totalPhases: number;
+  phaseTitle: string;
+  phaseObjective: string;
+  state: BossProgressState;
+  exposureSecondsRemaining: number;
+}
+
 export interface SessionSnapshot {
   phase: SessionPhase;
   outcome: SessionOutcome;
   encounter: EncounterProgressSnapshot | null;
+  boss: BossProgressSnapshot | null;
   elapsedSeconds: number;
   secondsRemaining: number;
   phaseSecondsRemaining: number;
@@ -68,6 +83,8 @@ function emptyStats(): SessionStats {
     overdriveReached: false,
     overdriveBreaks: 0,
     encountersCleared: 0,
+    bossPhasesBroken: 0,
+    bossDefeated: false,
   };
 }
 
@@ -78,6 +95,7 @@ export class SessionDirector {
   private phase: SessionPhase = 'ready';
   private outcome: SessionOutcome = null;
   private encounter: EncounterProgressSnapshot | null = null;
+  private boss: BossProgressSnapshot | null = null;
   private elapsedSeconds = 0;
   private paused = false;
   private overdriveActive = false;
@@ -109,6 +127,7 @@ export class SessionDirector {
       phase: this.phase,
       outcome: this.outcome,
       encounter: this.encounter ? { ...this.encounter } : null,
+      boss: this.boss ? { ...this.boss } : null,
       elapsedSeconds: this.elapsedSeconds,
       secondsRemaining,
       phaseSecondsRemaining,
@@ -135,6 +154,9 @@ export class SessionDirector {
 
     const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
     this.elapsedSeconds = Math.min(this.totalSeconds, this.elapsedSeconds + dt);
+    if (this.boss?.state === 'exposed') {
+      this.boss.exposureSecondsRemaining = Math.max(0, this.boss.exposureSecondsRemaining - dt);
+    }
 
     if (this.elapsedSeconds >= this.totalSeconds) {
       this.phase = 'results';
@@ -169,12 +191,49 @@ export class SessionDirector {
           title: event.title,
           objective: event.objective,
         };
+        this.boss = null;
         break;
       case 'encounter-cleared':
         this.stats.encountersCleared += 1;
         break;
       case 'stage-cleared':
         this.completeStage();
+        break;
+      case 'boss-phase-started':
+        this.boss = {
+          id: event.bossId,
+          title: event.bossTitle,
+          phaseNumber: event.phaseIndex + 1,
+          totalPhases: event.total,
+          phaseTitle: event.title,
+          phaseObjective: event.objective,
+          state: 'shielded',
+          exposureSecondsRemaining: 0,
+        };
+        break;
+      case 'boss-exposed':
+        if (this.boss) {
+          this.boss.state = 'exposed';
+          this.boss.exposureSecondsRemaining = event.duration;
+        }
+        break;
+      case 'boss-core-hit':
+        this.stats.bossPhasesBroken += 1;
+        break;
+      case 'boss-rearmed':
+        if (this.boss) {
+          this.boss.state = 'shielded';
+          this.boss.phaseTitle = event.title;
+          this.boss.phaseObjective = event.objective;
+          this.boss.exposureSecondsRemaining = 0;
+        }
+        break;
+      case 'boss-defeated':
+        this.stats.bossDefeated = true;
+        if (this.boss) {
+          this.boss.state = 'defeated';
+          this.boss.exposureSecondsRemaining = 0;
+        }
         break;
       case 'rune-activated':
         this.registerRune(event.rune);
@@ -199,6 +258,7 @@ export class SessionDirector {
     this.phase = 'ready';
     this.outcome = null;
     this.encounter = null;
+    this.boss = null;
     this.elapsedSeconds = 0;
     this.paused = false;
     this.overdriveActive = false;
