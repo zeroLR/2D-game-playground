@@ -4,7 +4,7 @@
 
 Rune Ball's MVP proved that redirecting the ball, breaking targets, casting Runes, building Flow, and reaching Overdrive can produce a satisfying short-session power fantasy.
 
-The current content loop has a larger structural limitation: targets continuously refill inside one arena. That preserves action density, but it gives the player little reason to read a situation, prepare a Rune setup, or choose one Rune sequence over another.
+The larger structural limitation was repetition: targets continuously refilled inside one arena, so the player had little reason to read a situation, prepare a Rune setup, or choose one Rune sequence over another.
 
 P9 changes the primary question from:
 
@@ -16,12 +16,6 @@ into:
 
 The timer remains pressure. It is no longer the primary objective.
 
-## Risk question
-
-**Do authored formations create recognizable tactical problems that make players deliberately change Rune timing, ordering, and target selection?**
-
-If the answer is no, adding more stages, bosses, loot, or world traversal would only hide a shallow encounter vocabulary behind more content.
-
 ## Product rule
 
 A Stage is authored content data. Runtime systems execute that data; presentation reports state but does not own encounter rules.
@@ -31,70 +25,88 @@ flowchart LR
     StageCatalog[Stage Catalog] --> EncounterData[Encounter Sequence]
     EncounterData --> EncounterDirector[Encounter Director]
     EncounterDirector --> DestructionSession[Destruction Session]
+    DestructionSession --> RuleSystem[Encounter / Boss Rules]
     DestructionSession --> TargetSystem[Target System]
     DestructionSession --> Events[Gameplay Events]
     Events --> SessionDirector[Session Director]
-    Events --> Presentation[Pixi / HUD Presentation]
+    Events --> Presentation[Pixi / DOM Presentation]
 ```
 
-This preserves the existing simulation / presentation boundary while creating a reusable content-authoring layer for future stages, elites, objectives, and bosses.
+This preserves the simulation / presentation boundary while creating a reusable content-authoring layer for stages, formations, modifiers, Elites, objectives, and Bosses.
 
-## P9.1 — Authored Encounter Foundation
+## P9.1 — Authored Encounter Foundation — Complete
 
-### Deliverables
+Established the Stage → Encounter sequence contract:
 
-- Stage data can define an ordered Encounter sequence.
-- Each Encounter owns a title, objective, and normalized target formation.
-- `EncounterDirector` owns encounter lifecycle: start → active → clear → intermission → next → stage clear.
+- Stage data owns an ordered encounter sequence.
+- `EncounterDirector` owns start → active → clear → intermission → next → stage clear.
 - `TargetSystem` supports explicit authored spawning without automatic refill.
-- Legacy endless-spawn behavior remains available when no authored sequence is supplied.
 - `DestructionSession` is the integration boundary between encounter lifecycle and combat simulation.
-- Overdrive does not inject additional targets into an authored formation.
-- Stage clear ends the run early through the existing session/result flow.
-- A normal directional swipe can begin the run; a Rune cast is no longer required to start the timer.
-- Existing session chrome reports encounter number/name and clear/timeout outcome without adding a second persistent HUD layer.
+- Overdrive does not inject extra targets into authored formations.
+- Stage clear ends the run through the existing session/result flow.
+- Existing session chrome reports encounter progress without a second persistent HUD.
 
-### Shattered Gate vertical slice
+The first Shattered Gate slice proved that formation geometry can be authored as gameplay content instead of endless target refill.
 
-`Shattered Gate` becomes the first authored Stage and contains three formation hypotheses:
+## P9.2 — Boss Encounter Contract — Complete
 
-| Encounter | Tactical hypothesis | Intended pressure |
-| --- | --- | --- |
-| **Opening Vector** | Rebound readability | Establish that formation geometry matters before Rune optimization. |
-| **Convergence** | Vortex → Split setup | Two separated clusters make repositioning and broad Split coverage more valuable than immediate casting. |
-| **Relay Array** | Chain origin selection | A linked diagonal / armored topology gives Chain a visibly stronger and weaker origin choice. |
+Established Boss as an **arena problem**, not a large HP target.
 
-These are playtest hypotheses, not permanent level-design templates. P9.1 succeeds only if players actually react differently to them.
-
-## P9.2 — Boss Encounter Contract
-
-Only after authored formations are readable, add a reusable Boss encounter contract.
-
-The Boss should be an **arena problem**, not merely a target with a large HP pool. Boss phases should expose Rune opportunities through formation, protection, movement, or break-state rules.
-
-Candidate structure:
+The first Boss, Fracture Sentinel, uses:
 
 ```mermaid
-flowchart TD
-    Phase[Boss Phase] --> Structure[Spawn / expose arena structure]
-    Structure --> Setup[Player creates Rune setup]
-    Setup --> Break[Break protection or objective]
-    Break --> Window[Damage / payoff window]
-    Window --> Phase
+stateDiagram-v2
+    [*] --> Shielded
+    Shielded --> Exposed: Clear Wards
+    Exposed --> Shielded: Exposure expires
+    Exposed --> Shielded: Core hit / next phase
+    Exposed --> Defeated: Final core hit
+    Defeated --> [*]
 ```
 
-P9.2 should establish reusable phase/objective primitives before authoring multiple bosses.
+Key contract:
 
-## P9.3 — Rune Unlock & Stage Progression
+- Boss phases author Ward formation, objective, exposure duration, and core geometry.
+- Existing Rune systems solve the Ward structure.
+- Ball / Split can cash out an exposed Core.
+- No Boss HP scaling or separate damage-stat model.
+- Boss state remains renderer-independent and is exposed through gameplay events.
+- `EncounterDirector` now advances from an explicit objective-complete signal rather than assuming `targets === 0`.
 
-Once one Boss works, connect authored Stage completion to progression:
+This generalized lifecycle is the base for future non-clear-all objectives as well.
+
+## P9.3 — Encounter Modifier & Elite Contract — In Progress
+
+P9.3 expands encounter vocabulary without multiplying bespoke systems.
+
+Two reusable concepts are introduced:
+
+- **Encounter Modifier** — changes a local arena rule for one encounter.
+- **Elite** — carries a readable rule that changes target priority rather than adding HP.
+
+First validation primitives:
+
+| Primitive | First use | Tactical question |
+| --- | --- | --- |
+| **Drift Field** | Convergence | When is the moving formation in a useful Rune geometry? |
+| **Rune Ward Elite** | Fracture Warden | How do I route a Rune-authored impact into a target that rejects direct Ball damage? |
+
+Detailed contract: `P9-3-ENCOUNTER-MODIFIER-ELITE.md`.
+
+If these primitives are not readable on phone, tune their world-space causality and encounter geometry before adding more modifiers or Elite archetypes.
+
+## P9.4 — Rune Unlock & Stage Progression
+
+Only after the authored encounter vocabulary is credible should Stage completion become progression.
+
+Goals:
 
 - Boss clear unlocks a new Rune or equivalent rules-changing capability.
 - Later encounters teach composition between previously learned Runes.
-- Stage selection reflects clear/unlock state.
-- Rune Tree progression should favor new behavior and build identity over flat stat inflation.
+- Stage selection reflects clear / unlock state.
+- Progression rewards new behavior and build identity over flat stat inflation.
 
-A likely teaching curve is:
+A likely teaching curve remains:
 
 ```mermaid
 flowchart LR
@@ -106,44 +118,47 @@ flowchart LR
     R3 --> C3[Full build composition]
 ```
 
-The exact Rune unlock order should be decided from playtest evidence rather than assumed in P9.1.
+The exact Rune unlock order should come from playtest evidence rather than being assumed up front.
 
-## P9.4 — Region / Expedition Layer
+## P9.5 — Region / Expedition Layer
 
 Do not build a full open world yet.
 
-After Rune Ball has roughly 10–15 proven encounter patterns, those authored arenas can be organized into a Region / Expedition structure with branches, hidden routes, elites, Rune shrines, and region bosses.
+After Rune Ball has roughly 10–15 proven encounter patterns, authored arenas can be organized into a Region / Expedition structure with branches, hidden routes, Elites, Rune shrines, and region Bosses.
 
 The goal is to gain exploration and route choice without prematurely creating a second traversal-focused core loop.
 
+## Current Shattered Gate vocabulary
+
+```mermaid
+flowchart LR
+    A[Opening Vector<br/>Baseline geometry]
+    --> B[Convergence<br/>Drift Field]
+    --> C[Fracture Warden<br/>Rune Ward Elite]
+    --> D[Fracture Sentinel<br/>Boss phases]
+    --> E[Stage Clear]
+```
+
+The current Stage timer is provisionally 100 seconds while P9.2/P9.3 decision density is evaluated.
+
 ## Scope guard
 
-P9.1 deliberately does **not** add:
+P9 continues to avoid premature meta-system expansion:
 
-- open-world traversal;
-- materials or crafting;
-- additional permanent currencies;
-- boss HP / phase logic;
-- new target families;
-- bespoke encounter HUD panels;
-- arbitrary Rune damage / radius / duration buffs;
-- a large explicit synergy bonus matrix.
+- no open-world traversal yet;
+- no materials or crafting;
+- no additional permanent currencies;
+- no random affix / rarity system;
+- no arbitrary Rune damage / radius / duration inflation;
+- no Boss HP sponge design;
+- no Elite HP multiplier design;
+- no generic encounter scripting language;
+- no large explicit synergy bonus matrix.
 
-Cross-Rune causal-memory changes can be revisited after encounter geometry gives those handoffs a clear tactical purpose.
+Cross-Rune causal-memory changes can still be revisited after authored content demonstrates exactly where live-overlap synergy is too restrictive.
 
-## Phone playtest gate
+## Current success thesis
 
-Before moving to P9.2, validate `Shattered Gate` on a phone:
+P9 is successful when Rune Ball can produce a growing set of recognizable tactical questions through authored **geometry, local rules, priority targets, and Boss phases**, while preserving the same core Ball + Rune interaction language.
 
-1. Players notice that the target arrangement has changed between encounters without needing a modal tutorial.
-2. Players use Runes differently between `Opening Vector`, `Convergence`, and `Relay Array`.
-3. At least one formation causes the player to delay a Rune briefly to create a better setup instead of casting immediately on charge.
-4. Clearing all encounters feels like the goal; the 75-second timer reads as pressure/failure risk rather than the main scoring objective.
-5. The 0.7-second formation transition creates a readable beat without feeling like dead air.
-6. Overdrive remains exciting even though it no longer silently increases target count inside authored encounters.
-
-If these fail, tune formation geometry and encounter pacing before adding Boss content.
-
-## Success condition
-
-P9.1 is complete when the game has moved from **continuous target refill** to a demonstrably readable **authored encounter sequence**, and that sequence begins to create intentional Rune decisions rather than merely changing where crystals happen to appear.
+The next major proof after P9.3 is not more encounter rules. It is whether this vocabulary is strong enough to support meaningful **unlock progression and Stage-to-Stage motivation**.
