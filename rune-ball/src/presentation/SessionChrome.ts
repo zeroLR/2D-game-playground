@@ -194,7 +194,8 @@ export class SessionChrome {
           ? `CORE EXPOSED · ${Math.max(1, Math.ceil(snapshot.boss.exposureSecondsRemaining))}`
           : snapshot.boss.phaseTitle;
       } else if (snapshot.encounter) {
-        this.phase.textContent = `ENCOUNTER ${snapshot.encounter.number}/${snapshot.encounter.total}`;
+        const label = snapshot.encounter.kind === 'elite' ? 'ELITE' : 'ENCOUNTER';
+        this.phase.textContent = `${label} ${snapshot.encounter.number}/${snapshot.encounter.total}`;
         this.hint.textContent = snapshot.encounter.title;
       }
     }
