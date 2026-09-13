@@ -1,0 +1,145 @@
+.boss-core-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.boss-core-layer[hidden] {
+  display: none;
+}
+
+.boss-core-shell {
+  --boss-core-radius: 32px;
+  position: absolute;
+  width: calc(var(--boss-core-radius) * 2.6);
+  height: calc(var(--boss-core-radius) * 2.6);
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 18px rgba(143, 77, 255, 0.22));
+}
+
+.boss-core {
+  position: relative;
+  width: calc(var(--boss-core-radius) * 2);
+  height: calc(var(--boss-core-radius) * 2);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(240, 251, 255, 0.18) 0 11%, transparent 12%),
+    radial-gradient(circle at 50% 50%, rgba(143, 77, 255, 0.20) 0 45%, rgba(5, 7, 17, 0.94) 47% 100%);
+  border: 2px solid rgba(111, 233, 255, 0.48);
+  box-shadow:
+    inset 0 0 22px rgba(143, 77, 255, 0.32),
+    0 0 0 7px rgba(143, 77, 255, 0.08);
+}
+
+.boss-core::before,
+.boss-core::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 2px solid rgba(143, 77, 255, 0.42);
+}
+
+.boss-core::after {
+  inset: -25px;
+  border-style: dashed;
+  border-color: rgba(111, 233, 255, 0.30);
+  animation: boss-core-orbit 5s linear infinite;
+}
+
+.boss-core-sigil {
+  width: 44%;
+  height: 44%;
+  transform: rotate(45deg);
+  border: 2px solid rgba(240, 251, 255, 0.58);
+  box-shadow: inset 0 0 12px rgba(215, 86, 255, 0.24);
+}
+
+.boss-core-phases {
+  position: absolute;
+  top: calc(50% + var(--boss-core-radius) + 34px);
+  display: flex;
+  gap: 7px;
+}
+
+.boss-core-phase-pip {
+  width: 17px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(113, 130, 155, 0.26);
+}
+
+.boss-core-phase-pip[data-state='active'] {
+  background: rgba(111, 233, 255, 0.74);
+  box-shadow: 0 0 8px rgba(111, 233, 255, 0.32);
+}
+
+.boss-core-phase-pip[data-state='broken'] {
+  background: rgba(215, 86, 255, 0.52);
+}
+
+.boss-core-layer[data-state='shielded'] .boss-core {
+  border-color: rgba(143, 77, 255, 0.70);
+}
+
+.boss-core-layer[data-state='shielded'] .boss-core::before {
+  border-width: 4px;
+  border-color: rgba(143, 77, 255, 0.48);
+  box-shadow: 0 0 20px rgba(143, 77, 255, 0.20);
+}
+
+.boss-core-layer[data-state='exposed'] .boss-core {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.96) 0 12%, rgba(111, 233, 255, 0.58) 13% 28%, rgba(215, 86, 255, 0.20) 30% 48%, rgba(5, 7, 17, 0.90) 50% 100%);
+  border-color: rgba(240, 251, 255, 0.96);
+  box-shadow:
+    inset 0 0 26px rgba(111, 233, 255, 0.44),
+    0 0 28px rgba(111, 233, 255, 0.25);
+  animation: boss-core-exposed var(--boss-exposure-seconds, 4s) linear forwards;
+}
+
+.boss-core-layer[data-state='exposed'] .boss-core::before {
+  border-color: rgba(240, 251, 255, 0.78);
+  animation: boss-core-breathe 0.54s ease-in-out infinite alternate;
+}
+
+.boss-core-layer[data-state='exposed'] .boss-core::after {
+  border-color: rgba(215, 86, 255, 0.50);
+  animation-duration: 1.6s;
+}
+
+.boss-core-layer[data-state='breaking'] .boss-core {
+  border-color: rgba(240, 251, 255, 1);
+  box-shadow: 0 0 34px rgba(240, 251, 255, 0.34);
+}
+
+.boss-core-layer[data-state='defeated'] .boss-core {
+  opacity: 0.16;
+  filter: saturate(0.2);
+}
+
+.boss-core-layer[data-reduced-motion='true'] .boss-core,
+.boss-core-layer[data-reduced-motion='true'] .boss-core::before,
+.boss-core-layer[data-reduced-motion='true'] .boss-core::after {
+  animation: none !important;
+}
+
+@keyframes boss-core-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes boss-core-breathe {
+  from { transform: scale(0.96); opacity: 0.58; }
+  to { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes boss-core-exposed {
+  from { box-shadow: inset 0 0 26px rgba(111, 233, 255, 0.44), 0 0 30px rgba(111, 233, 255, 0.30); }
+  to { box-shadow: inset 0 0 12px rgba(111, 233, 255, 0.18), 0 0 8px rgba(111, 233, 255, 0.08); }
+}

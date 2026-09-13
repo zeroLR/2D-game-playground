@@ -17,6 +17,7 @@ const SHATTERED_GATE_ENCOUNTERS: EncounterSequenceDefinition = {
   intermissionSeconds: 0.7,
   encounters: [
     {
+      kind: 'formation',
       id: 'opening-vector',
       title: 'OPENING VECTOR',
       objective: 'Read the rebound lanes and clear the formation.',
@@ -30,6 +31,7 @@ const SHATTERED_GATE_ENCOUNTERS: EncounterSequenceDefinition = {
       ],
     },
     {
+      kind: 'formation',
       id: 'convergence',
       title: 'CONVERGENCE',
       objective: 'Collapse the side clusters into a useful Split window.',
@@ -45,6 +47,7 @@ const SHATTERED_GATE_ENCOUNTERS: EncounterSequenceDefinition = {
       ],
     },
     {
+      kind: 'formation',
       id: 'relay-array',
       title: 'RELAY ARRAY',
       objective: 'Find a strong Chain origin and clear the armored relay.',
@@ -61,6 +64,48 @@ const SHATTERED_GATE_ENCOUNTERS: EncounterSequenceDefinition = {
         { kind: 'crystal', anchor: { x: 0.70, y: 0.62 } },
       ],
     },
+    {
+      kind: 'boss',
+      id: 'fracture-sentinel',
+      title: 'FRACTURE SENTINEL',
+      objective: 'Break its Ward field, then strike the exposed core.',
+      boss: {
+        id: 'fracture-sentinel',
+        title: 'FRACTURE SENTINEL',
+        coreAnchor: { x: 0.50, y: 0.43 },
+        coreRadius: 32,
+        phases: [
+          {
+            id: 'aegis-ring',
+            title: 'AEGIS RING',
+            objective: 'Collapse the Ward ring to expose the core.',
+            exposureSeconds: 4,
+            wards: [
+              { kind: 'crystal', anchor: { x: 0.28, y: 0.26 } },
+              { kind: 'crystal', anchor: { x: 0.50, y: 0.20 } },
+              { kind: 'crystal', anchor: { x: 0.72, y: 0.26 } },
+              { kind: 'crystal', anchor: { x: 0.26, y: 0.58 } },
+              { kind: 'crystal', anchor: { x: 0.74, y: 0.58 } },
+              { kind: 'armored', anchor: { x: 0.50, y: 0.70 } },
+            ],
+          },
+          {
+            id: 'fracture-relay',
+            title: 'FRACTURE RELAY',
+            objective: 'Break the relay topology, then cash out on the core.',
+            exposureSeconds: 3.6,
+            wards: [
+              { kind: 'crystal', anchor: { x: 0.22, y: 0.70 } },
+              { kind: 'crystal', anchor: { x: 0.32, y: 0.59 } },
+              { kind: 'armored', anchor: { x: 0.40, y: 0.31 } },
+              { kind: 'armored', anchor: { x: 0.60, y: 0.31 } },
+              { kind: 'crystal', anchor: { x: 0.68, y: 0.59 } },
+              { kind: 'crystal', anchor: { x: 0.78, y: 0.70 } },
+            ],
+          },
+        ],
+      },
+    },
   ],
 };
 
@@ -70,9 +115,9 @@ export const STAGES: readonly StageDefinition[] = [
     number: 1,
     title: 'SHATTERED GATE',
     chapter: 'CHAPTER I · THE FRACTURE',
-    objective: 'Clear three authored formations before the field collapses.',
+    objective: 'Clear three formations and break the Fracture Sentinel.',
     status: 'available',
-    durationSeconds: 75,
+    durationSeconds: 100,
     encounterSequence: SHATTERED_GATE_ENCOUNTERS,
   },
   {
