@@ -1,4 +1,9 @@
-import { COMPACT_PUZZLE_ROOM_TRACK } from '../track/CompactPuzzleRoomTrack.js';
+import {
+  AUTHORED_SPATIAL_PUZZLE_SET,
+  findAuthoredSpatialPuzzleRoom,
+  type AuthoredSpatialPuzzleRoom,
+  type AuthoredSpatialPuzzleRoomId,
+} from '../track/AuthoredSpatialPuzzleSet.js';
 import { COMPOSED_VOCABULARY_TRACK } from '../track/ComposedVocabularyTrack.js';
 import { GENERALIZED_COMPOSITION_TRACK } from '../track/GeneralizedCompositionTrack.js';
 import { MAGNETIC_VOCABULARY_TRACK } from '../track/MagneticVocabularyTrack.js';
@@ -19,7 +24,7 @@ export interface PrototypeMode {
     | 'p1-moving'
     | 'p1-composition'
     | 'p1-generalization'
-    | 'p2-room';
+    | AuthoredSpatialPuzzleRoomId;
   track: ValidationTrackDefinition;
   validationEnabled: boolean;
   presentation: PrototypePresentation;
@@ -85,21 +90,30 @@ const P1_GENERALIZATION_MODE: PrototypeMode = {
   },
 };
 
-const P2_ROOM_MODE: PrototypeMode = {
-  id: 'p2-room',
-  track: COMPACT_PUZZLE_ROOM_TRACK,
-  validationEnabled: false,
-  presentation: {
-    milestoneLabel: 'P2.1 / COMPACT PUZZLE ROOM',
-    kicker: 'SPATIAL PUZZLE GRAMMAR',
-    title: 'You can see the goal. Find the route that reaches its height.',
-    body: 'Read the room before committing. The route folds around the same chamber, rises on the magnetic lift, crosses the upper moving bridge, then returns over previously seen space. No minimap, waypoint, switch, or new control is added.',
-  },
-};
+function authoredRoomLabel(room: AuthoredSpatialPuzzleRoom): string {
+  if (room.role === 'teach') return 'ROOM A · TEACH';
+  if (room.role === 'vary') return 'ROOM B · VARY';
+  return 'ROOM C · MASTERY';
+}
+
+function authoredRoomMode(room: AuthoredSpatialPuzzleRoom): PrototypeMode {
+  return {
+    id: room.id,
+    track: room.track,
+    validationEnabled: false,
+    presentation: {
+      milestoneLabel: `P2.2 / ${authoredRoomLabel(room)}`,
+      kicker: 'AUTHORED SPATIAL PUZZLE SET',
+      title: room.title,
+      body: room.body,
+    },
+  };
+}
 
 /**
- * P2.1 is the active prototype. P0/P1 routes remain selectable for regression
- * so spatial-design changes can be separated from physics vocabulary changes.
+ * P2.2 keeps every authored room directly addressable so the progression can be
+ * tested in order without hiding regressions behind a level-select UI. The
+ * default is Room A; use stage=p2-room-b or stage=p2-room-c for later rooms.
  */
 export function resolvePrototypeMode(search: string): PrototypeMode {
   const stage = new URLSearchParams(search).get('stage');
@@ -108,5 +122,8 @@ export function resolvePrototypeMode(search: string): PrototypeMode {
   if (stage === 'p1-moving') return P1_MOVING_MODE;
   if (stage === 'p1-composition') return P1_COMPOSITION_MODE;
   if (stage === 'p1-generalization') return P1_GENERALIZATION_MODE;
-  return P2_ROOM_MODE;
+
+  const authoredRoom = findAuthoredSpatialPuzzleRoom(stage);
+  if (authoredRoom) return authoredRoomMode(authoredRoom);
+  return authoredRoomMode(AUTHORED_SPATIAL_PUZZLE_SET[0]);
 }
