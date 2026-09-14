@@ -46,13 +46,9 @@ Established the Stage → Encounter sequence contract:
 - Stage clear ends the run through the existing session/result flow.
 - Existing session chrome reports encounter progress without a second persistent HUD.
 
-The first Shattered Gate slice proved that formation geometry can be authored as gameplay content instead of endless target refill.
-
 ## P9.2 — Boss Encounter Contract — Complete
 
 Established Boss as an **arena problem**, not a large HP target.
-
-The first Boss, Fracture Sentinel, uses:
 
 ```mermaid
 stateDiagram-v2
@@ -71,54 +67,55 @@ Key contract:
 - Ball / Split can cash out an exposed Core.
 - No Boss HP scaling or separate damage-stat model.
 - Boss state remains renderer-independent and is exposed through gameplay events.
-- `EncounterDirector` now advances from an explicit objective-complete signal rather than assuming `targets === 0`.
+- `EncounterDirector` advances from an explicit objective-complete signal.
 
-This generalized lifecycle is the base for future non-clear-all objectives as well.
+## P9.3 — Encounter Modifier & Elite Contract — Complete
 
-## P9.3 — Encounter Modifier & Elite Contract — In Progress
-
-P9.3 expands encounter vocabulary without multiplying bespoke systems.
-
-Two reusable concepts are introduced:
-
-- **Encounter Modifier** — changes a local arena rule for one encounter.
-- **Elite** — carries a readable rule that changes target priority rather than adding HP.
-
-First validation primitives:
+P9.3 expanded encounter vocabulary without multiplying bespoke systems.
 
 | Primitive | First use | Tactical question |
 | --- | --- | --- |
 | **Drift Field** | Convergence | When is the moving formation in a useful Rune geometry? |
-| **Rune Ward Elite** | Fracture Warden | How do I route a Rune-authored impact into a target that rejects direct Ball damage? |
+| **Rune Ward Elite** | Fracture Warden | How do I route Rune influence into a target that rejects plain Ball damage? |
+
+P9.3.1 then closed the solvability gap discovered on phone:
+
+- a mandatory Rune-gated encounter cannot depend on a permanently exhaustible resource;
+- Rune Ward provides a bounded one-cast recovery floor;
+- Chain-armed and Vortex-influenced Ball contacts correctly count as Rune-authored answers;
+- the rule remains recoverable even when the Elite is the final target.
 
 Detailed contract: `P9-3-ENCOUNTER-MODIFIER-ELITE.md`.
 
-If these primitives are not readable on phone, tune their world-space causality and encounter geometry before adding more modifiers or Elite archetypes.
+## P9.4 — Rune Unlock & Stage Progression — In Progress
 
-## P9.4 — Rune Unlock & Stage Progression
+P9.4 turns Stage completion into rules-changing progression rather than stat progression.
 
-Only after the authored encounter vocabulary is credible should Stage completion become progression.
-
-Goals:
-
-- Boss clear unlocks a new Rune or equivalent rules-changing capability.
-- Later encounters teach composition between previously learned Runes.
-- Stage selection reflects clear / unlock state.
-- Progression rewards new behavior and build identity over flat stat inflation.
-
-A likely teaching curve remains:
+The first implementation curve is now:
 
 ```mermaid
 flowchart LR
-    R1[Learn one Rune] --> B1[Boss]
-    B1 --> R2[Unlock second Rune]
-    R2 --> C2[Learn composition]
-    C2 --> B2[Boss]
-    B2 --> R3[Unlock third Rune]
-    R3 --> C3[Full build composition]
+    V[○ Vortex] --> S1[Shattered Gate]
+    S1 -->|Boss clear| Split[V Split unlocked]
+    Split --> S2[Prism Wake]
+    S2 -->|Boss clear| Chain[Z Chain unlocked]
+    Chain --> S3[Null Cathedral · coming soon]
 ```
 
-The exact Rune unlock order should come from playtest evidence rather than being assumed up front.
+This order is based on P9.3.1 playtest evidence: exposing `Z` before the player had learned its role created ambiguity. A fresh campaign therefore begins with Vortex only.
+
+P9.4 implementation contract:
+
+- Stage data owns prerequisites, featured Rune, and Rune reward.
+- Player profile persists cleared Stage IDs, not a duplicated unlocked-Rune list.
+- `CampaignProgression` derives Stage state, Rune access, and Continue target.
+- Arena input rejects locked Rune gestures and omits locked glyphs from the Rune guide.
+- Home / Journey / Rune tree reflect progression state.
+- Results reveal a newly unlocked Rune before offering the next Stage.
+- Prism Wake is authored as the Split teaching Stage using existing Formation / Drift / Elite / Boss contracts.
+- Null Cathedral remains honestly marked `COMING SOON` until its Chain content is authored.
+
+Detailed contract: `P9-4-RUNE-UNLOCK-STAGE-PROGRESSION.md`.
 
 ## P9.5 — Region / Expedition Layer
 
@@ -128,18 +125,16 @@ After Rune Ball has roughly 10–15 proven encounter patterns, authored arenas c
 
 The goal is to gain exploration and route choice without prematurely creating a second traversal-focused core loop.
 
-## Current Shattered Gate vocabulary
+## Current Chapter I progression
 
 ```mermaid
 flowchart LR
-    A[Opening Vector<br/>Baseline geometry]
-    --> B[Convergence<br/>Drift Field]
-    --> C[Fracture Warden<br/>Rune Ward Elite]
-    --> D[Fracture Sentinel<br/>Boss phases]
-    --> E[Stage Clear]
+    A[Shattered Gate<br/>Vortex teaching]
+    -->|Unlock Split| B[Prism Wake<br/>Split teaching]
+    -->|Unlock Chain| C[Null Cathedral<br/>Coming Soon]
 ```
 
-The current Stage timer is provisionally 100 seconds while P9.2/P9.3 decision density is evaluated.
+Shattered Gate and Prism Wake currently use a provisional 100-second timer while Stage-to-Stage motivation and teaching density are evaluated.
 
 ## Scope guard
 
@@ -148,6 +143,7 @@ P9 continues to avoid premature meta-system expansion:
 - no open-world traversal yet;
 - no materials or crafting;
 - no additional permanent currencies;
+- no account XP or player level;
 - no random affix / rarity system;
 - no arbitrary Rune damage / radius / duration inflation;
 - no Boss HP sponge design;
@@ -155,10 +151,8 @@ P9 continues to avoid premature meta-system expansion:
 - no generic encounter scripting language;
 - no large explicit synergy bonus matrix.
 
-Cross-Rune causal-memory changes can still be revisited after authored content demonstrates exactly where live-overlap synergy is too restrictive.
-
 ## Current success thesis
 
-P9 is successful when Rune Ball can produce a growing set of recognizable tactical questions through authored **geometry, local rules, priority targets, and Boss phases**, while preserving the same core Ball + Rune interaction language.
+P9 is successful when Rune Ball can produce recognizable tactical questions through authored **geometry, local rules, priority targets, Boss phases, and Rune unlock progression**, while preserving the same core Ball + Rune interaction language.
 
-The next major proof after P9.3 is not more encounter rules. It is whether this vocabulary is strong enough to support meaningful **unlock progression and Stage-to-Stage motivation**.
+The P9.4 proof is whether **clear Stage → unlock new verb → enter authored problem built around that verb** creates a credible reason to continue without adding a second meta-game.
