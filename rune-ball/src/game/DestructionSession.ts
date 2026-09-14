@@ -122,6 +122,7 @@ export interface DestructionSessionOptions {
 
 const BASE_TARGET_COUNT = 8;
 const OVERDRIVE_TARGET_COUNT = 11;
+const RUNE_WARD_RECOVERY_PER_SECOND = 12;
 
 interface PendingRelayHit {
   remainingSeconds: number;
@@ -293,6 +294,7 @@ export class DestructionSession {
 
     const vortexBeforeUpdate = this.runes.snapshot;
     this.runes.update(dtSeconds);
+    this.recoverRuneWardCharge(dtSeconds);
     const runeState = this.runes.snapshot;
     const collapseCenter = vortexBeforeUpdate.vortexCenter
       && vortexBeforeUpdate.vortexStrength > 0
@@ -429,8 +431,13 @@ export class DestructionSession {
     const targetBeforeHit = this.targets.snapshot.find((target) => target.id === targetId);
     if (!targetBeforeHit) return false;
 
+    const runeStateBeforeHit = this.runes.snapshot;
+    const runeWardInfusedBall = source === 'ball' && (
+      (canTriggerChain && runeStateBeforeHit.chainReady)
+      || this.isInsideActiveVortex(targetBeforeHit.position, runeStateBeforeHit)
+    );
     const eliteTrait = this.encounterRules?.snapshot.eliteTrait ?? null;
-    if (eliteTrait && !this.encounterRules?.allowsDamage(targetBeforeHit, source)) {
+    if (eliteTrait && !runeWardInfusedBall && !this.encounterRules?.allowsDamage(targetBeforeHit, source)) {
       damagedThisStep.add(targetId);
       events.push({
         type: 'elite-hit-blocked',
@@ -923,6 +930,24 @@ export class DestructionSession {
       position: { ...target.position },
     });
     return target;
+  }
+
+  private recoverRuneWardCharge(dtSeconds: number): void {
+    const rules = this.encounterRules?.snapshot;
+    if (rules?.eliteTrait !== 'rune-ward' || rules.eliteTargetId === null) return;
+    if (!this.targets.snapshot.some((target) => target.id === rules.eliteTargetId)) return;
+
+    const runes = this.runes.snapshot;
+    if (
+      runes.overdriveActive
+      || runes.charge >= runes.baseCost
+      || runes.chainReady
+      || runes.vortexStrength > 0
+      || runes.splitStrength > 0
+    ) return;
+
+    const dt = Number.isFinite(dtSeconds) ? Math.max(0, dtSeconds) : 0;
+    this.runes.recoverCharge(RUNE_WARD_RECOVERY_PER_SECOND * dt, runes.baseCost);
   }
 
   private applyEncounterModifiers(dtSeconds: number): void {
