@@ -217,7 +217,9 @@ export class SessionChrome {
         case 'final-release':
           this.phase.textContent = snapshot.outcome === 'cleared' ? 'STAGE CLEAR' : 'FINAL RELEASE';
           this.hint.textContent = snapshot.outcome === 'cleared'
-            ? snapshot.stats.bossDefeated ? 'SENTINEL BROKEN' : 'FORMATION COLLAPSED'
+            ? snapshot.stats.bossDefeated
+              ? `${snapshot.boss?.title ?? 'BOSS'} BROKEN`
+              : 'FORMATION COLLAPSED'
             : 'CASH OUT THE LAST CHAIN';
           this.startPrompt.hidden = true;
           this.results.hidden = true;
