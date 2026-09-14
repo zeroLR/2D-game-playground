@@ -1,0 +1,101 @@
+.journey-stage[data-status="cleared"] {
+  border-color: rgb(111 233 255 / 28%);
+  background: rgb(11 20 34 / 90%);
+}
+
+.journey-stage[data-status="cleared"] .journey-stage-index,
+.journey-stage[data-status="cleared"] .journey-stage-state {
+  color: var(--rb-cyan);
+}
+
+.journey-stage[data-status="coming-soon"] {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.rune-tree-rune-button[data-locked="true"] {
+  opacity: 0.38;
+  filter: saturate(0.4);
+}
+
+.rune-tree-rune-button[data-locked="true"] .rune-tree-rune-glyph {
+  color: var(--rb-muted);
+}
+
+.session-unlock[hidden],
+.session-continue[hidden] {
+  display: none !important;
+}
+
+.session-unlock {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgb(143 77 255 / 36%);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 50%, rgb(111 233 255 / 10%), transparent 42%),
+    rgb(13 16 31 / 92%);
+}
+
+.session-unlock-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.session-unlock-glyph {
+  color: #6fe9ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 34px;
+  line-height: 1;
+  text-shadow: 0 0 18px rgb(111 233 255 / 26%);
+}
+
+.session-unlock-name {
+  color: #f0fbff;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+}
+
+.session-unlock-next {
+  text-align: left;
+  color: #8f9db3;
+}
+
+.session-results-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.session-results-actions .session-continue {
+  grid-column: 1 / -1;
+  border-color: rgb(111 233 255 / 82%);
+  background: rgb(18 40 58 / 96%);
+}
+
+.session-results-actions .session-home {
+  min-height: 50px;
+  margin-top: 6px;
+  border: 1px solid rgb(113 130 155 / 24%);
+  border-radius: 10px;
+  background: rgb(10 14 27 / 88%);
+  color: #aebbd0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-height: 720px) {
+  .session-results-panel {
+    gap: 9px;
+    padding: 18px;
+  }
+
+  .session-stat {
+    min-height: 56px;
+  }
+}

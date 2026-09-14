@@ -4,6 +4,13 @@ import { calculateArenaLayout } from './ArenaLayout';
 export interface SessionChromeCallbacks {
   onRetry(): void;
   onHome(): void;
+  onContinue(): void;
+}
+
+export interface ProgressionResultPresentation {
+  unlockedRune: { glyph: string; name: string } | null;
+  nextStageLabel: string | null;
+  canContinue: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -28,9 +35,16 @@ export class SessionChrome {
   private readonly runes: HTMLElement;
   private readonly overdriveBreaks: HTMLElement;
   private readonly chainLinks: HTMLElement;
+  private readonly reward: HTMLElement;
+  private readonly rewardGlyph: HTMLElement;
+  private readonly rewardName: HTMLElement;
+  private readonly rewardNext: HTMLElement;
+  private readonly continueButton: HTMLButtonElement;
   private readonly retryButton: HTMLButtonElement;
+  private readonly footnote: HTMLElement;
   private lastPhase = '';
   private lastTimer = '';
+  private progressionResult: ProgressionResultPresentation | null = null;
 
   constructor(host: HTMLElement, callbacks: SessionChromeCallbacks) {
     const root = document.createElement('section');
@@ -94,6 +108,23 @@ export class SessionChrome {
     score.className = 'session-score';
     score.textContent = '0';
 
+    const reward = document.createElement('section');
+    reward.className = 'session-unlock';
+    reward.hidden = true;
+    const rewardKicker = document.createElement('span');
+    rewardKicker.className = 'session-results-eyebrow';
+    rewardKicker.textContent = 'RUNE UNLOCKED';
+    const rewardIdentity = document.createElement('div');
+    rewardIdentity.className = 'session-unlock-identity';
+    const rewardGlyph = document.createElement('strong');
+    rewardGlyph.className = 'session-unlock-glyph';
+    const rewardName = document.createElement('strong');
+    rewardName.className = 'session-unlock-name';
+    rewardIdentity.append(rewardGlyph, rewardName);
+    const rewardNext = document.createElement('span');
+    rewardNext.className = 'session-results-note session-unlock-next';
+    reward.append(rewardKicker, rewardIdentity, rewardNext);
+
     const stats = document.createElement('div');
     stats.className = 'session-stats';
 
@@ -107,6 +138,13 @@ export class SessionChrome {
     const actions = document.createElement('div');
     actions.className = 'session-results-actions';
 
+    const continueButton = document.createElement('button');
+    continueButton.className = 'session-retry session-continue';
+    continueButton.type = 'button';
+    continueButton.textContent = 'NEXT STAGE';
+    continueButton.hidden = true;
+    continueButton.addEventListener('click', callbacks.onContinue);
+
     const retryButton = document.createElement('button');
     retryButton.className = 'session-retry';
     retryButton.type = 'button';
@@ -119,13 +157,13 @@ export class SessionChrome {
     homeButton.textContent = 'HOME';
     homeButton.addEventListener('click', callbacks.onHome);
 
-    actions.append(retryButton, homeButton);
+    actions.append(continueButton, retryButton, homeButton);
 
     const footnote = document.createElement('span');
     footnote.className = 'session-results-note';
     footnote.textContent = 'Retry keeps this stage and Rune build.';
 
-    panel.append(eyebrow, title, scoreLabel, score, stats, actions, footnote);
+    panel.append(eyebrow, title, scoreLabel, score, reward, stats, actions, footnote);
     results.append(panel);
     root.append(hud, startPrompt, results);
     host.append(root);
@@ -144,7 +182,13 @@ export class SessionChrome {
     this.runes = runes;
     this.overdriveBreaks = overdriveBreaks;
     this.chainLinks = chainLinks;
+    this.reward = reward;
+    this.rewardGlyph = rewardGlyph;
+    this.rewardName = rewardName;
+    this.rewardNext = rewardNext;
+    this.continueButton = continueButton;
     this.retryButton = retryButton;
+    this.footnote = footnote;
   }
 
   render(snapshot: SessionSnapshot): void {
@@ -173,7 +217,9 @@ export class SessionChrome {
         case 'final-release':
           this.phase.textContent = snapshot.outcome === 'cleared' ? 'STAGE CLEAR' : 'FINAL RELEASE';
           this.hint.textContent = snapshot.outcome === 'cleared'
-            ? snapshot.stats.bossDefeated ? 'SENTINEL BROKEN' : 'FORMATION COLLAPSED'
+            ? snapshot.stats.bossDefeated
+              ? `${snapshot.boss?.title ?? 'BOSS'} BROKEN`
+              : 'FORMATION COLLAPSED'
             : 'CASH OUT THE LAST CHAIN';
           this.startPrompt.hidden = true;
           this.results.hidden = true;
@@ -203,6 +249,10 @@ export class SessionChrome {
     if (snapshot.phase === 'results') this.showResults(snapshot.stats, snapshot.outcome === 'cleared');
   }
 
+  setProgressionResult(result: ProgressionResultPresentation | null): void {
+    this.progressionResult = result;
+  }
+
   setViewport(width: number, height: number): void {
     const layout = calculateArenaLayout(width, height);
     this.root.style.setProperty('--session-telemetry-y', `${layout.telemetryY}px`);
@@ -217,7 +267,11 @@ export class SessionChrome {
   }
 
   private showResults(stats: SessionStats, cleared: boolean): void {
-    this.resultsEyebrow.textContent = cleared ? 'AUTHORED STAGE // COMPLETE' : 'ARCANE RUN // EXPIRED';
+    const progression = cleared ? this.progressionResult : null;
+    const hasUnlock = progression?.unlockedRune !== null && progression?.unlockedRune !== undefined;
+    this.resultsEyebrow.textContent = hasUnlock
+      ? 'STAGE CLEAR // NEW CAPABILITY'
+      : cleared ? 'AUTHORED STAGE // COMPLETE' : 'ARCANE RUN // EXPIRED';
     this.resultsTitle.textContent = cleared ? 'STAGE CLEAR' : 'FIELD COLLAPSED';
     this.score.textContent = stats.score.toLocaleString('en-US');
     this.maxCombo.textContent = stats.maxCombo.toString();
@@ -225,8 +279,28 @@ export class SessionChrome {
     this.runes.textContent = stats.runesCast.toString();
     this.overdriveBreaks.textContent = stats.overdriveBreaks.toString();
     this.chainLinks.textContent = stats.chainLinks.toString();
+
+    if (hasUnlock && progression?.unlockedRune) {
+      this.reward.hidden = false;
+      this.rewardGlyph.textContent = progression.unlockedRune.glyph;
+      this.rewardName.textContent = progression.unlockedRune.name;
+      this.rewardNext.textContent = progression.nextStageLabel ?? '';
+    } else {
+      this.reward.hidden = true;
+      this.rewardGlyph.textContent = '';
+      this.rewardName.textContent = '';
+      this.rewardNext.textContent = '';
+    }
+
+    this.continueButton.hidden = !cleared || !progression?.canContinue;
+    this.footnote.textContent = cleared && progression?.nextStageLabel
+      ? progression.nextStageLabel
+      : 'Retry keeps this stage and Rune build.';
     this.results.hidden = false;
-    queueMicrotask(() => this.retryButton.focus({ preventScroll: true }));
+    queueMicrotask(() => {
+      const preferred = !this.continueButton.hidden ? this.continueButton : this.retryButton;
+      preferred.focus({ preventScroll: true });
+    });
   }
 
   private makeStat(label: string): [HTMLElement, HTMLElement] {

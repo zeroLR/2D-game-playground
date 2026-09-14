@@ -14,22 +14,52 @@ function memoryStorage(): Storage {
 }
 
 describe('PlayerProfile', () => {
-  it('defaults to Gravity + Prism + Relay while preserving old-profile compatibility', () => {
-    expect(readPlayerProfile(null)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism', chainPath: 'relay' });
+  it('defaults to Gravity + Prism + Relay with no campaign clears while preserving old-profile compatibility', () => {
+    expect(readPlayerProfile(null)).toEqual({
+      vortexPath: 'gravity-well',
+      splitPath: 'prism',
+      chainPath: 'relay',
+      clearedStageIds: [],
+    });
     const storage = memoryStorage();
     storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'orbit' }));
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'prism', chainPath: 'relay' });
+    expect(readPlayerProfile(storage)).toEqual({
+      vortexPath: 'orbit',
+      splitPath: 'prism',
+      chainPath: 'relay',
+      clearedStageIds: [],
+    });
   });
 
-  it('persists selected evolution paths for all authored Runes', () => {
+  it('persists selected evolution paths and campaign clear state', () => {
     const storage = memoryStorage();
-    writePlayerProfile(storage, { vortexPath: 'orbit', splitPath: 'lance', chainPath: 'detonation' });
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'orbit', splitPath: 'lance', chainPath: 'detonation' });
+    writePlayerProfile(storage, {
+      vortexPath: 'orbit',
+      splitPath: 'lance',
+      chainPath: 'detonation',
+      clearedStageIds: ['shattered-gate', 'prism-wake'],
+    });
+    expect(readPlayerProfile(storage)).toEqual({
+      vortexPath: 'orbit',
+      splitPath: 'lance',
+      chainPath: 'detonation',
+      clearedStageIds: ['shattered-gate', 'prism-wake'],
+    });
   });
 
-  it('falls back per-field when stored profile data is invalid', () => {
+  it('falls back per-field and filters invalid campaign stage ids', () => {
     const storage = memoryStorage();
-    storage.setItem('rune-ball:profile:v1', JSON.stringify({ vortexPath: 'unknown', splitPath: 'unknown', chainPath: 'unknown' }));
-    expect(readPlayerProfile(storage)).toEqual({ vortexPath: 'gravity-well', splitPath: 'prism', chainPath: 'relay' });
+    storage.setItem('rune-ball:profile:v1', JSON.stringify({
+      vortexPath: 'unknown',
+      splitPath: 'unknown',
+      chainPath: 'unknown',
+      clearedStageIds: ['shattered-gate', 'unknown', 'shattered-gate'],
+    }));
+    expect(readPlayerProfile(storage)).toEqual({
+      vortexPath: 'gravity-well',
+      splitPath: 'prism',
+      chainPath: 'relay',
+      clearedStageIds: ['shattered-gate'],
+    });
   });
 });
