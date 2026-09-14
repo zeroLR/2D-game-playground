@@ -48,6 +48,20 @@ const ELITE_SEQUENCE: EncounterSequenceDefinition = {
   }],
 };
 
+const SOLO_ELITE_SEQUENCE: EncounterSequenceDefinition = {
+  intermissionSeconds: 0,
+  encounters: [{
+    kind: 'elite',
+    id: 'solo-warden',
+    title: 'FRACTURE WARDEN',
+    objective: 'Pierce the Warden with Rune energy.',
+    elite: { title: 'FRACTURE WARDEN', trait: 'rune-ward' },
+    targets: [
+      { kind: 'crystal', role: 'elite', anchor: { x: 0.5, y: 0.5 } },
+    ],
+  }],
+};
+
 const BOSS_SEQUENCE: EncounterSequenceDefinition = {
   intermissionSeconds: 0.5,
   encounters: [
@@ -146,6 +160,40 @@ describe('DestructionSession authored encounters', () => {
     ]));
     expect(session.snapshot.targets.find((target) => target.id === elite?.id)?.hp).toBe(1);
     expect(session.snapshot.encounterRules).toMatchObject({ eliteTrait: 'rune-ward', eliteTargetId: elite?.id });
+  });
+
+  it('lets an armed Chain infuse the next Ball contact and pierce a lone Rune Ward', () => {
+    const session = new DestructionSession(BOUNDS, { encounterSequence: SOLO_ELITE_SEQUENCE });
+    const elite = session.snapshot.targets.find((target) => target.role === 'elite');
+    expect(elite).toBeDefined();
+
+    expect(session.activateRune('chain', elite!.position)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'rune-activated', rune: 'chain' }),
+    ]));
+    const events = session.update(0);
+
+    expect(events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'elite-defeated', targetId: elite!.id }),
+      expect.objectContaining({ type: 'chain-triggered' }),
+    ]));
+    expect(events.some((event) => event.type === 'elite-hit-blocked')).toBe(false);
+    expect(session.snapshot.targets).toHaveLength(0);
+  });
+
+  it('recovers only to one Rune cast while a live Rune Ward would otherwise hard-lock the encounter', () => {
+    const session = new DestructionSession(BOUNDS, { encounterSequence: SOLO_ELITE_SEQUENCE });
+
+    session.activateRune('vortex', { x: -500, y: -500 });
+    session.activateRune('vortex', { x: -500, y: -500 });
+    session.activateRune('vortex', { x: -500, y: -500 });
+    expect(session.snapshot.runes.charge).toBe(10);
+
+    session.update(0.7);
+    expect(session.snapshot.runes.charge).toBeCloseTo(18.4);
+    session.update(1);
+    expect(session.snapshot.runes.charge).toBe(30);
+    session.update(2);
+    expect(session.snapshot.runes.charge).toBe(30);
   });
 
   it('materializes Boss state and phase Wards through the same encounter boundary', () => {

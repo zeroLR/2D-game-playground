@@ -50,6 +50,22 @@ describe('RuneSystem', () => {
     expect(runes.snapshot.charge).toBe(100);
   });
 
+  it('supports bounded recovery without silently refilling beyond the requested floor', () => {
+    const runes = new RuneSystem();
+    runes.activate('vortex', { x: 0, y: 0 });
+    runes.activate('split', { x: 0, y: 0 });
+    runes.activate('chain', { x: 0, y: 0 });
+    runes.consumeChain();
+    expect(runes.snapshot.charge).toBe(10);
+
+    expect(runes.recoverCharge(12, 30)).toBe(12);
+    expect(runes.snapshot.charge).toBe(22);
+    expect(runes.recoverCharge(20, 30)).toBe(8);
+    expect(runes.snapshot.charge).toBe(30);
+    expect(runes.recoverCharge(50, 30)).toBe(0);
+    expect(runes.snapshot.charge).toBe(30);
+  });
+
   it('makes Rune activations free during Overdrive without refilling charge', () => {
     const runes = new RuneSystem();
     runes.activate('vortex', { x: 0, y: 0 });

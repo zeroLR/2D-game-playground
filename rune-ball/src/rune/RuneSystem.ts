@@ -100,6 +100,16 @@ export class RuneSystem {
     this.charge = Math.min(MAX_CHARGE, this.charge + HIT_CHARGE + (destroyed ? BREAK_CHARGE : 0));
   }
 
+  recoverCharge(amount: number, ceiling = MAX_CHARGE): number {
+    const safeAmount = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+    const safeCeiling = Math.min(MAX_CHARGE, Math.max(0, Number.isFinite(ceiling) ? ceiling : MAX_CHARGE));
+    if (safeAmount <= 0 || this.charge >= safeCeiling) return 0;
+
+    const before = this.charge;
+    this.charge = Math.min(safeCeiling, this.charge + safeAmount);
+    return this.charge - before;
+  }
+
   consumeChain(): boolean {
     if (!this.chainReady) return false;
     this.chainReady = false;
