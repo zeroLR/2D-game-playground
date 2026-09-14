@@ -102,6 +102,7 @@ export interface DestructionSceneCallbacks {
   splitEvolutionPath?: SplitEvolutionPath;
   chainEvolutionPath?: ChainEvolutionPath;
   encounterSequence?: EncounterSequenceDefinition;
+  availableRunes?: readonly RuneKind[];
 }
 
 export class DestructionScene extends Container {
@@ -157,7 +158,7 @@ export class DestructionScene extends Container {
     },
   });
   private readonly runeGuide = new Text({
-    text: '100   ○   V   Z',
+    text: '100   ○',
     style: {
       fill: COLORS.violet,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -181,6 +182,7 @@ export class DestructionScene extends Container {
   private readonly pathSampler = new PointerPathSampler();
   private readonly audio: AudioDirector;
   private readonly cameraFeedback = new CameraFeedback();
+  private readonly availableRunes: ReadonlySet<RuneKind>;
   private arenaBounds: ArenaBounds;
   private arenaLayout: ArenaLayout;
   private viewportWidth = 1;
@@ -209,6 +211,7 @@ export class DestructionScene extends Container {
     this.audio = audio;
     this.onPlayerAction = callbacks.onPlayerAction;
     this.onGameplayEvent = callbacks.onGameplayEvent;
+    this.availableRunes = new Set(callbacks.availableRunes ?? ['vortex', 'split', 'chain']);
     this.viewportWidth = Math.max(1, width);
     this.viewportHeight = Math.max(1, height);
     this.arenaLayout = calculateArenaLayout(width, height);
@@ -365,9 +368,10 @@ export class DestructionScene extends Container {
 
     const charge = Math.round(snapshot.runes.charge);
     const ready = snapshot.runes.cost === 0 || snapshot.runes.charge >= snapshot.runes.cost;
+    const glyphs = this.availableRuneGlyphs();
     this.runeGuide.text = overdrive
-      ? '∞   ○   V   Z'
-      : `${charge.toString().padStart(3, '0')}   ○   V   Z`;
+      ? `∞   ${glyphs}`
+      : `${charge.toString().padStart(3, '0')}   ${glyphs}`;
     this.runeGuide.alpha = ready ? 0.92 : 0.42;
     this.runeGuide.style.fill = overdrive ? COLORS.white : COLORS.violet;
 
@@ -473,6 +477,11 @@ export class DestructionScene extends Container {
         success = true;
         break;
       case 'rune': {
+        if (!this.availableRunes.has(intent.rune)) {
+          this.showRuneFailure(intent.center, 'RUNE LOCKED');
+          this.audio.playRuneFailure();
+          break;
+        }
         const events = this.session.activateRune(intent.rune, intent.center);
         for (const gameplayEvent of events) this.handleGameplayEvent(gameplayEvent);
         success = events.some((gameplayEvent) => gameplayEvent.type === 'rune-activated');
@@ -1373,6 +1382,14 @@ export class DestructionScene extends Container {
   private pushCapped<T>(items: T[], item: T, maxItems: number): void {
     items.push(item);
     while (items.length > maxItems) items.shift();
+  }
+
+  private availableRuneGlyphs(): string {
+    return [
+      this.availableRunes.has('vortex') ? '○' : null,
+      this.availableRunes.has('split') ? 'V' : null,
+      this.availableRunes.has('chain') ? 'Z' : null,
+    ].filter((glyph): glyph is string => glyph !== null).join('   ');
   }
 
   private arenaCenter(): Point2D {
