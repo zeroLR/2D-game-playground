@@ -1,7 +1,7 @@
 import { AudioDirector } from './audio/AudioDirector';
 import { createRenderer } from './bootstrap/create-renderer';
 import { StageLoadingScreen } from './bootstrap/StageLoadingScreen';
-import { DEFAULT_STAGE_ID, getStage, type StageId } from './content/StageCatalog';
+import { getStage, type StageId } from './content/StageCatalog';
 import type { DestructionEvent } from './game/DestructionSession';
 import { FixedStepLoop } from './game/FixedStepLoop';
 import { SessionDirector } from './game/SessionDirector';
@@ -11,14 +11,16 @@ import {
   type RuntimePreferences,
 } from './preferences/RuntimePreferences';
 import { readPlayerProfile, writePlayerProfile, type PlayerProfile } from './profile/PlayerProfile';
+import { CampaignProgression } from './progression/CampaignProgression';
 import type { ChainEvolutionPath } from './progression/ChainEvolutionSystem';
 import type { SplitEvolutionPath } from './progression/SplitEvolutionSystem';
 import type { VortexEvolutionPath } from './progression/VortexEvolutionSystem';
+import type { RuneKind } from './rune/RuneTypes';
 import { BossCoreOverlay } from './presentation/BossCoreOverlay';
 import { DestructionScene } from './presentation/DestructionScene';
 import { GameShell } from './presentation/GameShell';
 import { RuneCausalityOverlay } from './presentation/RuneCausalityOverlay';
-import { SessionChrome } from './presentation/SessionChrome';
+import { SessionChrome, type ProgressionResultPresentation } from './presentation/SessionChrome';
 import { SettingsPanel } from './presentation/SettingsPanel';
 import { RuneEvolutionStatus } from './presentation/RuneEvolutionStatus';
 import './style.css';
@@ -27,12 +29,19 @@ import './settings.css';
 import './evolution.css';
 import './boss.css';
 import './product-shell.css';
+import './p9-4.css';
 
 const hostElement = document.querySelector<HTMLElement>('#app');
 if (!hostElement) throw new Error('[Rune Ball] Missing #app mount element');
 const host: HTMLElement = hostElement;
 
 type RuneBallApplication = Awaited<ReturnType<typeof createRenderer>>;
+
+const RUNE_UNLOCK_COPY: Record<RuneKind, { glyph: string; name: string }> = {
+  vortex: { glyph: '○', name: 'VORTEX' },
+  split: { glyph: 'V', name: 'SPLIT' },
+  chain: { glyph: 'Z', name: 'CHAIN' },
+};
 
 function showBootstrapFailure(error: unknown, detailText: string): void {
   console.error('[Rune Ball] Application bootstrap failed.', error);
@@ -74,11 +83,12 @@ function bootstrap(): void {
   host.dataset.bootstrapState = 'ready';
   host.dataset.appScreen = 'home';
   host.setAttribute('aria-busy', 'false');
-  console.info('[Rune Ball] P8.1.1 Home-first shell ready. Gameplay runtime will load on stage entry.');
+  console.info('[Rune Ball] P9.4 campaign progression ready. Gameplay runtime will load on stage entry.');
 
   const storage = getStorage();
   let preferences: RuntimePreferences = readRuntimePreferences(storage, systemPrefersReducedMotion());
   let profile: PlayerProfile = readPlayerProfile(storage);
+  const progression = new CampaignProgression(profile.clearedStageIds);
   let selectedPath: VortexEvolutionPath = profile.vortexPath;
   let selectedSplitPath: SplitEvolutionPath = profile.splitPath;
   let selectedChainPath: ChainEvolutionPath = profile.chainPath;
@@ -94,7 +104,7 @@ function bootstrap(): void {
   let evolutionStatus: RuneEvolutionStatus | null = null;
   let loop: FixedStepLoop | null = null;
   let resizeObserver: ResizeObserver | null = null;
-  let activeStage = getStage(DEFAULT_STAGE_ID);
+  let activeStage = getStage(progression.snapshot.continueStageId);
   let session = new SessionDirector({ totalSeconds: activeStage.durationSeconds, finalReleaseSeconds: 3 });
   let shell: GameShell;
   let runtimeLoadPromise: Promise<void> | null = null;
@@ -102,6 +112,7 @@ function bootstrap(): void {
   let runtimeProgress = 0;
   let runHasStarted = false;
   let resultHandled = false;
+  let pendingNextStageId: StageId | null = null;
   let settingsOpen = false;
   let productShellOpen = true;
   let stageLoading = false;
@@ -150,11 +161,36 @@ function bootstrap(): void {
   window.addEventListener('pagehide', handlePageHide);
   window.addEventListener('pageshow', handlePageShow);
 
+  const progressionPresentation = (
+    unlockedRune: RuneKind | null,
+    nextStageId: StageId | null,
+  ): ProgressionResultPresentation => {
+    const nextStageLabel = nextStageId
+      ? `${getStage(nextStageId).title} AVAILABLE`
+      : activeStage.id === 'prism-wake'
+        ? 'NULL CATHEDRAL · COMING SOON'
+        : null;
+    return {
+      unlockedRune: unlockedRune ? { ...RUNE_UNLOCK_COPY[unlockedRune] } : null,
+      nextStageLabel,
+      canContinue: nextStageId !== null,
+    };
+  };
+
   const onGameplayEvent = (event: DestructionEvent): void => {
     session.registerEvent(event);
     causality?.handle(event);
     bossOverlay?.handle(event);
     evolutionStatus?.handle(event);
+
+    if (event.type === 'stage-cleared') {
+      const completion = progression.completeStage(activeStage.id);
+      profile = { ...profile, clearedStageIds: completion.snapshot.clearedStageIds };
+      persistProfile();
+      shell.setProgression(completion.snapshot);
+      pendingNextStageId = completion.nextStageId;
+      chrome?.setProgressionResult(progressionPresentation(completion.unlockedRune, completion.nextStageId));
+    }
   };
 
   const onPlayerAction = (): void => {
@@ -175,6 +211,7 @@ function bootstrap(): void {
         splitEvolutionPath: selectedSplitPath,
         chainEvolutionPath: selectedChainPath,
         encounterSequence: activeStage.encounterSequence,
+        availableRunes: progression.snapshot.unlockedRunes,
       },
     );
     nextScene.setReducedMotion(preferences.reducedMotion);
@@ -200,6 +237,8 @@ function bootstrap(): void {
     causality.reset();
     bossOverlay.reset();
     resultHandled = false;
+    pendingNextStageId = null;
+    chrome.setProgressionResult(null);
     if (runHasStarted) replaceScene();
     else runHasStarted = true;
     evolutionStatus.reset(selectedPath, selectedSplitPath, selectedChainPath);
@@ -219,17 +258,33 @@ function bootstrap(): void {
     prepareRun();
   };
 
-  const returnHome = (): void => {
+  const leaveRunForShell = (stageId?: StageId): void => {
     session.reset();
     causality?.reset();
     bossOverlay?.reset();
     resultHandled = false;
+    pendingNextStageId = null;
     evolutionStatus?.setVisible(false);
+    chrome?.setProgressionResult(null);
     chrome?.render(session.snapshot);
     chrome?.setVisible(false);
     productShellOpen = true;
-    shell.showHome();
+    if (stageId) shell.showStageDetail(stageId);
+    else shell.showHome();
     syncRuntimePause();
+  };
+
+  const returnHome = (): void => {
+    leaveRunForShell();
+  };
+
+  const continueToNextStage = (): void => {
+    const nextStageId = pendingNextStageId;
+    if (!nextStageId) {
+      leaveRunForShell();
+      return;
+    }
+    leaveRunForShell(nextStageId);
   };
 
   const setupRuntime = (nextApp: RuneBallApplication): void => {
@@ -255,6 +310,7 @@ function bootstrap(): void {
     chrome = new SessionChrome(host, {
       onRetry: restartRun,
       onHome: returnHome,
+      onContinue: continueToNextStage,
     });
     chrome.setViewport(nextApp.screen.width, nextApp.screen.height);
     chrome.render(session.snapshot);
@@ -345,14 +401,18 @@ function bootstrap(): void {
   };
 
   const beginStageEntry = (stageId: StageId): void => {
+    const stageState = progression.stageState(stageId);
+    const stage = getStage(stageId);
+    if (stageState === 'locked' || stageState === 'coming-soon' || stage.contentStatus !== 'authored') return;
     if (stageLoadInFlight) return;
     stageLoadInFlight = true;
-    const stage = getStage(stageId);
     activeStage = stage;
     session = new SessionDirector({ totalSeconds: stage.durationSeconds, finalReleaseSeconds: 3 });
     host.dataset.activeStage = stageId;
     host.dataset.bootstrapState = 'stage-loading';
-    console.info(`[Rune Ball] Loading stage ${stageId} with Vortex ${selectedPath} / Split ${selectedSplitPath} / Chain ${selectedChainPath}.`);
+    console.info(
+      `[Rune Ball] Loading stage ${stageId} with runes ${progression.snapshot.unlockedRunes.join(', ')} and Vortex ${selectedPath} / Split ${selectedSplitPath} / Chain ${selectedChainPath}.`,
+    );
 
     shell.hideForLoading();
     stageLoading = true;
@@ -384,34 +444,41 @@ function bootstrap(): void {
     })();
   };
 
-  shell = new GameShell(host, selectedPath, selectedSplitPath, selectedChainPath, {
-    onStartStage: beginStageEntry,
-    onVortexPathChange: (path) => {
-      selectedPath = path;
-      profile = { ...profile, vortexPath: path };
-      persistProfile();
+  shell = new GameShell(
+    host,
+    selectedPath,
+    selectedSplitPath,
+    selectedChainPath,
+    progression.snapshot,
+    {
+      onStartStage: beginStageEntry,
+      onVortexPathChange: (path) => {
+        selectedPath = path;
+        profile = { ...profile, vortexPath: path };
+        persistProfile();
+      },
+      onSplitPathChange: (path) => {
+        selectedSplitPath = path;
+        profile = { ...profile, splitPath: path };
+        persistProfile();
+      },
+      onChainPathChange: (path) => {
+        selectedChainPath = path;
+        profile = { ...profile, chainPath: path };
+        persistProfile();
+      },
+      onScreenChange: (screen) => {
+        host.dataset.appScreen = screen;
+        productShellOpen = screen !== 'run' && screen !== 'loading';
+        if (screen !== 'run') {
+          chrome?.setVisible(false);
+          evolutionStatus?.setVisible(false);
+          bossOverlay?.reset();
+        }
+        syncRuntimePause();
+      },
     },
-    onSplitPathChange: (path) => {
-      selectedSplitPath = path;
-      profile = { ...profile, splitPath: path };
-      persistProfile();
-    },
-    onChainPathChange: (path) => {
-      selectedChainPath = path;
-      profile = { ...profile, chainPath: path };
-      persistProfile();
-    },
-    onScreenChange: (screen) => {
-      host.dataset.appScreen = screen;
-      productShellOpen = screen !== 'run' && screen !== 'loading';
-      if (screen !== 'run') {
-        chrome?.setVisible(false);
-        evolutionStatus?.setVisible(false);
-        bossOverlay?.reset();
-      }
-      syncRuntimePause();
-    },
-  });
+  );
 
   const settings = new SettingsPanel(host, preferences, {
     onSoundChange: (enabled) => {
